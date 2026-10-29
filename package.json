@@ -1,0 +1,16 @@
+{
+  "name": "vchatbot",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace apps/web",
+    "dev:admin": "npm run dev --workspace apps/admin",
+    "build": "npm run build --workspace apps/web && npm run build --workspace apps/admin",
+    "start:web": "npm run start --workspace apps/web",
+    "start:admin": "npm run start --workspace apps/admin"
+  }
+}
