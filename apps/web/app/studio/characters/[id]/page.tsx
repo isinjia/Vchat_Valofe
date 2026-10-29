@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
+import DictionaryBrowser from "../../components/DictionaryBrowser";
+import ImageCropModal from "../../components/ImageCropModal";
 import CharacterAnniversarySection from "./CharacterAnniversarySection";
 import { studioFetch, jsonInit } from "../../studio-api";
+import WorldPickerModal, { WorldMini, type PickedWorld } from "../../components/WorldPickerModal";
 
 interface Character {
   id: number;
@@ -23,6 +26,7 @@ interface Character {
 interface WorldOpt {
   id: number;
   name: string;
+  title_image_url?: string | null;
   owner_nickname?: string | null;
 }
 
@@ -39,6 +43,18 @@ interface DictOpt {
   title: string;
   category: "location" | "person" | "term";
 }
+
+/** 캐릭터 전용 사전 항목 */
+interface PrivEntry {
+  id: number;
+  category: "location" | "person" | "term";
+  title: string;
+  aliases: string | null;
+  content: string;
+  has_embedding?: number;
+}
+
+const CATEGORY_LABEL = { location: "지역사전", person: "인명사전", term: "용어사전" } as const;
 
 interface Rel {
   id: number;
@@ -69,24 +85,29 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
   const [error, setError] = useState<string | null>(null);
   const [mine, setMine] = useState<WorldOpt[]>([]);
   const [open, setOpen] = useState<WorldOpt[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // 모달에서 선택한 세계관 (목록 조회 전/비공개 전환 케이스에도 표시되도록 별도 보관)
+  const [pickedWorld, setPickedWorld] = useState<PickedWorld | null>(null);
   const [illusts, setIllusts] = useState<Illust[]>([]);
   // 관계/기억: 대상 후보(세계관 공통 사전 항목), 등록된 관계, 입력값
   const [entries, setEntries] = useState<DictOpt[]>([]);
   const [rels, setRels] = useState<Rel[]>([]);
   const [newRel, setNewRel] = useState({ target: "" as number | "", relation: "" });
   const [newPerson, setNewPerson] = useState("");
+  // 전용 사전: 이 캐릭터만 아는 지식
+  const [privKey, setPrivKey] = useState(0); // 전용 사전 목록 재조회 트리거
+  const [newPriv, setNewPriv] = useState({ category: "term" as PrivEntry["category"], title: "", aliases: "", content: "" });
   const [saved, setSaved] = useState(false);
+  const [tab, setTab] = useState("basic"); // 편집 탭
   const [cost, setCost] = useState<number | null>(null);
   const [generating, setGenerating] = useState<string | null>(null);
-  const [titleFile, setTitleFile] = useState<File | null>(null);
-  const [titleUploading, setTitleUploading] = useState(false);
+  const [titleCropOpen, setTitleCropOpen] = useState(false); // 타이틀 이미지 크롭 팝업
+  const [illustCropOpen, setIllustCropOpen] = useState(false); // 일러스트 크롭 팝업
   const [upload, setUpload] = useState({
     kind: "basic" as "basic" | "conditional",
     description: "",
     keywords: "",
-    file: null as File | null,
   });
-  const [uploading, setUploading] = useState(false);
   const [illustCost, setIllustCost] = useState<number | null>(null);
   const [ai, setAi] = useState({
     prompt: "",
@@ -132,7 +153,6 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
 
   const costLabel = cost != null ? ` (-${cost.toLocaleString()}코인)` : "";
   const myIds = new Set(mine.map((w) => w.id));
-  const others = open.filter((w) => !myIds.has(w.id));
   const set = (patch: Partial<Character>) => setChar({ ...char, ...patch });
 
   const save = async () => {
@@ -195,6 +215,27 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
     loadRels();
   };
 
+  const addPriv = async () => {
+    if (!newPriv.title.trim()) return;
+    const res = await studioFetch(
+      `/api/studio/characters/${id}/dictionary`,
+      jsonInit("POST", { ...newPriv, aliases: newPriv.aliases || null })
+    );
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(`추가 실패: ${r.error ?? res.statusText}`);
+      return;
+    }
+    if (r.warning) alert(r.warning);
+    setNewPriv({ ...newPriv, title: "", aliases: "", content: "" });
+    setPrivKey((n) => n + 1);
+  };
+
+  const removePriv = async (did: number) => {
+    if (!confirm("전용 사전 항목을 삭제할까요?")) return false;
+    await studioFetch(`/api/studio/characters/${id}/dictionary/${did}`, { method: "DELETE" });
+  };
+
   /** AI 생성 → textarea state 에 채움 (저장은 저장 버튼) */
   const generate = async (kind: GenKind) => {
     setGenerating(kind);
@@ -234,45 +275,38 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
     </button>
   );
 
-  const uploadTitleImage = async () => {
-    if (!titleFile) return;
-    setTitleUploading(true);
+  /** 크롭 팝업 확인 → 타이틀 이미지 업로드 (실패 시 throw → 팝업 안에 에러 표시) */
+  const uploadTitleImage = async (blob: Blob, filename: string) => {
     const form = new FormData();
-    form.append("file", titleFile);
+    form.append("file", blob, filename);
     const res = await studioFetch(`/api/studio/characters/${id}/title-image`, { method: "POST", body: form });
-    setTitleUploading(false);
     const r = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      alert(`업로드 실패: ${r.error ?? res.statusText}`);
-      return;
-    }
-    setChar({ ...char, title_image_url: r.url });
-    setTitleFile(null);
+    if (!res.ok) throw new Error(`업로드 실패: ${r.error ?? res.statusText}`);
+    setChar((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
   };
 
-  const doUpload = async () => {
-    if (!upload.file) {
-      alert("이미지 파일을 선택하세요.");
-      return;
-    }
+  /** 업로드 버튼: 조건부인데 키워드가 비면 팝업 열기 전에 검증 */
+  const openUpload = () => {
     if (upload.kind === "conditional" && !upload.keywords.trim()) {
       alert("조건부 일러스트는 트리거 키워드가 필요합니다.");
       return;
     }
-    setUploading(true);
+    setIllustCropOpen(true);
+  };
+
+  /** 크롭 팝업 확인 → 현재 폼 값과 함께 일러스트 업로드 (실패 시 throw → 팝업 안에 에러 표시) */
+  const doUpload = async (blob: Blob, filename: string) => {
     const form = new FormData();
-    form.append("file", upload.file);
+    form.append("file", blob, filename);
     form.append("kind", upload.kind);
     form.append("description", upload.description);
     form.append("keywords", upload.keywords);
     const res = await studioFetch(`/api/studio/characters/${id}/illustrations`, { method: "POST", body: form });
-    setUploading(false);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      alert(`업로드 실패: ${err.error ?? res.statusText}`);
-      return;
+      throw new Error(`업로드 실패: ${err.error ?? res.statusText}`);
     }
-    setUpload({ kind: "basic", description: "", keywords: "", file: null });
+    setUpload({ kind: "basic", description: "", keywords: "" });
     loadIllusts();
   };
 
@@ -319,8 +353,17 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
     router.replace("/studio");
   };
 
-  // 현재 선택된 세계관이 목록에 없으면(비공개 전환 등) 옵션이 사라지지 않도록 표시용 보충
-  const currentMissing = !mine.some((w) => w.id === char.world_id) && !open.some((w) => w.id === char.world_id);
+  // 현재 세계관 표시용: 모달 선택값 > 내 세계관 > 오픈 세계관 > (목록에 없으면) 번호만 표시
+  const curMine = mine.find((w) => w.id === char.world_id);
+  const curOpen = open.find((w) => w.id === char.world_id);
+  const currentWorld: PickedWorld =
+    pickedWorld && pickedWorld.id === char.world_id
+      ? pickedWorld
+      : curMine
+        ? { id: curMine.id, name: curMine.name, title_image_url: curMine.title_image_url ?? null, mine: true }
+        : curOpen
+          ? { id: curOpen.id, name: curOpen.name, title_image_url: curOpen.title_image_url ?? null, owner_nickname: curOpen.owner_nickname, mine: false }
+          : { id: char.world_id, name: `현재 세계관 #${char.world_id}`, title_image_url: null, mine: false };
 
   return (
     <div className="container studio">
@@ -328,6 +371,15 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
         <Link href="/studio" style={{ color: "var(--muted)" }}>‹</Link> 캐릭터 편집: {char.name}
       </h2>
 
+      {/* 탭 바: 비활성 탭도 언마운트하지 않고 display:none 으로만 숨겨 입력값/fetch 상태 보존 */}
+      <div className="tabs">
+        <button type="button" className={`tab ${tab === "basic" ? "active" : ""}`} onClick={() => setTab("basic")}>기본 설정</button>
+        <button type="button" className={`tab ${tab === "rel" ? "active" : ""}`} onClick={() => setTab("rel")}>관계·기억·기념일</button>
+        <button type="button" className={`tab ${tab === "dict" ? "active" : ""}`} onClick={() => setTab("dict")}>전용 사전</button>
+        <button type="button" className={`tab ${tab === "illust" ? "active" : ""}`} onClick={() => setTab("illust")}>일러스트</button>
+      </div>
+
+      <div style={{ display: tab === "basic" ? undefined : "none" }}>
       <div className="panel">
         <label>타이틀 이미지 (세로 3:4)</label>
         <div style={{ display: "flex", gap: 12, alignItems: "flex-end", marginBottom: 8 }}>
@@ -338,12 +390,16 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
             <div className="title-img placeholder" style={{ width: 120 }} />
           )}
           <div>
-            <input type="file" accept="image/*" onChange={(e) => setTitleFile(e.target.files?.[0] ?? null)} />
-            <button className="small" onClick={uploadTitleImage} disabled={titleUploading || !titleFile}>
-              {titleUploading ? "업로드 중..." : "타이틀 이미지 업로드"}
-            </button>
+            <button type="button" className="small" onClick={() => setTitleCropOpen(true)}>이미지 업로드</button>
           </div>
         </div>
+        <ImageCropModal
+          open={titleCropOpen}
+          title="타이틀 이미지 업로드"
+          aspect={3 / 4}
+          onCancel={() => setTitleCropOpen(false)}
+          onConfirm={uploadTitleImage}
+        />
 
         <div className="row">
           <div>
@@ -352,17 +408,15 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
           </div>
           <div>
             <label>세계관</label>
-            <select value={char.world_id} onChange={(e) => set({ world_id: Number(e.target.value) })}>
-              {currentMissing && <option value={char.world_id}>(현재 세계관 #{char.world_id})</option>}
-              <optgroup label="내 세계관">
-                {mine.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-              </optgroup>
-              <optgroup label="공개된 세계관">
-                {others.map((w) => (
-                  <option key={w.id} value={w.id}>{w.name}{w.owner_nickname ? ` (by ${w.owner_nickname})` : ""}</option>
-                ))}
-              </optgroup>
-            </select>
+            <div className="world-mini-row">
+              <WorldMini world={currentWorld} />
+              <button type="button" className="small ghost" onClick={() => setPickerOpen(true)}>변경</button>
+            </div>
+            <WorldPickerModal
+              open={pickerOpen}
+              onClose={() => setPickerOpen(false)}
+              onSelect={(w) => { setPickedWorld(w); set({ world_id: w.id }); }}
+            />
           </div>
         </div>
 
@@ -395,7 +449,9 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
 
         <button onClick={save}>{saved ? "저장됨 ✓" : "저장"}</button>
       </div>
+      </div>
 
+      <div style={{ display: tab === "rel" ? undefined : "none" }}>
       <h3>인물·장소와의 관계/기억</h3>
       <div className="panel">
         <div className="row">
@@ -458,6 +514,50 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
         </table>
       </div>
 
+      <CharacterAnniversarySection characterId={id} />
+      </div>
+
+      <div style={{ display: tab === "dict" ? undefined : "none" }}>
+      <h3>전용 사전 (이 캐릭터만 아는 지식)</h3>
+      <div className="panel">
+        <p className="muted">RAG 검색 대상입니다. 공용 사전과 함께 이 캐릭터의 대화에만 주입됩니다.</p>
+        <div className="row">
+          <div>
+            <label>분류</label>
+            <select value={newPriv.category} onChange={(e) => setNewPriv({ ...newPriv, category: e.target.value as PrivEntry["category"] })}>
+              <option value="location">지역사전</option>
+              <option value="person">인명사전</option>
+              <option value="term">용어사전</option>
+            </select>
+          </div>
+          <div>
+            <label>표제어</label>
+            <input value={newPriv.title} onChange={(e) => setNewPriv({ ...newPriv, title: e.target.value })} />
+          </div>
+          <div>
+            <label>별칭 (쉼표 구분)</label>
+            <input value={newPriv.aliases} onChange={(e) => setNewPriv({ ...newPriv, aliases: e.target.value })} />
+          </div>
+        </div>
+        <label>내용</label>
+        <textarea rows={3} value={newPriv.content} onChange={(e) => setNewPriv({ ...newPriv, content: e.target.value })} />
+        <button onClick={addPriv}>전용 항목 추가</button>
+      </div>
+
+      {(["location", "person", "term"] as const).map((cat) => (
+        <DictionaryBrowser
+          key={cat}
+          baseUrl={`/api/studio/characters/${id}/dictionary`}
+          category={cat}
+          title={`전용 ${CATEGORY_LABEL[cat]}`}
+          refreshKey={privKey}
+          onDelete={removePriv}
+          showEmbedding
+        />
+      ))}
+      </div>
+
+      <div style={{ display: tab === "illust" ? undefined : "none" }}>
       <h3>일러스트</h3>
       <div className="panel">
         <div className="row">
@@ -479,9 +579,14 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
             <input value={upload.keywords} onChange={(e) => setUpload({ ...upload, keywords: e.target.value })} placeholder="예: 화남, 분노, 짜증" />
           </>
         )}
-        <label>이미지 파일</label>
-        <input type="file" accept="image/*" onChange={(e) => setUpload({ ...upload, file: e.target.files?.[0] ?? null })} />
-        <button onClick={doUpload} disabled={uploading}>{uploading ? "업로드 중..." : "업로드 (무료)"}</button>
+<button onClick={openUpload}>이미지 선택·업로드 (무료)</button>
+        <ImageCropModal
+          open={illustCropOpen}
+          title="일러스트 업로드"
+          aspect="free"
+          onCancel={() => setIllustCropOpen(false)}
+          onConfirm={doUpload}
+        />
       </div>
 
       <h3>AI 일러스트 생성</h3>
@@ -537,8 +642,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
           </tbody>
         </table>
       </div>
-
-      <CharacterAnniversarySection characterId={id} />
+      </div>
 
       <button className="danger" onClick={removeChar}>캐릭터 삭제</button>
     </div>

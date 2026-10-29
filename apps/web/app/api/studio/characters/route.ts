@@ -27,10 +27,19 @@ export async function POST(req: NextRequest) {
   if (!(await canUseWorld(body.world_id, auth.userId))) {
     return bad("사용할 수 없는 세계관입니다.", 403);
   }
-  const result = await execute(
-    `INSERT INTO characters (world_id, name, profile, personality, speech_style, ai_prompt, owner_user_id, visibility, status, is_active)
-     VALUES (?, ?, '', '', '', '', ?, 'private', 'active', 1)`,
-    [Number(body.world_id), name, auth.userId]
-  );
-  return NextResponse.json({ id: result.insertId }, { status: 201 });
+  // 세계관 내 캐릭터명 중복 검사
+  const dup = await query("SELECT id FROM characters WHERE world_id = ? AND name = ? LIMIT 1", [Number(body.world_id), name]);
+  if (dup.length > 0) return bad("이 세계관에 같은 이름의 캐릭터가 이미 있습니다.");
+  try {
+    const result = await execute(
+      `INSERT INTO characters (world_id, name, profile, personality, speech_style, ai_prompt, owner_user_id, visibility, status, is_active)
+       VALUES (?, ?, '', '', '', '', ?, 'private', 'active', 1)`,
+      [Number(body.world_id), name, auth.userId]
+    );
+    return NextResponse.json({ id: result.insertId }, { status: 201 });
+  } catch (e) {
+    // UNIQUE 제약 위반 (동시 요청 레이스 대비)
+    if ((e as { code?: string }).code === "ER_DUP_ENTRY") return bad("이 세계관에 같은 이름의 캐릭터가 이미 있습니다.");
+    throw e;
+  }
 }

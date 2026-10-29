@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import SiteHeader from "./components/SiteHeader";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface WorldItem {
@@ -48,8 +49,6 @@ export default function HomeClient() {
   const [loaded, setLoaded] = useState(false);
   const [offset, setOffset] = useState(0);
   const [meReady, setMeReady] = useState(false);
-  const [coins, setCoins] = useState<number | null>(null);
-  const [loggedOut, setLoggedOut] = useState(false);
 
   // 필터/정렬 변경 시 이전 요청 결과를 무시하기 위한 세대 번호
   const gen = useRef(0);
@@ -58,15 +57,8 @@ export default function HomeClient() {
   // 최초 마운트: 세계관 목록 + 로그인 상태 확인
   useEffect(() => {
     fetch("/api/worlds").then((r) => r.json()).then(setWorlds).catch(() => {});
+    // 헤더(SiteHeader)도 /api/me 를 호출하므로 여기서는 준비 완료 신호만 사용
     fetch("/api/me")
-      .then(async (r) => {
-        if (r.status === 401) {
-          setLoggedOut(true);
-          return;
-        }
-        const me = await r.json();
-        setCoins(typeof me.coins === "number" ? me.coins : null);
-      })
       .catch(() => {})
       .finally(() => setMeReady(true));
   }, []);
@@ -128,22 +120,9 @@ export default function HomeClient() {
   }, [hasMore, loading, loaded, offset, loadPage]);
 
   return (
+    <>
+    <SiteHeader />
     <div className="container">
-      {coins !== null && (
-        <div style={{ textAlign: "right", fontSize: 14, color: "var(--muted)" }}>
-          🪙 {coins.toLocaleString()}
-          <Link href="/studio" className="studio-link">
-            스튜디오
-          </Link>
-        </div>
-      )}
-      {loggedOut && (
-        <div style={{ textAlign: "right", fontSize: 14 }}>
-          <Link href="/login" style={{ color: "var(--accent)" }}>
-            로그인
-          </Link>
-        </div>
-      )}
       <h2 className="section-title">세계</h2>
       <div className="h-scroll">
         <button
@@ -200,5 +179,6 @@ export default function HomeClient() {
       {loaded && !loading && items.length === 0 && <p className="empty">캐릭터가 없습니다</p>}
       <div ref={sentinel} style={{ height: 1 }} />
     </div>
+    </>
   );
 }

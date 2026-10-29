@@ -1,5 +1,7 @@
 "use client";
 
+import DictionaryBrowser from "../../components/DictionaryBrowser";
+import ImageCropModal from "../../components/ImageCropModal";
 import { useEffect, useState, use } from "react";
 import CharacterAnniversarySection from "./CharacterAnniversarySection";
 
@@ -35,6 +37,18 @@ interface Relationship {
   relation: string;
 }
 
+/** 캐릭터 전용 사전 항목 */
+interface PrivEntry {
+  id: number;
+  category: "location" | "person" | "term";
+  title: string;
+  aliases: string | null;
+  content: string;
+  has_embedding?: number;
+}
+
+const CATEGORY_LABEL = { location: "지역사전", person: "인명사전", term: "용어사전" } as const;
+
 interface Illust {
   id: number;
   kind: "basic" | "conditional";
@@ -66,16 +80,19 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
   const [newPerson, setNewPerson] = useState("");
   const [rels, setRels] = useState<Relationship[]>([]);
   const [illusts, setIllusts] = useState<Illust[]>([]);
+  // 전용 사전: 이 캐릭터만 아는 지식
+  const [privKey, setPrivKey] = useState(0); // 전용 사전 목록 재조회 트리거
+  const [newPriv, setNewPriv] = useState({ category: "term" as PrivEntry["category"], title: "", aliases: "", content: "" });
   const [saved, setSaved] = useState(false);
+  const [tab, setTab] = useState("basic"); // 편집 탭
 
   const [newRel, setNewRel] = useState({ target: "" as number | "", relation: "" });
   const [upload, setUpload] = useState({
     kind: "basic" as "basic" | "conditional",
     description: "",
     keywords: "",
-    file: null as File | null,
   });
-  const [uploading, setUploading] = useState(false);
+  const [illustCropOpen, setIllustCropOpen] = useState(false); // 일러스트 크롭 팝업
   const [ai, setAi] = useState({
     prompt: "",
     kind: "basic" as "basic" | "conditional",
@@ -84,8 +101,7 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
     asTitle: false,
   });
   const [aiGenerating, setAiGenerating] = useState(false);
-  const [titleFile, setTitleFile] = useState<File | null>(null);
-  const [titleUploading, setTitleUploading] = useState(false);
+  const [titleCropOpen, setTitleCropOpen] = useState(false); // 타이틀 이미지 크롭 팝업
   // AI 생성 중인 필드 (scenario | greeting)
   const [generating, setGenerating] = useState<"scenario" | "greeting" | null>(null);
 
@@ -100,9 +116,18 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
       .then((c: Character) => {
         setChar(c);
         setAi((prev) => ({ ...prev, prompt: prev.prompt || defaultIllustPrompt(c) }));
-        fetch(`/api/worlds/${c.world_id}/dictionary`)
-          .then((r) => r.json())
-          .then((list: DictOption[]) => setEntries(list.filter((d) => d.character_id == null)));
+        // 관계 대상 후보: 공용 사전 전체 (페이징 API 를 100건씩 순회)
+        (async () => {
+          const all: DictOption[] = [];
+          for (let off = 0; ; off += 100) {
+            const r = await fetch(`/api/worlds/${c.world_id}/dictionary?limit=100&offset=${off}`);
+            const d = await r.json().catch(() => null);
+            const items: DictOption[] = Array.isArray(d?.items) ? d.items : [];
+            all.push(...items);
+            if (items.length < 100) break;
+          }
+          setEntries(all.filter((x) => x.character_id == null));
+        })().catch(() => {});
       });
     fetch("/api/worlds").then((r) => r.json()).then(setWorlds);
     loadRels();
@@ -113,11 +138,16 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
   if (!char) return <p>로딩 중...</p>;
 
   const save = async () => {
-    await fetch(`/api/characters/${id}`, {
+    const res = await fetch(`/api/characters/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(char),
     });
+    if (!res.ok) {
+      const r = await res.json().catch(() => ({}));
+      alert(`저장 실패: ${r.error ?? res.statusText}`);
+      return;
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
   };
@@ -146,20 +176,14 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
     }
   };
 
-  const uploadTitleImage = async () => {
-    if (!titleFile) return;
-    setTitleUploading(true);
+  /** 크롭 팝업 확인 → 타이틀 이미지 업로드 (실패 시 throw → 팝업 안에 에러 표시) */
+  const uploadTitleImage = async (blob: Blob, filename: string) => {
     const form = new FormData();
-    form.append("file", titleFile);
+    form.append("file", blob, filename);
     const res = await fetch(`/api/characters/${id}/title-image`, { method: "POST", body: form });
-    setTitleUploading(false);
     const r = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      alert(`업로드 실패: ${r.error ?? res.statusText}`);
-      return;
-    }
-    setChar({ ...char, title_image_url: r.url });
-    setTitleFile(null);
+    if (!res.ok) throw new Error(`업로드 실패: ${r.error ?? res.statusText}`);
+    setChar((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
   };
 
   const addRel = async () => {
@@ -206,18 +230,41 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
     loadRels();
   };
 
-  const doUpload = async () => {
-    if (!upload.file) {
-      alert("이미지 파일을 선택하세요.");
+  const addPriv = async () => {
+    if (!newPriv.title.trim()) return;
+    const res = await fetch(`/api/worlds/${char.world_id}/dictionary`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...newPriv, aliases: newPriv.aliases || null, character_id: Number(id) }),
+    });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(`추가 실패: ${r.error ?? res.statusText}`);
       return;
     }
+    if (r.warning) alert(r.warning);
+    setNewPriv({ ...newPriv, title: "", aliases: "", content: "" });
+    setPrivKey((n) => n + 1);
+  };
+
+  const removePriv = async (entryId: number) => {
+    if (!confirm("전용 사전 항목을 삭제할까요?")) return false;
+    await fetch(`/api/dictionary/${entryId}`, { method: "DELETE" });
+  };
+
+  /** 업로드 버튼: 조건부인데 키워드가 비면 팝업 열기 전에 검증 */
+  const openUpload = () => {
     if (upload.kind === "conditional" && !upload.keywords.trim()) {
       alert("조건부 일러스트는 트리거 키워드가 필요합니다.");
       return;
     }
-    setUploading(true);
+    setIllustCropOpen(true);
+  };
+
+  /** 크롭 팝업 확인 → 현재 폼 값과 함께 일러스트 업로드 (실패 시 throw → 팝업 안에 에러 표시) */
+  const doUpload = async (blob: Blob, filename: string) => {
     const form = new FormData();
-    form.append("file", upload.file);
+    form.append("file", blob, filename);
     form.append("kind", upload.kind);
     form.append("description", upload.description);
     form.append("keywords", upload.keywords);
@@ -225,13 +272,11 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
       method: "POST",
       body: form,
     });
-    setUploading(false);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      alert(`업로드 실패: ${err.error ?? res.statusText}`);
-      return;
+      throw new Error(`업로드 실패: ${err.error ?? res.statusText}`);
     }
-    setUpload({ kind: "basic", description: "", keywords: "", file: null });
+    setUpload({ kind: "basic", description: "", keywords: "" });
     loadIllusts();
   };
 
@@ -275,6 +320,15 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
     <>
       <h2>캐릭터 편집: {char.name}</h2>
 
+      {/* 탭 바: 비활성 탭도 언마운트하지 않고 display:none 으로만 숨겨 입력값/fetch 상태 보존 */}
+      <div className="tabs">
+        <button type="button" className={`tab ${tab === "basic" ? "active" : ""}`} onClick={() => setTab("basic")}>기본 설정</button>
+        <button type="button" className={`tab ${tab === "rel" ? "active" : ""}`} onClick={() => setTab("rel")}>관계·기억·기념일</button>
+        <button type="button" className={`tab ${tab === "dict" ? "active" : ""}`} onClick={() => setTab("dict")}>전용 사전</button>
+        <button type="button" className={`tab ${tab === "illust" ? "active" : ""}`} onClick={() => setTab("illust")}>일러스트</button>
+      </div>
+
+      <div style={{ display: tab === "basic" ? undefined : "none" }}>
       <div className="panel">
         {/* 타이틀 이미지: label 과 분리된 독립 블록 */}
         <div style={{ marginBottom: 12 }}>
@@ -291,16 +345,16 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
               <div style={{ width: 120, height: 160, background: "#888", borderRadius: 6 }} />
             )}
             <div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setTitleFile(e.target.files?.[0] ?? null)}
-              />
-              <button onClick={uploadTitleImage} disabled={titleUploading || !titleFile}>
-                {titleUploading ? "업로드 중..." : "타이틀 이미지 업로드"}
-              </button>
+              <button type="button" onClick={() => setTitleCropOpen(true)}>이미지 업로드</button>
             </div>
           </div>
+          <ImageCropModal
+            open={titleCropOpen}
+            title="타이틀 이미지 업로드"
+            aspect={3 / 4}
+            onCancel={() => setTitleCropOpen(false)}
+            onConfirm={uploadTitleImage}
+          />
         </div>
         <div className="row">
           <div>
@@ -409,7 +463,9 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
         </div>
         <button onClick={save}>{saved ? "저장됨 ✓" : "저장"}</button>
       </div>
+      </div>
 
+      <div style={{ display: tab === "rel" ? undefined : "none" }}>
       <h3>인물·장소와의 관계/기억</h3>
       <div className="panel">
         <div className="row">
@@ -472,6 +528,51 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
         </table>
       </div>
 
+      <CharacterAnniversarySection characterId={id} />
+      </div>
+
+      <div style={{ display: tab === "dict" ? undefined : "none" }}>
+      <h3>전용 사전 (이 캐릭터만 아는 지식)</h3>
+      <div className="panel">
+        <p className="muted">RAG 검색 대상입니다. 공용 사전과 함께 이 캐릭터의 대화에만 주입됩니다.</p>
+        <div className="row">
+          <div>
+            <label>분류</label>
+            <select value={newPriv.category} onChange={(e) => setNewPriv({ ...newPriv, category: e.target.value as PrivEntry["category"] })}>
+              <option value="location">지역사전</option>
+              <option value="person">인명사전</option>
+              <option value="term">용어사전</option>
+            </select>
+          </div>
+          <div>
+            <label>표제어</label>
+            <input value={newPriv.title} onChange={(e) => setNewPriv({ ...newPriv, title: e.target.value })} />
+          </div>
+          <div>
+            <label>별칭 (쉼표 구분)</label>
+            <input value={newPriv.aliases} onChange={(e) => setNewPriv({ ...newPriv, aliases: e.target.value })} />
+          </div>
+        </div>
+        <label>내용</label>
+        <textarea rows={3} value={newPriv.content} onChange={(e) => setNewPriv({ ...newPriv, content: e.target.value })} />
+        <button onClick={addPriv}>전용 항목 추가</button>
+      </div>
+
+      {(["location", "person", "term"] as const).map((cat) => (
+        <DictionaryBrowser
+          key={cat}
+          baseUrl={`/api/worlds/${char.world_id}/dictionary`}
+          characterId={Number(id)}
+          category={cat}
+          title={`전용 ${CATEGORY_LABEL[cat]}`}
+          refreshKey={privKey}
+          onDelete={removePriv}
+          showEmbedding
+        />
+      ))}
+      </div>
+
+      <div style={{ display: tab === "illust" ? undefined : "none" }}>
       <h3>일러스트</h3>
       <div className="panel">
         <div className="row">
@@ -505,15 +606,14 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
             />
           </>
         )}
-        <label>이미지 파일</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setUpload({ ...upload, file: e.target.files?.[0] ?? null })}
+<button onClick={openUpload}>이미지 선택·업로드</button>
+        <ImageCropModal
+          open={illustCropOpen}
+          title="일러스트 업로드"
+          aspect="free"
+          onCancel={() => setIllustCropOpen(false)}
+          onConfirm={doUpload}
         />
-        <button onClick={doUpload} disabled={uploading}>
-          {uploading ? "업로드 중..." : "업로드"}
-        </button>
         <p className="muted" style={{ marginTop: 8 }}>
           업로드 대상(S3/FTP)은 설정 메뉴에서 지정합니다.
         </p>
@@ -578,8 +678,7 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
           </tbody>
         </table>
       </div>
-
-      <CharacterAnniversarySection characterId={id} />
+      </div>
     </>
   );
 }

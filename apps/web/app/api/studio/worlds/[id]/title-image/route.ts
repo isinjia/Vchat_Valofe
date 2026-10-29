@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query, execute, getStorage } from "@vchatbot/core";
+import { query, execute, getStorage, imageExtFromMime } from "@vchatbot/core";
 import { requireUser, ownedWorld, bad } from "@/lib/studio";
 
 export const runtime = "nodejs";
@@ -31,7 +31,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   );
   const oldKey = rows[0]?.title_image_key;
 
-  const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+  const ext = imageExtFromMime(file.type);
+  if (!ext) {
+    return NextResponse.json({ error: "지원하지 않는 이미지 형식입니다 (jpg/png/webp/gif/avif)." }, { status: 400 });
+  }
   const key = `worlds/${Number(id)}/title-${Date.now()}.${ext}`;
   const url = await storage.upload(key, Buffer.from(await file.arrayBuffer()), file.type || "image/png");
 

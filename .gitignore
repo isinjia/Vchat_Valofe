@@ -7,3 +7,4 @@ dist/
 .DS_Store
 uploads/
 sampledata/
+scripts/haru-common-entries.json

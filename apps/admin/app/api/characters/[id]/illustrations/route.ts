@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query, execute, getStorage, invalidateChatContext } from "@vchatbot/core";
+import { query, execute, getStorage, invalidateChatContext, imageExtFromMime } from "@vchatbot/core";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -53,7 +53,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
 
-  const ext = (file.name.split(".").pop() || "png").toLowerCase();
+  const ext = imageExtFromMime(file.type);
+  if (!ext) {
+    return NextResponse.json({ error: "지원하지 않는 이미지 형식입니다 (jpg/png/webp/gif/avif)." }, { status: 400 });
+  }
   const key = `illustrations/${id}/${Date.now()}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
   const url = await storage.upload(key, buffer, file.type || "image/png");

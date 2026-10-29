@@ -20,6 +20,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
     return NextResponse.json({ ok: true });
   }
   const { category, title, aliases = null, content, sort_order = 0 } = body;
+  if (!["location", "person", "term"].includes(category) || !title) {
+    return NextResponse.json({ error: "category, title 은 필수입니다." }, { status: 400 });
+  }
   // character_id 가 body 에 있을 때만 범위 수정 (없으면 기존 값 유지)
   let scopeSql = "";
   const scopeParams: (number | null)[] = [];

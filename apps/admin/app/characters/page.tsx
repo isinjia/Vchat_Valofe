@@ -32,11 +32,16 @@ export default function CharactersPage() {
       alert("세계관과 이름을 입력하세요.");
       return;
     }
-    await fetch("/api/characters", {
+    const res = await fetch("/api/characters", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ world_id: worldId, name: name.trim() }),
     });
+    if (!res.ok) {
+      const r = await res.json().catch(() => ({}));
+      alert(r.error ?? "생성 실패");
+      return;
+    }
     setName("");
     load();
   };

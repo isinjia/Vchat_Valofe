@@ -18,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/presets">기념일 프리셋</Link>
             <Link href="/llm">LLM 관리</Link>
             <Link href="/tiers">채팅 등급</Link>
+            <Link href="/users">유저 관리</Link>
             <Link href="/stats">사용량 통계</Link>
             <Link href="/settings">설정 (스토리지/LLM)</Link>
           </nav>

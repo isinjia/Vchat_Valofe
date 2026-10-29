@@ -1,0 +1,189 @@
+"use client";
+
+import { useEffect, useState, use } from "react";
+import Link from "next/link";
+
+interface Detail {
+  user: {
+    id: number;
+    username: string;
+    nickname: string;
+    vfun_user_id: string | null;
+    coins: number;
+    status: "active" | "banned";
+    tier_id: number | null;
+    created_at: string;
+  };
+  coinSummary: { type: string; count: number; total: number }[];
+  recentTransactions: {
+    id: number;
+    type: string;
+    amount: number;
+    balance_after: number;
+    created_at: string;
+  }[];
+  characters: {
+    characterId: number;
+    characterName: string;
+    worldName: string | null;
+    affinity: number;
+    message_count: number;
+    totalIn: number;
+    totalOut: number;
+    updated_at: string;
+  }[];
+}
+
+const TYPE_LABEL: Record<string, string> = {
+  auto_topup: "자동지급",
+  chat_spend: "채팅 사용",
+  ai_assist_spend: "AI 보조",
+  illust_gen_spend: "일러스트 생성",
+  chat_fee_income: "채팅 수수료 수입",
+  world_fee_income: "세계관 수수료 수입",
+};
+
+const fmt = (n: number) => Number(n).toLocaleString();
+const signed = (n: number) => (n > 0 ? `+${fmt(n)}` : fmt(n));
+
+export default function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const [data, setData] = useState<Detail | null>(null);
+  const [tiers, setTiers] = useState<{ id: number; name: string }[]>([]);
+  const [err, setErr] = useState("");
+
+  const load = () =>
+    fetch(`/api/users/${id}`)
+      .then(async (r) => {
+        if (!r.ok) throw new Error((await r.json()).error ?? "조회 실패");
+        return r.json();
+      })
+      .then(setData)
+      .catch((e) => setErr(e.message));
+
+  useEffect(() => {
+    load();
+    fetch("/api/tiers").then((r) => r.json()).then(setTiers);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const update = async (body: object) => {
+    const r = await fetch(`/api/users/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) alert((await r.json()).error ?? "변경 실패");
+    load();
+  };
+
+  const toggleStatus = () => {
+    if (!data) return;
+    if (data.user.status === "active") {
+      if (!confirm("이 유저를 정지하시겠습니까? 채팅이 차단됩니다.")) return;
+      update({ status: "banned" });
+    } else {
+      update({ status: "active" });
+    }
+  };
+
+  if (err) return <p className="muted">{err}</p>;
+  if (!data) return <p className="muted">불러오는 중...</p>;
+  const { user, coinSummary, recentTransactions, characters } = data;
+
+  return (
+    <>
+      <h2>
+        <Link href="/users">←</Link> {user.nickname} <span className="muted">(#{user.id})</span>{" "}
+        {user.status === "banned" && <span className="badge banned">정지</span>}
+      </h2>
+
+      <div className="panel">
+        <div className="row">
+          <div><label>vfun ID</label><div>{user.vfun_user_id ?? "-"}</div></div>
+          <div><label>가입일</label><div>{new Date(user.created_at).toLocaleString()}</div></div>
+          <div><label>잔액</label><div>{fmt(user.coins)}</div></div>
+        </div>
+        <div className="row" style={{ marginTop: 14 }}>
+          <div>
+            <label>채팅 등급</label>
+            <select
+              value={user.tier_id ?? ""}
+              onChange={(e) => update({ tier_id: e.target.value === "" ? null : Number(e.target.value) })}
+            >
+              <option value="">기본 등급</option>
+              {tiers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label>상태</label>
+            <button
+              className={user.status === "active" ? "danger" : ""}
+              style={{ marginTop: 0 }}
+              onClick={toggleStatus}
+            >
+              {user.status === "active" ? "정지하기" : "정지 해제"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="panel">
+        <h3>코인 사용 요약</h3>
+        <table>
+          <thead><tr><th>종류</th><th>건수</th><th>합계</th></tr></thead>
+          <tbody>
+            {coinSummary.map((s) => (
+              <tr key={s.type}>
+                <td>{TYPE_LABEL[s.type] ?? s.type}</td>
+                <td>{fmt(s.count)}</td>
+                <td>{signed(s.total)}</td>
+              </tr>
+            ))}
+            {coinSummary.length === 0 && <tr><td colSpan={3} className="muted">코인 거래 내역이 없습니다.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="panel">
+        <h3>최근 거래 30건</h3>
+        <table>
+          <thead><tr><th>일시</th><th>종류</th><th>증감</th><th>잔액</th></tr></thead>
+          <tbody>
+            {recentTransactions.map((t) => (
+              <tr key={t.id}>
+                <td className="muted">{new Date(t.created_at).toLocaleString()}</td>
+                <td>{TYPE_LABEL[t.type] ?? t.type}</td>
+                <td>{signed(t.amount)}</td>
+                <td>{fmt(t.balance_after)}</td>
+              </tr>
+            ))}
+            {recentTransactions.length === 0 && <tr><td colSpan={4} className="muted">거래 내역이 없습니다.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="panel">
+        <h3>채팅한 캐릭터</h3>
+        <table>
+          <thead><tr><th>캐릭터 (세계관)</th><th>호감도</th><th>대화수</th><th>입력/출력 토큰</th><th>마지막 상호작용</th></tr></thead>
+          <tbody>
+            {characters.map((c) => (
+              <tr key={c.characterId}>
+                <td>
+                  <Link href={`/characters/${c.characterId}`}>{c.characterName}</Link>{" "}
+                  <span className="muted">({c.worldName ?? "-"})</span>
+                </td>
+                <td>♥ {c.affinity}</td>
+                <td>{fmt(c.message_count)}</td>
+                <td>{fmt(c.totalIn)} / {fmt(c.totalOut)}</td>
+                <td className="muted">{new Date(c.updated_at).toLocaleString()}</td>
+              </tr>
+            ))}
+            {characters.length === 0 && <tr><td colSpan={5} className="muted">채팅한 캐릭터가 없습니다.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}

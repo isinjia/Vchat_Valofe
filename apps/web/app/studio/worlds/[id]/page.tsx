@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState, use } from "react";
 import AnniversarySection from "./AnniversarySection";
+import DictionaryBrowser from "../../components/DictionaryBrowser";
+import ImageCropModal from "../../components/ImageCropModal";
 import { useRouter } from "next/navigation";
 import { studioFetch, jsonInit } from "../../studio-api";
 
@@ -40,19 +42,17 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
   const router = useRouter();
   const [world, setWorld] = useState<World | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [dict, setDict] = useState<DictEntry[]>([]);
+  const [dictKey, setDictKey] = useState(0); // 사전 목록 재조회 트리거
   const [newEntry, setNewEntry] = useState({
     category: "location" as DictEntry["category"],
     title: "",
     aliases: "",
     content: "",
-    character_id: "" as string, // "" = 세계관 공통, 값 = 캐릭터 전용
   });
   const [characters, setCharacters] = useState<CharOption[]>([]);
-  const [scopeFilter, setScopeFilter] = useState("all"); // all | common | 캐릭터 id
   const [saved, setSaved] = useState(false);
-  const [titleFile, setTitleFile] = useState<File | null>(null);
-  const [titleUploading, setTitleUploading] = useState(false);
+  const [tab, setTab] = useState("basic"); // 편집 탭
+  const [titleCropOpen, setTitleCropOpen] = useState(false); // 타이틀 이미지 크롭 팝업
   const [cost, setCost] = useState<number | null>(null);
   const [generating, setGenerating] = useState<string | null>(null);
 
@@ -66,11 +66,9 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
       const r = await res.json().catch(() => ({}));
       alert(`연결 실패: ${r.error ?? res.statusText}`);
     }
-    loadDict();
   };
 
-  const loadDict = () =>
-    studioFetch(`/api/studio/worlds/${id}/dictionary`).then((r) => r.json()).then(setDict).catch(() => {});
+  const loadDict = () => setDictKey((n) => n + 1);
 
   useEffect(() => {
     studioFetch(`/api/studio/worlds/${id}`).then(async (r) => {
@@ -79,8 +77,7 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
       else setWorld(d);
     });
     studioFetch("/api/studio/pricing").then((r) => r.json()).then((p) => setCost(p.aiAssistCost)).catch(() => {});
-    loadDict();
-    // 내 캐릭터 중 이 세계관 소속만 범위 옵션으로 사용
+    // 내 캐릭터 중 이 세계관 소속만 연결 캐릭터 옵션으로 사용
     studioFetch("/api/studio/characters")
       .then((r) => r.json())
       .then((list: CharOption[]) =>
@@ -130,20 +127,14 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  const uploadTitleImage = async () => {
-    if (!titleFile) return;
-    setTitleUploading(true);
+  /** 크롭 팝업 확인 → 타이틀 이미지 업로드 (실패 시 throw → 팝업 안에 에러 표시) */
+  const uploadTitleImage = async (blob: Blob, filename: string) => {
     const form = new FormData();
-    form.append("file", titleFile);
+    form.append("file", blob, filename);
     const res = await studioFetch(`/api/studio/worlds/${id}/title-image`, { method: "POST", body: form });
-    setTitleUploading(false);
     const r = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      alert(`업로드 실패: ${r.error ?? res.statusText}`);
-      return;
-    }
-    setWorld({ ...world, title_image_url: r.url });
-    setTitleFile(null);
+    if (!res.ok) throw new Error(`업로드 실패: ${r.error ?? res.statusText}`);
+    setWorld((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
   };
 
   const addEntry = async () => {
@@ -153,7 +144,7 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
       jsonInit("POST", {
         ...newEntry,
         aliases: newEntry.aliases || null,
-        character_id: newEntry.character_id ? Number(newEntry.character_id) : null,
+        character_id: null, // 이 화면은 공용 사전 전용 (캐릭터 전용은 캐릭터 편집에서 관리)
       })
     );
     const r = await res.json().catch(() => ({}));
@@ -168,7 +159,6 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
 
   const removeEntry = async (entryId: number) => {
     await studioFetch(`/api/studio/worlds/${id}/dictionary/${entryId}`, { method: "DELETE" });
-    loadDict();
   };
 
   const removeWorld = async () => {
@@ -188,6 +178,14 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
         <Link href="/studio" style={{ color: "var(--muted)" }}>‹</Link> 세계관 편집: {world.name}
       </h2>
 
+      {/* 탭 바: 비활성 탭도 언마운트하지 않고 display:none 으로만 숨겨 입력값/fetch 상태 보존 */}
+      <div className="tabs">
+        <button type="button" className={`tab ${tab === "basic" ? "active" : ""}`} onClick={() => setTab("basic")}>기본</button>
+        <button type="button" className={`tab ${tab === "dict" ? "active" : ""}`} onClick={() => setTab("dict")}>사전</button>
+        <button type="button" className={`tab ${tab === "anniv" ? "active" : ""}`} onClick={() => setTab("anniv")}>기념일</button>
+      </div>
+
+      <div style={{ display: tab === "basic" ? undefined : "none" }}>
       <div className="panel">
         <label>타이틀 이미지 (세로 3:4)</label>
         <div style={{ display: "flex", gap: 12, alignItems: "flex-end", marginBottom: 8 }}>
@@ -198,12 +196,16 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
             <div className="title-img placeholder" style={{ width: 120 }} />
           )}
           <div>
-            <input type="file" accept="image/*" onChange={(e) => setTitleFile(e.target.files?.[0] ?? null)} />
-            <button className="small" onClick={uploadTitleImage} disabled={titleUploading || !titleFile}>
-              {titleUploading ? "업로드 중..." : "타이틀 이미지 업로드"}
-            </button>
+            <button type="button" className="small" onClick={() => setTitleCropOpen(true)}>이미지 업로드</button>
           </div>
         </div>
+        <ImageCropModal
+          open={titleCropOpen}
+          title="타이틀 이미지 업로드"
+          aspect={3 / 4}
+          onCancel={() => setTitleCropOpen(false)}
+          onConfirm={uploadTitleImage}
+        />
 
         <label>이름</label>
         <input value={world.name} onChange={(e) => setWorld({ ...world, name: e.target.value })} />
@@ -246,7 +248,9 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
 
         <button onClick={save}>{saved ? "저장됨 ✓" : "저장"}</button>
       </div>
+      </div>
 
+      <div style={{ display: tab === "dict" ? undefined : "none" }}>
       <h3>사전 항목 추가</h3>
       <div className="panel">
         <div className="row">
@@ -256,15 +260,6 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
               <option value="location">지역사전</option>
               <option value="person">인명사전</option>
               <option value="term">용어사전</option>
-            </select>
-          </div>
-          <div>
-            <label>범위</label>
-            <select value={newEntry.character_id} onChange={(e) => setNewEntry({ ...newEntry, character_id: e.target.value })}>
-              <option value="">세계관 공통</option>
-              {characters.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
             </select>
           </div>
           <div>
@@ -281,61 +276,23 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
         <button onClick={addEntry}>항목 추가</button>
       </div>
 
-      <div style={{ marginTop: 16 }}>
-        <label>범위 필터</label>
-        <select value={scopeFilter} onChange={(e) => setScopeFilter(e.target.value)}>
-          <option value="all">전체</option>
-          <option value="common">세계관 공통</option>
-          {characters.map((c) => (
-            <option key={c.id} value={c.id}>{c.name} 전용</option>
-          ))}
-        </select>
+      {(["location", "person", "term"] as const).map((cat) => (
+        <DictionaryBrowser
+          key={cat}
+          baseUrl={`/api/studio/worlds/${id}/dictionary`}
+          category={cat}
+          title={CATEGORY_LABEL[cat]}
+          refreshKey={dictKey}
+          onDelete={removeEntry}
+          linkChars={characters}
+          onLink={linkCharacter}
+        />
+      ))}
       </div>
 
-      {(["location", "person", "term"] as const).map((cat) => {
-        const entries = dict.filter(
-          (d) =>
-            d.category === cat &&
-            (scopeFilter === "all" ||
-              (scopeFilter === "common" ? d.character_id == null : String(d.character_id) === scopeFilter))
-        );
-        return (
-          <div key={cat}>
-            <h3>{CATEGORY_LABEL[cat]} ({entries.length})</h3>
-            <div className="panel">
-              <table>
-                <thead>
-                  <tr><th>범위</th><th>표제어</th><th>별칭</th><th>내용</th>{cat === "person" && <th>연결 캐릭터</th>}<th></th></tr>
-                </thead>
-                <tbody>
-                  {entries.map((e) => (
-                    <tr key={e.id}>
-                      <td>{e.character_id == null ? "공통" : <span className="badge cond">{e.character_name}</span>}</td>
-                      <td>{e.title}</td>
-                      <td className="muted">{e.aliases}</td>
-                      <td>{e.content}</td>
-                      {cat === "person" && (
-                        <td>
-                          <select value={e.linked_character_id ?? ""} onChange={(ev) => linkCharacter(e.id, ev.target.value)}>
-                            <option value="">없음</option>
-                            {characters.map((c) => (
-                              <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                      )}
-                      <td><button className="danger small" onClick={() => removeEntry(e.id)}>삭제</button></td>
-                    </tr>
-                  ))}
-                  {entries.length === 0 && <tr><td colSpan={6} className="muted">항목이 없습니다.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      })}
-
+      <div style={{ display: tab === "anniv" ? undefined : "none" }}>
       <AnniversarySection worldId={id} />
+      </div>
 
       <button className="danger" onClick={removeWorld}>세계관 삭제</button>
     </div>

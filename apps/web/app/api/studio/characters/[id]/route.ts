@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { execute, invalidateChatContext } from "@vchatbot/core";
+import { query, execute, invalidateChatContext } from "@vchatbot/core";
 import { requireUser, ownedCharacter, bad, canUseWorld, visibilityOf } from "@/lib/studio";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +29,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (worldId !== Number(own.row.world_id) && !(await canUseWorld(worldId, auth.userId))) {
     return bad("사용할 수 없는 세계관입니다.", 403);
   }
+  // 세계관 내 캐릭터명 중복 검사 (이름/세계관이 바뀐 경우)
+  if (name !== own.row.name || worldId !== Number(own.row.world_id)) {
+    const dup = await query("SELECT id FROM characters WHERE world_id = ? AND name = ? AND id <> ? LIMIT 1", [worldId, name, Number(id)]);
+    if (dup.length > 0) return bad("이 세계관에 같은 이름의 캐릭터가 이미 있습니다.");
+  }
   const s = (v: unknown) => String(v ?? "");
+  try {
   await execute(
     `UPDATE characters
      SET world_id = ?, name = ?, profile = ?, personality = ?, speech_style = ?, ai_prompt = ?,
@@ -49,6 +55,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
       auth.userId,
     ]
   );
+  } catch (e) {
+    // UNIQUE 제약 위반 (동시 요청 레이스 대비)
+    if ((e as { code?: string }).code === "ER_DUP_ENTRY") return bad("이 세계관에 같은 이름의 캐릭터가 이미 있습니다.");
+    throw e;
+  }
   await invalidateChatContext(Number(id));
   return NextResponse.json({ ok: true });
 }

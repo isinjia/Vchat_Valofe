@@ -4,38 +4,43 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { studioFetch, jsonInit } from "../../studio-api";
-
-interface WorldOpt {
-  id: number;
-  name: string;
-  owner_nickname?: string | null;
-}
+import WorldPickerModal, { WorldMini, type PickedWorld } from "../../components/WorldPickerModal";
 
 export default function NewCharacterPage() {
   const router = useRouter();
-  const [mine, setMine] = useState<WorldOpt[]>([]);
-  const [open, setOpen] = useState<WorldOpt[]>([]);
-  const [worldId, setWorldId] = useState<number | "">("");
+  const [world, setWorld] = useState<PickedWorld | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  // 이름 중복 확인 결과: null = 미확인/확인 중
+  const [available, setAvailable] = useState<boolean | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
 
+  // 세계관 + 이름이 있으면 400ms 디바운스로 세계관 내 중복 확인
   useEffect(() => {
-    studioFetch("/api/studio/worlds").then((r) => r.json()).then(setMine).catch(() => {});
-    studioFetch("/api/studio/open-worlds").then((r) => r.json()).then(setOpen).catch(() => {});
-  }, []);
-
-  // 내 세계관은 위 optgroup 에 있으므로 공개 목록에서는 중복 제거
-  const myIds = new Set(mine.map((w) => w.id));
-  const others = open.filter((w) => !myIds.has(w.id));
+    setAvailable(null);
+    setCreateError(null);
+    const n = name.trim();
+    if (!world || !n) return;
+    let alive = true;
+    const t = setTimeout(() => {
+      studioFetch(`/api/studio/characters/check-name?worldId=${world.id}&name=${encodeURIComponent(n)}`)
+        .then((r) => r.json())
+        .then((d) => alive && setAvailable(d.available !== false))
+        .catch(() => {});
+    }, 400);
+    return () => { alive = false; clearTimeout(t); };
+  }, [world, name]);
 
   const create = async () => {
-    if (!worldId || !name.trim() || busy) return;
+    if (!world || !name.trim() || available === false || busy) return;
     setBusy(true);
-    const res = await studioFetch("/api/studio/characters", jsonInit("POST", { world_id: worldId, name }));
+    setCreateError(null);
+    const res = await studioFetch("/api/studio/characters", jsonInit("POST", { world_id: world.id, name }));
     const r = await res.json().catch(() => ({}));
     if (!res.ok) {
       setBusy(false);
-      alert(`생성 실패: ${r.error ?? res.statusText}`);
+      setCreateError(r.error ?? res.statusText);
       return;
     }
     router.replace(`/studio/characters/${r.id}`);
@@ -48,20 +53,22 @@ export default function NewCharacterPage() {
       </h2>
       <div className="panel">
         <label>세계관</label>
-        <select value={worldId} onChange={(e) => setWorldId(Number(e.target.value) || "")}>
-          <option value="">선택...</option>
-          <optgroup label="내 세계관">
-            {mine.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-          </optgroup>
-          <optgroup label="공개된 세계관">
-            {others.map((w) => (
-              <option key={w.id} value={w.id}>{w.name}{w.owner_nickname ? ` (by ${w.owner_nickname})` : ""}</option>
-            ))}
-          </optgroup>
-        </select>
+        {world ? (
+          <div className="world-mini-row">
+            <WorldMini world={world} />
+            <button type="button" className="small ghost" onClick={() => setPickerOpen(true)}>변경</button>
+          </div>
+        ) : (
+          <button type="button" className="ghost" onClick={() => setPickerOpen(true)}>세계관 선택하기</button>
+        )}
+        <WorldPickerModal open={pickerOpen} onClose={() => setPickerOpen(false)} onSelect={setWorld} />
+
         <label>캐릭터 이름</label>
         <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} />
-        <button onClick={create} disabled={busy || !worldId || !name.trim()}>{busy ? "생성 중..." : "만들기"}</button>
+        {available === true && <div className="muted" style={{ color: "#7fd8a4" }}>✓ 사용 가능</div>}
+        {available === false && <div className="muted" style={{ color: "#e06c75" }}>✗ 이미 사용 중인 이름입니다</div>}
+        {createError && <div className="muted" style={{ color: "#e06c75" }}>{createError}</div>}
+        <button onClick={create} disabled={busy || !world || !name.trim() || available === false}>{busy ? "생성 중..." : "만들기"}</button>
       </div>
     </div>
   );

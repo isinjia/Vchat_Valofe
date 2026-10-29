@@ -1,4 +1,4 @@
--- VChatBot MySQL 스키마
+﻿-- VChatBot MySQL 스키마
 -- 설정 / 유저 / 세계관 / 사전 / 캐릭터 / 일러스트 메타데이터
 -- (채팅 로그는 MongoDB chat_messages 컬렉션에 저장)
 
@@ -143,7 +143,8 @@ CREATE TABLE IF NOT EXISTS characters (
   updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_char_world FOREIGN KEY (world_id) REFERENCES worlds(id) ON DELETE CASCADE,
   CONSTRAINT fk_chars_owner FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE SET NULL,
-  INDEX idx_char_world (world_id)
+  INDEX idx_char_world (world_id),
+  UNIQUE KEY uq_char_world_name (world_id, name)  -- 세계관 내 캐릭터명 중복 불가
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------

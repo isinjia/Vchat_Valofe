@@ -4,6 +4,7 @@ export * from "./mysql";
 export * from "./mongo";
 export * from "./redis";
 export * from "./cache";
+export * from "./image-ext";
 export * from "./settings";
 export * from "./storage";
 export * from "./prompt";

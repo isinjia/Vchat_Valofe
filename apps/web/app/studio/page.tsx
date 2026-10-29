@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import SiteHeader from "../components/SiteHeader";
 import { studioFetch } from "./studio-api";
 
 interface WorldRow {
@@ -31,6 +32,8 @@ export default function StudioPage() {
   }, []);
 
   return (
+    <>
+    <SiteHeader />
     <div className="container studio">
       <div className="studio-top">
         <h2 className="page-title">
@@ -75,5 +78,6 @@ export default function StudioPage() {
         ))}
       </div>
     </div>
+    </>
   );
 }
