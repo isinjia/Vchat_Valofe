@@ -25,7 +25,6 @@ export default async function ChatPage({
     <ChatClient
       characterId={ctx.character.id}
       characterName={ctx.character.name}
-      worldId={ctx.world.id}
       worldName={ctx.world.name}
       avatarUrl={basic?.url ?? null}
       illustMap={illustMap}

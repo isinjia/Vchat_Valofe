@@ -9,13 +9,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "characterId 가 필요합니다." }, { status: 400 });
   }
   const userId = await getUserId();
-  if (!userId) return NextResponse.json([]);
+  if (!userId) return NextResponse.json({ error: "login_required" }, { status: 401 });
 
   const messages = await loadRecentMessages(userId, characterId, 100);
   return NextResponse.json(
     messages.map((m) => ({
       role: m.role,
       content: m.content,
+      guestName: typeof m.meta?.guest === "string" ? m.meta.guest : null,
       illustrationId: m.illustrationId ?? null,
       createdAt: m.createdAt,
     }))

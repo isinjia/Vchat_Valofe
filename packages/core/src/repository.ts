@@ -6,6 +6,7 @@ import type {
   DictionaryEntry,
   Illustration,
   World,
+  WorldAnniversary,
 } from "./types";
 import type { ChatContext } from "./prompt";
 
@@ -45,22 +46,30 @@ export async function loadChatContext(characterId: number): Promise<ChatContext 
   if (characters.length === 0) return null;
   const character = characters[0];
 
-  const [worlds, dictionary, relationships, illustrationRows] = await Promise.all([
+  const [worlds, dictionary, relationships, illustrationRows, anniversaries] = await Promise.all([
     query<World>("SELECT * FROM worlds WHERE id = ?", [character.world_id]),
+    // 세계관 공통(character_id NULL) + 이 캐릭터 전용 지식만 로드
     query<DictionaryEntry>(
-      "SELECT * FROM world_dictionary WHERE world_id = ? ORDER BY category, sort_order, id",
-      [character.world_id]
+      `SELECT * FROM world_dictionary
+       WHERE world_id = ? AND (character_id IS NULL OR character_id = ?)
+       ORDER BY category, sort_order, id`,
+      [character.world_id, characterId]
     ),
     query<CharacterRelationship>(
-      `SELECT r.*, c.name AS target_name
+      `SELECT r.*, d.title AS target_title, d.category AS target_category, d.linked_character_id
        FROM character_relationships r
-       JOIN characters c ON c.id = r.target_character_id
+       JOIN world_dictionary d ON d.id = r.target_entry_id
        WHERE r.character_id = ?`,
       [characterId]
     ),
     query("SELECT * FROM illustrations WHERE character_id = ? ORDER BY sort_order, id", [
       characterId,
     ]),
+    query<WorldAnniversary>(
+      // 세계관 공통(character_id NULL) + 이 캐릭터 개인 기념일
+      "SELECT * FROM world_anniversaries WHERE world_id = ? AND (character_id IS NULL OR character_id = ?) ORDER BY month, day",
+      [character.world_id, characterId]
+    ),
   ]);
   if (worlds.length === 0) return null;
 
@@ -70,6 +79,7 @@ export async function loadChatContext(characterId: number): Promise<ChatContext 
     character,
     relationships,
     illustrations: illustrationRows.map(parseIllustration),
+    anniversaries,
   };
 
   try {
@@ -80,7 +90,7 @@ export async function loadChatContext(characterId: number): Promise<ChatContext 
   return ctx;
 }
 
-/** 관리자에서 캐릭터/세계관 수정 시 캐시 무효화 */
+/** 관리자/스튜디오에서 캐릭터/세계관 수정 시 캐시 무효화 (채팅 컨텍스트 + 목록 캐시) */
 export async function invalidateChatContext(characterId?: number): Promise<void> {
   const redis = getRedis();
   try {
@@ -90,6 +100,10 @@ export async function invalidateChatContext(characterId?: number): Promise<void>
       const keys = await redis.keys("ctx:character:*");
       if (keys.length > 0) await redis.del(...keys);
     }
+    // 메인 화면 목록 캐시도 함께 무효화 (공개/이름/이미지 변경 반영)
+    await redis.del("cache:web:worlds");
+    const listKeys = await redis.keys("cache:web:chars:*");
+    if (listKeys.length > 0) await redis.del(...listKeys);
   } catch {
     // 무시 (TTL 로 자연 만료)
   }

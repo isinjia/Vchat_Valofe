@@ -12,10 +12,18 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
 export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const { name, description, ai_prompt, is_active } = await req.json();
+  const { name, description, ai_prompt, is_active, visibility, status } = await req.json();
   await execute(
-    `UPDATE worlds SET name = ?, description = ?, ai_prompt = ?, is_active = ? WHERE id = ?`,
-    [name, description, ai_prompt, is_active ? 1 : 0, id]
+    `UPDATE worlds SET name = ?, description = ?, ai_prompt = ?, is_active = ?, visibility = ?, status = ? WHERE id = ?`,
+    [
+      name,
+      description,
+      ai_prompt,
+      is_active ? 1 : 0,
+      visibility === "open" ? "open" : "private",
+      status === "suspended" ? "suspended" : "active",
+      id,
+    ]
   );
   await invalidateChatContext();
   return NextResponse.json({ ok: true });
