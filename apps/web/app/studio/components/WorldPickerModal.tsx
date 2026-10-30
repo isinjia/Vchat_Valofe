@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { studioFetch } from "../studio-api";
 
 /** 모달/미니카드에서 공통으로 쓰는 세계관 정보 */
@@ -8,7 +8,9 @@ export interface PickedWorld {
   id: number;
   name: string;
   title_image_url: string | null;
+  title_color?: string | null;
   owner_nickname?: string | null;
+  open_scope?: "all" | "dict_person";
   mine: boolean;
 }
 
@@ -24,7 +26,10 @@ export function WorldMini({ world }: { world: PickedWorld }) {
       )}
       <div>
         <div className="world-picker-name">{world.name}</div>
-        <span className={`badge ${world.mine ? "" : "open"}`}>{world.mine ? "내 세계관" : "오픈"}</span>
+        <span className={`badge ${world.mine ? "" : "open"}`}>{world.mine ? "내 세계관" : "공유"}</span>
+        {!world.mine && world.open_scope === "dict_person" && (
+          <span className="badge" style={{ marginLeft: 4 }}>사전 인물만</span>
+        )}
       </div>
     </div>
   );
@@ -54,14 +59,14 @@ export default function WorldPickerModal({ open, onClose, onSelect }: Props) {
     ]).then(([mineRaw, openRaw]) => {
       if (!alive) return;
       const mine: PickedWorld[] = mineRaw.map((w: PickedWorld) => ({
-        id: w.id, name: w.name, title_image_url: w.title_image_url ?? null, mine: true,
+        id: w.id, name: w.name, title_image_url: w.title_image_url ?? null, title_color: w.title_color ?? null, mine: true,
       }));
       const myIds = new Set(mine.map((w) => w.id));
       const others: PickedWorld[] = openRaw
         .filter((w: PickedWorld) => !myIds.has(w.id))
         .map((w: PickedWorld) => ({
-          id: w.id, name: w.name, title_image_url: w.title_image_url ?? null,
-          owner_nickname: w.owner_nickname ?? null, mine: false,
+          id: w.id, name: w.name, title_image_url: w.title_image_url ?? null, title_color: w.title_color ?? null,
+          owner_nickname: w.owner_nickname ?? null, open_scope: w.open_scope ?? "all", mine: false,
         }));
       setWorlds([...mine, ...others]);
       setLoading(false);
@@ -91,6 +96,12 @@ export default function WorldPickerModal({ open, onClose, onSelect }: Props) {
           type="button"
           key={w.id}
           className="world-picker-card"
+          style={
+            // 홈 카드와 동일하게 세계관 타이틀 컬러를 CSS 변수로 — 테두리/호버 링이 같은 색을 쓴다
+            w.title_color && /^#[0-9a-fA-F]{6}$/.test(w.title_color)
+              ? ({ "--world-color": w.title_color } as CSSProperties)
+              : undefined
+          }
           onClick={() => { onSelect(w); onClose(); }}
         >
           {w.title_image_url ? (
@@ -101,6 +112,7 @@ export default function WorldPickerModal({ open, onClose, onSelect }: Props) {
           )}
           <div className="world-picker-name">{w.name}</div>
           {!w.mine && w.owner_nickname && <div className="world-picker-owner">by {w.owner_nickname}</div>}
+          {!w.mine && w.open_scope === "dict_person" && <div className="world-picker-owner">사전 인물만</div>}
         </button>
       ))}
     </div>

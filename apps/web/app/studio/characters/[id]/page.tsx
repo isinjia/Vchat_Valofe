@@ -10,8 +10,8 @@ import CharacterAnniversarySection from "./CharacterAnniversarySection";
 import CharacterEventsSection from "./CharacterEventsSection";
 import { studioFetch, jsonInit, aiCostLabel, type PricingInfo } from "../../studio-api";
 import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
-import { buildImagePrompt } from "../../components/imagePrompt";
-import WorldPickerModal, { WorldMini, type PickedWorld } from "../../components/WorldPickerModal";
+import { buildImageDescription, buildProfileText } from "../../components/imagePrompt";
+import { WorldMini, type PickedWorld } from "../../components/WorldPickerModal";
 
 interface Character {
   id: number;
@@ -45,6 +45,7 @@ interface IllustTrigger {
   requireTierId?: number;
   requireRelationship?: "lover" | "engaged" | "married";
   minAffinity?: number;
+  requirePlaceId?: number;
 }
 
 interface TierOpt {
@@ -100,12 +101,18 @@ function parseTrigger(i: Illust): IllustTrigger {
 }
 
 /** 게이트 조건 요약 (예: "연인 이상 · 호감도 50+ · 등급: 단골 이상") */
-function triggerGateSummary(t: IllustTrigger, events: { id: number; name: string }[], tiers: TierOpt[]): string {
+function triggerGateSummary(
+  t: IllustTrigger,
+  events: { id: number; name: string }[],
+  tiers: TierOpt[],
+  places: { id: number; title: string }[] = []
+): string {
   const parts: string[] = [];
   if (t.requireEventId != null) parts.push(`이벤트: ${events.find((ev) => ev.id === t.requireEventId)?.name ?? `#${t.requireEventId}`}`);
   if (t.requireRelationship) parts.push(REL_REQ_LABEL[t.requireRelationship] ?? t.requireRelationship);
   if (typeof t.minAffinity === "number") parts.push(`호감도 ${t.minAffinity}+`);
   if (t.requireTierId != null) parts.push(`등급: ${tiers.find((x) => x.id === t.requireTierId)?.name ?? `#${t.requireTierId}`} 이상`);
+  if (t.requirePlaceId != null) parts.push(`지역: ${places.find((x) => x.id === t.requirePlaceId)?.title ?? `#${t.requirePlaceId}`}`);
   return parts.join(" · ");
 }
 
@@ -118,6 +125,7 @@ const EMPTY_PANEL = {
   reqTier: "",
   reqRel: "",
   minAff: "",
+  reqPlace: "",
 };
 
 type GenKind ="profile" | "personality" | "speech_style" | "scenario" | "greeting";
@@ -129,9 +137,6 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
   const [error, setError] = useState<string | null>(null);
   const [mine, setMine] = useState<WorldOpt[]>([]);
   const [open, setOpen] = useState<WorldOpt[]>([]);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  // 모달에서 선택한 세계관 (목록 조회 전/비공개 전환 케이스에도 표시되도록 별도 보관)
-  const [pickedWorld, setPickedWorld] = useState<PickedWorld | null>(null);
   const [illusts, setIllusts] = useState<Illust[]>([]);
   const [events, setEvents] = useState<{ id: number; name: string }[]>([]);
   const [tiers, setTiers] = useState<TierOpt[]>([]); // user 트랙 등급
@@ -152,6 +157,23 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
   const [panel, setPanel] = useState(EMPTY_PANEL); // 일러스트 패널 공용 입력 (업로드/AI 생성)
   const [illustCost, setIllustCost] = useState<number | null>(null);
   const [genModal, setGenModal] = useState<null | "illust" | "title">(null); // AI 이미지 생성 모달
+  // AI 생성 모달용 참조 자산 (타이틀/프로필/일러스트/지역/세계관 배경)
+  const [genRefs, setGenRefs] = useState<{
+    titleImageUrl: string | null;
+    profiles: { id: number; emotion: string; url: string }[];
+    illustrations: { id: number; url: string; description: string | null }[];
+    places: { id: number; title: string; content: string }[];
+    worldIllustrations: { id: number; dict_entry_id: number | null; url: string; description: string | null; place_title?: string | null }[];
+  } | null>(null);
+
+  useEffect(() => {
+    if (genModal === null) return;
+    studioFetch(`/api/studio/characters/${id}/gen-refs`)
+      .then((r) => r.json())
+      .then((d) => setGenRefs(d.error ? null : d))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [genModal, id]);
 
   const loadIllusts = () =>
     studioFetch(`/api/studio/characters/${id}/illustrations`).then((r) => r.json()).then(setIllusts).catch(() => {});
@@ -329,9 +351,9 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
   /** 패널 공용 입력 검증 (업로드/AI 생성 공통). 문제 있으면 alert 후 false */
   const validatePanel = () => {
     if (panel.kind === "conditional") {
-      const hasGate = !!panel.reqEvent || !!panel.reqTier || !!panel.reqRel || panel.minAff.trim() !== "";
+      const hasGate = !!panel.reqEvent || !!panel.reqTier || !!panel.reqRel || panel.minAff.trim() !== "" || !!panel.reqPlace;
       if (!panel.keywords.trim() && !hasGate) {
-        alert("조건부 일러스트는 트리거 키워드 또는 조건(이벤트/등급/관계/호감도) 중 하나 이상이 필요합니다.");
+        alert("조건부 일러스트는 트리거 키워드 또는 조건(이벤트/등급/관계/호감도/지역) 중 하나 이상이 필요합니다.");
         return false;
       }
       if (panel.minAff.trim() !== "") {
@@ -353,6 +375,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
           requireTierId: panel.reqTier || undefined,
           requireRelationship: panel.reqRel || undefined,
           minAffinity: panel.minAff.trim() !== "" ? panel.minAff.trim() : undefined,
+          requirePlaceId: panel.reqPlace || undefined,
         }
       : {};
 
@@ -395,6 +418,9 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
         asTitle,
         refTitleImage: p.refTitleImage,
         refImages: p.refImages,
+        refProfileIds: p.refProfileIds,
+        refIllustIds: p.refIllustIds,
+        refWorldIllustIds: p.refWorldIllustIds,
       }),
     });
     const r = await res.json().catch(() => ({}));
@@ -435,17 +461,14 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
     setChar((prev) => (prev ? { ...prev, delete_scheduled_at: null } : prev));
   };
 
-  // 현재 세계관 표시용: 모달 선택값 > 내 세계관 > 오픈 세계관 > (목록에 없으면) 번호만 표시
+  // 현재 세계관 표시용 (변경 불가): 내 세계관 > 오픈 세계관 > (목록에 없으면) 번호만 표시
   const curMine = mine.find((w) => w.id === char.world_id);
   const curOpen = open.find((w) => w.id === char.world_id);
-  const currentWorld: PickedWorld =
-    pickedWorld && pickedWorld.id === char.world_id
-      ? pickedWorld
-      : curMine
-        ? { id: curMine.id, name: curMine.name, title_image_url: curMine.title_image_url ?? null, mine: true }
-        : curOpen
-          ? { id: curOpen.id, name: curOpen.name, title_image_url: curOpen.title_image_url ?? null, owner_nickname: curOpen.owner_nickname, mine: false }
-          : { id: char.world_id, name: `현재 세계관 #${char.world_id}`, title_image_url: null, mine: false };
+  const currentWorld: PickedWorld = curMine
+    ? { id: curMine.id, name: curMine.name, title_image_url: curMine.title_image_url ?? null, mine: true }
+    : curOpen
+      ? { id: curOpen.id, name: curOpen.name, title_image_url: curOpen.title_image_url ?? null, owner_nickname: curOpen.owner_nickname, mine: false }
+      : { id: char.world_id, name: `현재 세계관 #${char.world_id}`, title_image_url: null, mine: false };
 
   return (
     <div className="container studio">
@@ -504,15 +527,9 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
           </div>
           <div>
             <label>세계관</label>
-            <div className="world-mini-row">
+            <div className="world-mini-row" title="사전·관계·기념일이 세계관에 묶여 있어 캐릭터의 세계관은 변경할 수 없습니다">
               <WorldMini world={currentWorld} />
-              <button type="button" className="small ghost" onClick={() => setPickerOpen(true)}>변경</button>
             </div>
-            <WorldPickerModal
-              open={pickerOpen}
-              onClose={() => setPickerOpen(false)}
-              onSelect={(w) => { setPickedWorld(w); set({ world_id: w.id }); }}
-            />
           </div>
         </div>
 
@@ -536,12 +553,41 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
 
         <label>공개 여부</label>
         <select value={char.visibility} onChange={(e) => set({ visibility: e.target.value as "private" | "open" })}>
-          <option value="private">비공개 (나만 대화 가능)</option>
+          <option value="private">비공개 (목록 비노출 — 링크 공유로 테스트 가능)</option>
           <option value="open">공개</option>
         </select>
         <div className="notice">
-          캐릭터는 소속 세계관도 공개 상태여야 메인 화면에 노출됩니다.
+          캐릭터는 소속 세계관도 공유 상태여야 메인 화면에 노출됩니다.
         </div>
+        {char.visibility === "private" && (
+          <div style={{ marginTop: 8 }}>
+            <button
+              type="button"
+              className="small ghost"
+              onClick={async () => {
+                // 비공개 공유 링크: 추측 불가능한 랜덤 키를 붙인 URL (키는 최초 1회 생성)
+                const r = await studioFetch(`/api/studio/characters/${id}/share-key`, { method: "POST" });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok || !d.key) {
+                  alert(d.error ?? "공유 링크 생성 실패");
+                  return;
+                }
+                const url = `${window.location.origin}/chat/${id}?k=${d.key}`;
+                try {
+                  await navigator.clipboard.writeText(url);
+                  alert("공유 링크를 복사했습니다:\n" + url);
+                } catch {
+                  prompt("공유 링크 (복사하세요):", url);
+                }
+              }}
+            >
+              🔗 공유 링크 복사
+            </button>
+            <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>
+              링크를 받은 사람만 이 비공개 캐릭터와 대화할 수 있습니다.
+            </span>
+          </div>
+        )}
 
         <button onClick={save}>{saved ? "저장됨 ✓" : "저장"}</button>
       </div>
@@ -714,6 +760,15 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
                   placeholder="빈값=없음"
                 />
               </div>
+              <div>
+                <label>현재 지역 (지역사전)</label>
+                <select value={panel.reqPlace} onChange={(e) => setPanel({ ...panel, reqPlace: e.target.value })}>
+                  <option value="">없음</option>
+                  {entries.filter((en) => en.category === "location").map((en) => (
+                    <option key={en.id} value={en.id}>{en.title}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="muted">지정한 조건을 모두 충족한 유저에게만 노출됩니다. 키워드 없이 조건만 지정하면 조건 충족 시 기본 로테이션에 포함됩니다.</div>
           </>
@@ -738,8 +793,8 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
                 <td>{i.description}</td>
                 <td className="muted">
                   {(parseTrigger(i).keywords ?? []).join(", ")}
-                  {triggerGateSummary(parseTrigger(i), events, tiers) && (
-                    <div>{triggerGateSummary(parseTrigger(i), events, tiers)}</div>
+                  {triggerGateSummary(parseTrigger(i), events, tiers, entries) && (
+                    <div>{triggerGateSummary(parseTrigger(i), events, tiers, entries)}</div>
                   )}
                 </td>
                 <td><button className="danger small" onClick={() => removeIllust(i.id)}>삭제</button></td>
@@ -769,11 +824,14 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
       <ImageGenModal
         open={genModal !== null}
         title={genModal === "title" ? "AI 타이틀 이미지 생성" : "AI 일러스트 생성"}
-        initialPrompt={
+        initialDescription={
           genModal === "title"
-            ? buildImagePrompt(char, "세로형 3:4 타이틀 일러스트")
-            : buildImagePrompt(char, panel.description, panel.kind === "conditional" ? panel.keywords : "")
+            ? "세로형 3:4 타이틀 일러스트"
+            : buildImageDescription(panel.description, panel.kind === "conditional" ? panel.keywords : "")
         }
+        initialProfile={buildProfileText(char)}
+        places={genRefs?.places}
+        assets={genRefs ?? undefined}
         titleImageUrl={char.title_image_url}
         submitSuffix={illustCost != null ? ` (-${illustCost.toLocaleString()}코인)` : ""}
         onClose={() => setGenModal(null)}

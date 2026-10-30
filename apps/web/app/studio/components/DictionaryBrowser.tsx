@@ -30,13 +30,17 @@ interface Props {
   /** 인명사전 행의 연결 캐릭터 select (둘 다 있을 때만 표시) */
   linkChars?: { id: number; name: string }[];
   onLink?: (id: number, value: string) => Promise<void>;
+  /** 인명 항목에서 '캐릭터 만들기' — 연결 캐릭터가 없는 행에 버튼 표시, 표제어를 넘겨준다 */
+  onCreateCharacter?: (title: string) => void;
+  /** 연결된 캐릭터 편집 링크 — linkChars 목록에 있는 캐릭터(스튜디오=내 캐릭터)에만 표시 */
+  characterEditHref?: (characterId: number) => string;
 }
 
 const LIMIT = 20;
 const CONTENT_MAX = 120;
 
 export default function DictionaryBrowser({
-  baseUrl, category, title, characterId, refreshKey = 0, onDelete, showEmbedding, linkChars, onLink,
+  baseUrl, category, title, characterId, refreshKey = 0, onDelete, showEmbedding, linkChars, onLink, onCreateCharacter, characterEditHref,
 }: Props) {
   const [field, setField] = useState<"title" | "content">("title");
   const [input, setInput] = useState(""); // 입력창 값
@@ -54,7 +58,14 @@ export default function DictionaryBrowser({
   const boxRef = useRef<HTMLDivElement>(null);
   const reqId = useRef(0);
   // 편집 모달
-  const [edit, setEdit] = useState<{ id: number; category: string; title: string; aliases: string; content: string } | null>(null);
+  const [edit, setEdit] = useState<{
+    id: number;
+    category: string;
+    title: string;
+    aliases: string;
+    content: string;
+    linked_character_id: number | null;
+  } | null>(null);
   const [saving, setSaving] = useState(false);
   const [editErr, setEditErr] = useState("");
 
@@ -186,7 +197,14 @@ export default function DictionaryBrowser({
   // 편집 모달 열기
   const openEdit = (e: DictBrowserEntry) => {
     setEditErr("");
-    setEdit({ id: e.id, category, title: e.title, aliases: e.aliases ?? "", content: e.content });
+    setEdit({
+      id: e.id,
+      category,
+      title: e.title,
+      aliases: e.aliases ?? "",
+      content: e.content,
+      linked_character_id: e.linked_character_id ?? null,
+    });
   };
 
   // 편집 저장 — PUT 에 category/title/aliases/content 를 모두 보내 임베딩이 재생성되게 한다
@@ -292,13 +310,30 @@ export default function DictionaryBrowser({
                 </td>
                 {showEmbedding && <td>{e.has_embedding ? "✓" : "—"}</td>}
                 {showLink && (
-                  <td>
-                    <select value={e.linked_character_id ?? ""} onChange={(ev) => link(e.id, ev.target.value)}>
-                      <option value="">없음</option>
-                      {linkChars!.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
+                  <td style={{ minWidth: 130 }} title="연결 지정/해제는 [수정]에서 할 수 있습니다">
+                    {e.linked_character_id != null ? (
+                      // 연결된 캐릭터: 이름 버튼 = 편집으로 이동 (내 캐릭터가 아니면 텍스트만)
+                      characterEditHref && linkChars!.some((c) => c.id === e.linked_character_id) ? (
+                        <a href={characterEditHref(e.linked_character_id)}>
+                          <button type="button" className="small ghost" title="연결된 캐릭터 편집으로 이동">
+                            {linkChars!.find((c) => c.id === e.linked_character_id)?.name} ↗
+                          </button>
+                        </a>
+                      ) : (
+                        <span>{linkChars!.find((c) => c.id === e.linked_character_id)?.name ?? `#${e.linked_character_id}`}</span>
+                      )
+                    ) : onCreateCharacter ? (
+                      <button
+                        type="button"
+                        className="small ghost"
+                        title="이 인물로 새 캐릭터를 만듭니다 (이름 자동 입력)"
+                        onClick={() => onCreateCharacter(e.title)}
+                      >
+                        캐릭터 만들기
+                      </button>
+                    ) : (
+                      <span className="muted">없음</span>
+                    )}
                   </td>
                 )}
                 <td>
@@ -337,6 +372,47 @@ export default function DictionaryBrowser({
             <input type="text" value={edit.aliases} onChange={(ev) => setEdit({ ...edit, aliases: ev.target.value })} disabled={saving} />
             <label>내용</label>
             <textarea rows={8} value={edit.content} onChange={(ev) => setEdit({ ...edit, content: ev.target.value })} disabled={saving} />
+            {showLink && edit.category === "person" && (
+              <>
+                <label>연결 캐릭터</label>
+                {edit.linked_character_id != null ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span>
+                      {linkChars!.find((c) => c.id === edit.linked_character_id)?.name ?? `#${edit.linked_character_id}`}
+                    </span>
+                    <button
+                      type="button"
+                      className="small danger"
+                      disabled={saving}
+                      onClick={async () => {
+                        if (!confirm("정말 링크를 해제하시겠습니까? 해제한 뒤 다른 캐릭터를 선택할 수 있습니다.")) return;
+                        await link(edit.id, "");
+                        setEdit({ ...edit, linked_character_id: null });
+                      }}
+                    >
+                      링크 해제
+                    </button>
+                  </div>
+                ) : (
+                  <select
+                    value=""
+                    disabled={saving}
+                    onChange={async (ev) => {
+                      const v = ev.target.value;
+                      if (!v) return;
+                      await link(edit.id, v);
+                      setEdit({ ...edit, linked_character_id: Number(v) });
+                    }}
+                  >
+                    <option value="">연결할 캐릭터 선택...</option>
+                    {linkChars!.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                )}
+                <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>연결/해제는 즉시 적용됩니다.</p>
+              </>
+            )}
             {editErr && <p className="dict-edit-err">{editErr}</p>}
             <div className="dict-edit-actions">
               <button onClick={saveEdit} disabled={saving}>{saving ? "저장 중..." : "저장"}</button>

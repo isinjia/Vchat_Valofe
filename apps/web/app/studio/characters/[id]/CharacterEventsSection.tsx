@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
-import { buildImagePrompt } from "../../components/imagePrompt";
+import { buildImageDescription, buildProfileText } from "../../components/imagePrompt";
 import { studioFetch } from "../../studio-api";
 
 export interface CharEvent {
@@ -156,6 +156,9 @@ export default function CharacterEventsSection({
         description: `${form.name || "이벤트"} 달성 이미지`,
         refTitleImage: p.refTitleImage,
         refImages: p.refImages,
+        refProfileIds: p.refProfileIds,
+        refIllustIds: p.refIllustIds,
+        refWorldIllustIds: p.refWorldIllustIds,
       }),
     });
     const r = await res.json().catch(() => ({}));
@@ -164,9 +167,8 @@ export default function CharacterEventsSection({
     setForm((prev) => ({ ...prev, success_illustration_id: String(r.id) }));
   };
 
-  const eventImagePrompt = () =>
-    buildImagePrompt(
-      character,
+  const eventImageDesc = () =>
+    buildImageDescription(
       `이벤트 달성 장면: ${form.name}
 상황: ${form.situation.slice(0, 300)}
 성공 조건: ${form.success_condition.slice(0, 200)}`
@@ -300,7 +302,8 @@ export default function CharacterEventsSection({
         <ImageGenModal
           open={genOpen}
           title="이벤트 달성 이미지 AI 생성"
-          initialPrompt={eventImagePrompt()}
+          initialDescription={eventImageDesc()}
+          initialProfile={buildProfileText(character)}
           titleImageUrl={titleImageUrl}
           submitSuffix={genCost != null ? ` (-${genCost.toLocaleString()}코인)` : ""}
           onClose={() => setGenOpen(false)}

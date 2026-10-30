@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, execute, getStorage, generateImage, getImageGenSettings } from "@vchatbot/core";
-import { parseRefImages } from "@/lib/image-refs";
+import { parseRefImages, collectAssetRefs, MAX_REFS } from "@/lib/image-refs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +26,9 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!prompt) return bad("prompt 가 필요합니다.");
   const parsed = parseRefImages(body.refImages);
   if ("error" in parsed) return bad(parsed.error);
+  // 등록된 세계관 배경 이미지도 참조로 쓸 수 있다
+  parsed.refs.push(...(await collectAssetRefs(body, { worldId }, req.nextUrl.origin)));
+  if (parsed.refs.length > MAX_REFS) return bad(`참조 이미지는 합산 최대 ${MAX_REFS}장입니다.`);
 
   const ig = await getImageGenSettings();
   if (!ig.enabled || !ig.apiKey) {

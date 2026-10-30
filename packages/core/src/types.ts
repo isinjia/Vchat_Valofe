@@ -9,7 +9,10 @@ export interface World {
   title_color?: string | null;
   is_active: number;
   owner_user_id: number | null;
+  /** UI 용어는 '공유' — open = 다른 유저가 이 세계관으로 캐릭터를 만들 수 있음 */
   visibility: "private" | "open";
+  /** 공유 시 타 유저 캐릭터 작성 범위: all=자유, dict_person=공용 인명사전 인물만 */
+  open_scope?: "all" | "dict_person";
   status: "active" | "suspended";
   /** 삭제 대기 시각 (설정 후 3일 뒤 실제 삭제, 그 전 취소 가능) */
   delete_scheduled_at?: string | null;
@@ -50,6 +53,8 @@ export interface CharacterPersona {
   is_active: number;
   owner_user_id: number | null;
   visibility: "private" | "open";
+  /** 비공개 링크 공유용 랜덤 키 (?k= 로 입장, '공유 링크 복사' 시 지연 생성) */
+  share_key?: string | null;
   status: "active" | "suspended";
   /** 삭제 대기 시각 (설정 후 3일 뒤 실제 삭제, 그 전 취소 가능) */
   delete_scheduled_at?: string | null;
@@ -97,6 +102,8 @@ export interface IllustrationTrigger {
   requireRelationship?: "lover" | "engaged" | "married" | null;
   /** 호감도가 이 값 이상인 유저에게만 노출 */
   minAffinity?: number | null;
+  /** 현재 장면의 지역(world_dictionary location 항목 id)이 이 지역일 때만 노출 */
+  requirePlaceId?: number | null;
 }
 
 export interface Illustration {
@@ -107,6 +114,17 @@ export interface Illustration {
   url: string;
   description: string | null;
   trigger_condition: IllustrationTrigger | null;
+  sort_order: number;
+}
+
+/** 세계관 일러스트 (지역사전 항목별 배경 이미지, dict_entry_id NULL = 세계관 공통) */
+export interface WorldIllustration {
+  id: number;
+  world_id: number;
+  dict_entry_id: number | null;
+  storage_key: string;
+  url: string;
+  description: string | null;
   sort_order: number;
 }
 

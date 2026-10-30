@@ -43,6 +43,15 @@ export default function CharactersPage() {
   const [offset, setOffset] = useState(0);
   const [total, setTotal] = useState(0);
 
+  // 쿼리 프리필: 세계관 인명사전의 '캐릭터 만들기' 등에서 ?worldId=&name= 으로 진입
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const preName = sp.get("name");
+    if (preName) setName(preName);
+    const preWorldId = Number(sp.get("worldId"));
+    if (Number.isInteger(preWorldId) && preWorldId > 0) setWorldId(preWorldId);
+  }, []);
+
   // 검색어 디바운스 300ms (검색 변경 시 첫 페이지로)
   useEffect(() => {
     const t = setTimeout(() => {

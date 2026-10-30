@@ -7,19 +7,35 @@ export const dynamic = "force-dynamic";
 
 export default async function ChatPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ characterId: string }>;
+  searchParams: Promise<{ k?: string }>;
 }) {
   // 미로그인 접근은 서버에서 바로 로그인 화면으로 (클라이언트 체크는 화면이 먼저 노출됨)
   const userId = await getUserId();
   if (!userId) redirect("/login");
 
   const { characterId } = await params;
+  const { k } = await searchParams;
   const ctx = await loadChatContext(Number(characterId));
   if (!ctx) {
     return (
       <div className="container">
         <p className="empty">캐릭터를 찾을 수 없습니다.</p>
+      </div>
+    );
+  }
+
+  // 비공개 캐릭터: 소유자가 아니면 공유 키(?k=)가 일치해야 입장 (순번 URL 추측 방지)
+  if (
+    ctx.character.visibility === "private" &&
+    ctx.character.owner_user_id !== userId &&
+    (!ctx.character.share_key || k !== ctx.character.share_key)
+  ) {
+    return (
+      <div className="container">
+        <p className="empty">비공개 캐릭터입니다. 제작자에게 공유 링크를 받아 접속해 주세요.</p>
       </div>
     );
   }

@@ -282,7 +282,8 @@ CREATE TABLE IF NOT EXISTS worlds (
   title_color VARCHAR(7) NULL,                    -- 타이틀 컬러(#rrggbb) — 캐릭터 카드 테두리/배경 톤
   is_active   TINYINT(1)   NOT NULL DEFAULT 1,
   owner_user_id BIGINT UNSIGNED NULL,             -- 제작 유저 (NULL = 운영 소유)
-  visibility  ENUM('private','open') NOT NULL DEFAULT 'private',
+  visibility  ENUM('private','open') NOT NULL DEFAULT 'private',  -- UI 용어: 공유
+  open_scope  ENUM('all','dict_person') NOT NULL DEFAULT 'all',   -- 공유 시 타 유저 캐릭터 작성 범위
   status      ENUM('active','suspended') NOT NULL DEFAULT 'active',
   delete_scheduled_at DATETIME NULL,                -- 삭제 대기 (3일 후 실제 삭제, 그 전 취소 가능)
   created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -332,6 +333,7 @@ CREATE TABLE IF NOT EXISTS characters (
   is_active    TINYINT(1) NOT NULL DEFAULT 1,
   owner_user_id  BIGINT UNSIGNED NULL,             -- 제작 유저 (NULL = 운영 소유)
   visibility  ENUM('private','open') NOT NULL DEFAULT 'private',
+  share_key   VARCHAR(32) NULL,                     -- 비공개 링크 공유용 랜덤 키 (?k= 로 입장, 지연 생성)
   status      ENUM('active','suspended') NOT NULL DEFAULT 'active',
   delete_scheduled_at DATETIME NULL,                 -- 삭제 대기 (3일 후 실제 삭제, 그 전 취소 가능)
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -376,6 +378,24 @@ CREATE TABLE IF NOT EXISTS illustrations (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------
+-- 세계관 일러스트: 지역사전(location) 항목별 배경 이미지 여러 장
+--   dict_entry_id NULL = 세계관 공통 배경
+-- ---------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS world_illustrations (
+  id            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  world_id      BIGINT UNSIGNED NOT NULL,
+  dict_entry_id BIGINT UNSIGNED NULL,
+  storage_key   VARCHAR(512) NOT NULL,
+  url           VARCHAR(1024) NOT NULL,
+  description   VARCHAR(255) NULL,
+  sort_order    INT NOT NULL DEFAULT 0,
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_wi_world FOREIGN KEY (world_id) REFERENCES worlds(id) ON DELETE CASCADE,
+  CONSTRAINT fk_wi_entry FOREIGN KEY (dict_entry_id) REFERENCES world_dictionary(id) ON DELETE CASCADE,
+  INDEX idx_wi_world (world_id, dict_entry_id, sort_order)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------
 -- 코인 거래 원장 (+지급 / -차감)
 -- ---------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS coin_transactions (
@@ -401,11 +421,13 @@ CREATE TABLE IF NOT EXISTS user_character_state (
   affinity INT NOT NULL DEFAULT 0,       -- -100 ~ 100
   relationship ENUM('none','lover','engaged','married') NOT NULL DEFAULT 'none', -- 이벤트 성공으로 켜지는 관계 플래그
   call_name VARCHAR(64) NULL,             -- 캐릭터가 유저를 부르는 호칭 (대화에서 정해지면 저장)
+  current_place_id BIGINT UNSIGNED NULL,  -- 현재 장면의 지역 (채점 LLM 이 지역사전 후보 중 식별)
   facts JSON NULL,                        -- 유저 팩트 (짧은 문자열 배열, 최대 30)
   message_count INT NOT NULL DEFAULT 0,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_ucs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT fk_ucs_char FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+  CONSTRAINT fk_ucs_place FOREIGN KEY (current_place_id) REFERENCES world_dictionary(id) ON DELETE SET NULL,
   UNIQUE KEY uq_ucs (user_id, character_id)
 ) ENGINE=InnoDB;
 

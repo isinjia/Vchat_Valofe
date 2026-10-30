@@ -9,7 +9,7 @@ import {
   chargeCoins,
   getPricingSettings,
 } from "@vchatbot/core";
-import { parseRefImages, fetchRefImage } from "@/lib/image-refs";
+import { parseRefImages, fetchRefImage, collectAssetRefs, MAX_REFS } from "@/lib/image-refs";
 import { requireUser, ownedCharacter, bad } from "@/lib/studio";
 
 export const runtime = "nodejs";
@@ -68,7 +68,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     const r = await fetchRefImage(d[0]?.url, req.nextUrl.origin);
     if (r) front.push(r);
   }
+  refs.push(...(await collectAssetRefs(body, { characterId: cid, worldId: Number(own.row.world_id) }, req.nextUrl.origin)));
   refs.unshift(...front);
+  if (refs.length > MAX_REFS) return bad(`참조 이미지는 합산 최대 ${MAX_REFS}장입니다.`);
 
   let buffer: Buffer;
   try {

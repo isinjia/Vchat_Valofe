@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, execute, evaluateTierPromotions, sweepScheduledDeletions } from "@vchatbot/core";
-import { requireUser, bad, canUseWorld } from "@/lib/studio";
+import { requireUser, bad, canUseWorld, checkWorldNameScope } from "@/lib/studio";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +36,8 @@ export async function POST(req: NextRequest) {
   if (!(await canUseWorld(body.world_id, auth.userId))) {
     return bad("사용할 수 없는 세계관입니다.", 403);
   }
+  const scopeErr = await checkWorldNameScope(body.world_id, auth.userId, name);
+  if (scopeErr) return bad(scopeErr);
   // 세계관 내 캐릭터명 중복 검사
   const dup = await query("SELECT id FROM characters WHERE world_id = ? AND name = ? LIMIT 1", [Number(body.world_id), name]);
   if (dup.length > 0) return bad("이 세계관에 같은 이름의 캐릭터가 이미 있습니다.");

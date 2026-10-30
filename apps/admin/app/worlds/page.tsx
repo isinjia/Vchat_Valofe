@@ -168,9 +168,9 @@ export default function WorldsPage() {
           </div>
           <div>
             <select value={visibility} onChange={onFilter(setVisibility)}>
-              <option value="">공개여부: 전체</option>
-              <option value="open">공개</option>
-              <option value="private">비공개</option>
+              <option value="">공유: 전체</option>
+              <option value="open">공유</option>
+              <option value="private">비공유</option>
             </select>
           </div>
           <div>

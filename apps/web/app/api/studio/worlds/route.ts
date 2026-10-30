@@ -10,7 +10,7 @@ export async function GET() {
   if ("res" in auth) return auth.res;
   await sweepScheduledDeletions();
   const rows = await query(
-    `SELECT w.id, w.name, w.visibility, w.status, w.title_image_url, w.delete_scheduled_at,
+    `SELECT w.id, w.name, w.visibility, w.status, w.title_image_url, w.title_color, w.delete_scheduled_at,
             (SELECT COUNT(*) FROM characters c WHERE c.world_id = w.id) AS character_count
      FROM worlds w WHERE w.owner_user_id = ? ORDER BY w.id DESC`,
     [auth.userId]

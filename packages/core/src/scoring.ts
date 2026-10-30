@@ -36,6 +36,8 @@ export const ScoreSchema = z.object({
   updatedFacts: z.array(z.string()).nullable(), // 변화 없으면 null
   // 게스트 난입: 후보 목록에서 고른 인물 + 끼어드는 이유. 대부분 null
   guestAppearance: z.object({ name: z.string(), line_hint: z.string() }).nullable(),
+  /** 현재 장면의 장소 — 지역 후보 목록 중 하나로 식별되면 그 이름, 아니면 null */
+  currentPlace: z.string().nullable(),
 });
 
 export type ScoreResult = z.infer<typeof ScoreSchema>;
@@ -46,23 +48,25 @@ const SYSTEM_PROMPT = `너는 롤플레이 채팅의 관계 분석가다. 유저
 (3) updatedFacts: 유저에 대해 새로 알게 된 사실(좋아하는 것/싫어하는 것/직업/현재상황/신상)이 있으면 기존 목록을 갱신한 '전체 목록'(각 항목 '분류: 내용' 형식, 최대 30개)을 반환, 변화 없으면 null. 대화에서 명시된 것만, 추측 금지.
 (5) emotion: 이번 캐릭터 응답에서 드러난 캐릭터의 감정 하나 — joy(기쁨)/sad(슬픔)/angry(화남)/shy(부끄러움)/surprised(놀람)/love(애정)/neutral(평온) 중 하나. 뚜렷하지 않으면 neutral.
 (6) callName: 이번 대화에서 캐릭터가 유저를 부를 호칭이 '새로' 정해지거나 바뀐 경우에만 그 호칭(예: "오빠", "자기야", "민수 님"). 정해진 적 없거나 변화 없으면 null.
+(7) currentPlace: 현재 장면이 벌어지는 장소가 '지역 후보 목록' 중 하나로 분명히 식별되면 그 이름(목록 표기 그대로), 목록에 없는 곳이거나 불분명하면 null. 추측 금지.
 (4) guestAppearance: 대화 맥락상 제3의 인물이 잠깐 끼어드는 것이 '매우' 자연스러운 경우에만(드물게 — 확신이 없으면 null), 후보 목록에서 이름 하나를 고르고 끼어드는 이유를 line_hint 로 한 문장. 후보 목록에 없는 인물은 절대 선택 금지. 유저가 그 인물을 직접 불렀거나 화제의 중심일 때만 고려하라. 현재 장면을 먼저 판단하라. 단둘이 있는 사적·밀폐된 공간(방, 둘만의 통화/밀담 등)이거나 제3자가 있을 수 없는 상황이면 반드시 null. 공공장소·열린 공간·여럿이 있을 법한 장소이거나, 대화 내용상 그 인물이 근처에 있다고 언급된 경우에만 고려하라. SNS/메신저 대화 상황이라면 그 인물이 대화에 끼어드는 것(댓글/멘션처럼)은 자연스러울 수 있다. line_hint 에는 어떤 경로로 끼어드는지(지나가다 들음, 옆에 있었음, 메신저에 끼어듦 등)를 포함하라. 후보 목록이 '(없음)' 이면 반드시 null.`;
 
 const JSON_INSTRUCTION = `
 
 [출력 형식 — 매우 중요]
 반드시 아래 JSON 객체 하나로만 응답하라. 설명·인사말·마크다운·코드펜스(\`\`\`) 금지. 첫 글자는 { 마지막 글자는 } 여야 한다.
-필드 6개를 모두 포함하고, 해당 없으면 null 을 써라.
+필드 7개를 모두 포함하고, 해당 없으면 null 을 써라.
 {
   "affinityDelta": 정수 -5~5 (소수·문자열 금지),
   "emotion": "joy|sad|angry|shy|surprised|love|neutral 중 하나",
   "callName": null 또는 "새로 정해진 유저 호칭",
   "emotionalEvent": null 또는 {"scope": "character" 또는 "world", "summary": "대화 포인트 한 문장", "situation": "당시 상황 한 문장"},
   "updatedFacts": null 또는 ["분류: 내용", ...] (문자열 배열),
-  "guestAppearance": null 또는 {"name": "후보 목록 중 하나의 이름", "line_hint": "끼어드는 이유 한 문장"}
+  "guestAppearance": null 또는 {"name": "후보 목록 중 하나의 이름", "line_hint": "끼어드는 이유 한 문장"},
+  "currentPlace": null 또는 "지역 후보 목록 중 하나의 이름"
 }
-예시 1 (평범한 대화): {"affinityDelta": 1, "emotion": "neutral", "callName": null, "emotionalEvent": null, "updatedFacts": null, "guestAppearance": null}
-예시 2 (사건 발생): {"affinityDelta": 3, "emotion": "joy", "callName": "오빠", "emotionalEvent": {"scope": "character", "summary": "유저가 비밀을 털어놓았다", "situation": "단둘이 있는 저녁 무렵"}, "updatedFacts": ["취미: 독서"], "guestAppearance": null}`;
+예시 1 (평범한 대화): {"affinityDelta": 1, "emotion": "neutral", "callName": null, "emotionalEvent": null, "updatedFacts": null, "guestAppearance": null, "currentPlace": null}
+예시 2 (사건 발생): {"affinityDelta": 3, "emotion": "joy", "callName": "오빠", "emotionalEvent": {"scope": "character", "summary": "유저가 비밀을 털어놓았다", "situation": "단둘이 있는 저녁 무렵"}, "updatedFacts": ["취미: 독서"], "guestAppearance": null, "currentPlace": "왕립 도서관"}`;
 
 function nullish(v: unknown): boolean {
   if (v == null) return true;
@@ -93,6 +97,8 @@ function normalizeScore(raw: unknown): unknown {
   else if (typeof r.updatedFacts === "string") r.updatedFacts = [r.updatedFacts];
   else if (Array.isArray(r.updatedFacts)) r.updatedFacts = r.updatedFacts.map((x) => String(x));
   if (nullish(r.guestAppearance)) r.guestAppearance = null;
+  if (nullish(r.currentPlace)) r.currentPlace = null;
+  else r.currentPlace = String(r.currentPlace).slice(0, 128);
   return r;
 }
 
@@ -146,6 +152,8 @@ export async function scoreExchange(input: {
   currentFacts: string[];
   /** 게스트 난입 후보 인물 이름 (비어 있으면 guestAppearance 는 null) */
   guestCandidates: string[];
+  /** 현재 장소 식별 후보 (세계관 지역사전 표제어, 비어 있으면 currentPlace 는 null) */
+  placeCandidates?: string[];
   /** 캐릭터의 상황 설정(현재 장면). 게스트 등장 정합성 판단용 */
   scenario: string | null;
 }): Promise<ScoreResult & { usage?: { inputTokens: number; outputTokens: number } }> {
@@ -165,6 +173,9 @@ ${input.scenario?.trim() || "(설정 없음)"}
 
 게스트 후보 목록:
 ${input.guestCandidates.length > 0 ? input.guestCandidates.map((n) => `- ${n}`).join("\n") : "(없음) — 이 경우 guestAppearance 는 반드시 null"}
+
+지역 후보 목록:
+${(input.placeCandidates?.length ?? 0) > 0 ? input.placeCandidates!.map((n) => `- ${n}`).join("\n") : "(없음) — 이 경우 currentPlace 는 반드시 null"}
 
 [유저 발화]
 ${input.userMessage}

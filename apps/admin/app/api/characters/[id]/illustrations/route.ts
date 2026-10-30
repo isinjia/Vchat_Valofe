@@ -1,4 +1,4 @@
-import { buildIllustTrigger } from "@/lib/illust-trigger";
+import { buildIllustTrigger, validateTriggerPlace } from "@/lib/illust-trigger";
 import { NextRequest, NextResponse } from "next/server";
 import { query, execute, getStorage, invalidateChatContext, imageExtFromMime } from "@vchatbot/core";
 
@@ -40,9 +40,13 @@ export async function POST(req: NextRequest, { params }: Params) {
       requireTierId: form.get("requireTierId"),
       requireRelationship: form.get("requireRelationship"),
       minAffinity: form.get("minAffinity"),
+      requirePlaceId: form.get("requirePlaceId"),
     });
     if ("error" in t) return NextResponse.json({ error: t.error }, { status: 400 });
     triggerCondition = t.value;
+    const w = await query<{ world_id: number }>("SELECT world_id FROM characters WHERE id = ?", [id]);
+    const placeErr = await validateTriggerPlace(triggerCondition, Number(w[0]?.world_id));
+    if (placeErr) return NextResponse.json({ error: placeErr }, { status: 400 });
   }
 
   let storage;

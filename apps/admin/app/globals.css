@@ -164,6 +164,8 @@ div[style] > button { margin-top: 0; }
 
 /* ===== 이미지 크롭 모달 ===== */
 .modal.crop-modal { max-width: 520px; max-height: 95vh; overflow-y: auto; }
+/* AI 이미지 생성 모달: 프롬프트가 길어 크롭 모달보다 넓게 */
+.modal.imggen-modal { max-width: 760px; max-height: 95vh; overflow-y: auto; }
 .crop-drop {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   min-height: 220px; border: 2px dashed var(--border); border-radius: 10px; text-align: center;

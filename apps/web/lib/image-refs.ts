@@ -1,9 +1,10 @@
-import type { ReferenceImage } from "@vchatbot/core";
+import { query, type ReferenceImage } from "@vchatbot/core";
 
-const MAX_REFS = 2;
+/** 참조 이미지 총 한도 (업로드 + 등록 자산 + 타이틀 합산) — openai images/edits·gemini 멀티모달 모두 수용 */
+export const MAX_REFS = 4;
 const MAX_BYTES = 10 * 1024 * 1024;
 
-/** body.refImages (base64 배열, 최대 2개, 각 디코드 후 10MB 이하) → ReferenceImage[]. 오류 시 { error } */
+/** body.refImages (base64 배열, 최대 MAX_REFS개, 각 디코드 후 10MB 이하) → ReferenceImage[]. 오류 시 { error } */
 export function parseRefImages(raw: unknown): { refs: ReferenceImage[] } | { error: string } {
   if (raw == null) return { refs: [] };
   if (!Array.isArray(raw)) return { error: "refImages 형식이 올바르지 않습니다." };
@@ -35,4 +36,51 @@ export async function fetchRefImage(url: string | null | undefined, base?: strin
   } catch {
     return null;
   }
+}
+
+function idList(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw.map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0))].slice(0, MAX_REFS);
+}
+
+/**
+ * 등록된 자산(감정 프로필 / 캐릭터 일러스트 / 세계관 지역 배경)을 id 로 받아 참조 이미지로 수집.
+ * 소유 검증: 프로필·일러스트는 characterId, 세계관 배경은 worldId 로 한정한다. 가져오기 실패한 건 조용히 건너뜀.
+ */
+export async function collectAssetRefs(
+  body: { refProfileIds?: unknown; refIllustIds?: unknown; refWorldIllustIds?: unknown },
+  scope: { characterId?: number; worldId?: number },
+  base?: string
+): Promise<ReferenceImage[]> {
+  const urls: string[] = [];
+  const profileIds = idList(body.refProfileIds);
+  const illustIds = idList(body.refIllustIds);
+  const worldIllustIds = idList(body.refWorldIllustIds);
+  if (scope.characterId && profileIds.length > 0) {
+    const rows = await query<{ url: string }>(
+      `SELECT url FROM character_profiles WHERE character_id = ? AND id IN (${profileIds.map(() => "?").join(",")})`,
+      [scope.characterId, ...profileIds]
+    );
+    urls.push(...rows.map((r) => r.url));
+  }
+  if (scope.characterId && illustIds.length > 0) {
+    const rows = await query<{ url: string }>(
+      `SELECT url FROM illustrations WHERE character_id = ? AND id IN (${illustIds.map(() => "?").join(",")})`,
+      [scope.characterId, ...illustIds]
+    );
+    urls.push(...rows.map((r) => r.url));
+  }
+  if (scope.worldId && worldIllustIds.length > 0) {
+    const rows = await query<{ url: string }>(
+      `SELECT url FROM world_illustrations WHERE world_id = ? AND id IN (${worldIllustIds.map(() => "?").join(",")})`,
+      [scope.worldId, ...worldIllustIds]
+    );
+    urls.push(...rows.map((r) => r.url));
+  }
+  const refs: ReferenceImage[] = [];
+  for (const u of urls) {
+    const r = await fetchRefImage(u, base);
+    if (r) refs.push(r);
+  }
+  return refs;
 }

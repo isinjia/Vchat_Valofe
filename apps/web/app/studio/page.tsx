@@ -48,8 +48,10 @@ function DelBadge({ at }: { at?: string | null }) {
   );
 }
 
-function VisBadge({ v }: { v: "private" | "open" }) {
-  return <span className={`badge ${v === "open" ? "open" : ""}`}>{v === "open" ? "공개" : "비공개"}</span>;
+function VisBadge({ v, world }: { v: "private" | "open"; world?: boolean }) {
+  const on = world ? "공유" : "공개";
+  const off = world ? "비공유" : "비공개";
+  return <span className={`badge ${v === "open" ? "open" : ""}`}>{v === "open" ? on : off}</span>;
 }
 
 export default function StudioPage() {
@@ -128,8 +130,19 @@ export default function StudioPage() {
       setKeyBusy(false);
     }
   };
+  const testAiKey = async (useInput: boolean) => {
+    setKeyBusy(true);
+    try {
+      const res = await studioFetch("/api/studio/ai-key/test", jsonInit("POST", useInput ? { apiKey: keyInput } : {}));
+      const r = await res.json().catch(() => ({}));
+      if (r.ok) alert("키가 정상 작동합니다.");
+      else alert(`키 테스트 실패: ${r.error ?? "알 수 없는 오류"}`);
+    } finally {
+      setKeyBusy(false);
+    }
+  };
   const deleteAiKey = async () => {
-    if (!confirm("등록된 Claude API 키를 삭제할까요?")) return;
+    if (!confirm("등록된 Claude API 키를 등록해제할까요?")) return;
     setKeyBusy(true);
     try {
       const res = await studioFetch("/api/studio/ai-key", { method: "DELETE" });
@@ -175,7 +188,7 @@ export default function StudioPage() {
         {worlds?.map((w) => (
           <div key={w.id} className="list-item">
             <div>
-              {w.name} <VisBadge v={w.visibility} /><DelBadge at={w.delete_scheduled_at} />
+              {w.name} <VisBadge v={w.visibility} world /><DelBadge at={w.delete_scheduled_at} />
               <div className="muted">캐릭터 {w.character_count}명</div>
             </div>
             <div>
@@ -226,8 +239,9 @@ export default function StudioPage() {
                 <div>
                   내 Claude API 키 <span className="muted">{aiKey.masked}</span>
                 </div>
-                <div>
-                  <button className="small ghost" disabled={keyBusy} onClick={deleteAiKey}>키 삭제</button>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button className="small ghost" disabled={keyBusy} onClick={() => testAiKey(false)}>키 테스트</button>
+                  <button className="small ghost" disabled={keyBusy} onClick={deleteAiKey}>등록해제</button>
                 </div>
               </div>
             ) : (
@@ -239,6 +253,7 @@ export default function StudioPage() {
                   autoComplete="new-password"
                   onChange={(e) => setKeyInput(e.target.value)}
                 />
+                <button className="small ghost" disabled={keyBusy || !keyInput.trim()} onClick={() => testAiKey(true)}>키 테스트</button>
                 <button className="small" disabled={keyBusy || !keyInput.trim()} onClick={saveAiKey}>등록</button>
               </div>
             )}

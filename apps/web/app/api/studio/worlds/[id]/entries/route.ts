@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
   if (!(await canUseWorld(id, auth.userId))) return bad("사용할 수 없는 세계관입니다.", 403);
   const rows = await query(
-    `SELECT id, title, category, linked_character_id
+    `SELECT id, title, category, content, linked_character_id
      FROM world_dictionary
      WHERE world_id = ? AND character_id IS NULL
      ORDER BY category, sort_order, id`,

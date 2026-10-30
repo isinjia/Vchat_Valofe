@@ -1,7 +1,7 @@
-import { buildIllustTrigger } from "@/lib/illust-trigger";
+import { buildIllustTrigger, validateTriggerPlace } from "@/lib/illust-trigger";
 import { NextRequest, NextResponse } from "next/server";
 import { query, execute, getStorage, invalidateChatContext, generateImage, getImageGenSettings } from "@vchatbot/core";
-import { parseRefImages, fetchRefImage } from "@/lib/image-refs";
+import { parseRefImages, fetchRefImage, collectAssetRefs, MAX_REFS } from "@/lib/image-refs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const characterId = Number(id);
   if (!Number.isInteger(characterId) || characterId <= 0) return bad("id 가 올바르지 않습니다.");
-  const exists = await query("SELECT id FROM characters WHERE id = ?", [characterId]);
+  const exists = await query<{ world_id: number }>("SELECT id, world_id FROM characters WHERE id = ?", [characterId]);
   if (exists.length === 0) return bad("찾을 수 없습니다.", 404);
 
   const body = await req.json().catch(() => ({}));
@@ -34,6 +34,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     const t = buildIllustTrigger(body);
     if ("error" in t) return bad(t.error);
     triggerCondition = t.value;
+    const placeErr = await validateTriggerPlace(triggerCondition, Number(exists[0].world_id));
+    if (placeErr) return bad(placeErr);
   }
 
   // 스토리지 접근/외부 호출 전에 설정 여부부터 확인
@@ -53,11 +55,13 @@ export async function POST(req: NextRequest, { params }: Params) {
   const parsed = parseRefImages(body.refImages);
   if ("error" in parsed) return bad(parsed.error);
   const refs = parsed.refs;
+  refs.push(...(await collectAssetRefs(body, { characterId, worldId: Number(exists[0].world_id) }, req.nextUrl.origin)));
   if (body.refTitleImage === true) {
     const t = await query<{ title_image_url: string | null }>("SELECT title_image_url FROM characters WHERE id = ?", [characterId]);
     const tr = await fetchRefImage(t[0]?.title_image_url, req.nextUrl.origin);
     if (tr) refs.unshift(tr);
   }
+  if (refs.length > MAX_REFS) return bad(`참조 이미지는 합산 최대 ${MAX_REFS}장입니다.`);
 
   let buffer: Buffer;
   try {

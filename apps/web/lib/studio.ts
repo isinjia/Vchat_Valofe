@@ -43,6 +43,23 @@ export async function canUseWorld(worldId: unknown, userId: number): Promise<boo
 }
 
 /**
+ * 공유 세계관 작성 범위 검증: 내 세계관이 아니고 open_scope='dict_person' 이면
+ * 공용 인명사전(person) 표제어와 이름이 정확히 일치해야 한다. 위반 시 에러 메시지, 통과 시 null.
+ */
+export async function checkWorldNameScope(worldId: unknown, userId: number, name: string): Promise<string | null> {
+  const n = Number(worldId);
+  const w = await query("SELECT owner_user_id, open_scope FROM worlds WHERE id = ?", [n]);
+  if (w.length === 0) return null;
+  const row = w[0] as { owner_user_id: number | null; open_scope: string };
+  if (row.owner_user_id === userId || row.open_scope !== "dict_person") return null;
+  const hit = await query(
+    "SELECT id FROM world_dictionary WHERE world_id = ? AND character_id IS NULL AND category = 'person' AND title = ? LIMIT 1",
+    [n, name]
+  );
+  return hit.length > 0 ? null : "이 세계관은 인명사전에 있는 인물 이름으로만 캐릭터를 만들 수 있습니다.";
+}
+
+/**
  * 사전 항목 범위 검증 (스튜디오): null/미지정=세계관 공통,
  * 값 있음 → 내 소유(403) + 해당 세계관 소속(400) 캐릭터여야 함
  */

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, execute, invalidateChatContext, scheduleDeletion, cancelDeletion } from "@vchatbot/core";
-import { requireUser, ownedCharacter, bad, canUseWorld, visibilityOf } from "@/lib/studio";
+import { requireUser, ownedCharacter, bad, visibilityOf } from "@/lib/studio";
 
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
@@ -36,13 +36,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const name = typeof b.name === "string" ? b.name.trim() : "";
   if (!name) return bad("name 은 필수입니다.");
 
-  // 세계관이 바뀌는 경우에만 사용 가능 여부 검증 (기존 세계관이 비공개로 바뀐 경우 유지는 허용)
-  const worldId = Number(b.world_id);
-  if (worldId !== Number(own.row.world_id) && !(await canUseWorld(worldId, auth.userId))) {
-    return bad("사용할 수 없는 세계관입니다.", 403);
+  // 세계관은 수정에서 바꿀 수 없다 (사전/관계/기념일이 세계관에 묶여 있어 임의 변경 금지)
+  const worldId = Number(own.row.world_id);
+  if (b.world_id != null && Number(b.world_id) !== worldId) {
+    return bad("캐릭터의 세계관은 변경할 수 없습니다.");
   }
-  // 세계관 내 캐릭터명 중복 검사 (이름/세계관이 바뀐 경우)
-  if (name !== own.row.name || worldId !== Number(own.row.world_id)) {
+  // 세계관 내 캐릭터명 중복 검사 (이름이 바뀐 경우)
+  if (name !== own.row.name) {
     const dup = await query("SELECT id FROM characters WHERE world_id = ? AND name = ? AND id <> ? LIMIT 1", [worldId, name, Number(id)]);
     if (dup.length > 0) return bad("이 세계관에 같은 이름의 캐릭터가 이미 있습니다.");
   }
@@ -50,11 +50,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
   try {
   await execute(
     `UPDATE characters
-     SET world_id = ?, name = ?, profile = ?, personality = ?, speech_style = ?, ai_prompt = ?,
+     SET name = ?, profile = ?, personality = ?, speech_style = ?, ai_prompt = ?,
          scenario = ?, greeting = ?, visibility = ?
      WHERE id = ? AND owner_user_id = ?`,
     [
-      worldId,
       name,
       s(b.profile),
       s(b.personality),

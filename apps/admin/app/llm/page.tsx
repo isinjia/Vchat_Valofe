@@ -52,15 +52,17 @@ export default function LlmPage() {
   return (
     <>
       <h2>LLM 관리</h2>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <button style={{ marginTop: 0, opacity: tab === "chat" ? 1 : 0.5 }} onClick={() => setTab("chat")}>
+      {/* 탭 바: 다른 편집 화면과 동일한 .tabs UI — 비활성 탭도 언마운트하지 않고 숨겨 입력값 보존 */}
+      <div className="tabs">
+        <button type="button" className={`tab ${tab === "chat" ? "active" : ""}`} onClick={() => setTab("chat")}>
           채팅 LLM
         </button>
-        <button style={{ marginTop: 0, opacity: tab === "image" ? 1 : 0.5 }} onClick={() => setTab("image")}>
+        <button type="button" className={`tab ${tab === "image" ? "active" : ""}`} onClick={() => setTab("image")}>
           이미지 생성 AI
         </button>
       </div>
-      {tab === "chat" ? <ChatLlmTab /> : <ImageProviderTab />}
+      <div style={{ display: tab === "chat" ? "block" : "none" }}><ChatLlmTab /></div>
+      <div style={{ display: tab === "image" ? "block" : "none" }}><ImageProviderTab /></div>
     </>
   );
 }

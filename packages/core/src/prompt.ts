@@ -294,6 +294,8 @@ export interface IllustrationViewerContext {
   userTierRank?: number;
   /** chat_tiers.id → tier_rank 매핑 (requireTierId 평가용) */
   tierRankById?: ReadonlyMap<number, number>;
+  /** 현재 장면의 지역 (world_dictionary location 항목 id, 미식별 시 null) */
+  currentPlaceId?: number | null;
 }
 
 const RELATIONSHIP_ORDER: Record<string, number> = { none: 0, lover: 1, engaged: 2, married: 3 };
@@ -314,12 +316,14 @@ function gatesOk(i: Illustration, v: IllustrationViewerContext): boolean {
     // 등급이 삭제돼 rank 를 모르면 잠금 유지 (fail-closed)
     if (needRank == null || (v.userTierRank ?? -1) < needRank) return false;
   }
+  // 현재 장면의 지역이 지정 지역과 다르면(또는 미식별이면) 잠금 유지
+  if (t.requirePlaceId != null && Number(t.requirePlaceId) !== (v.currentPlaceId ?? -1)) return false;
   return true;
 }
 
 /** 키워드 외의 게이트 조건이 하나라도 걸려 있는지 */
 function hasGates(t: IllustrationTrigger | null | undefined): boolean {
-  return !!t && (t.requireEventId != null || t.requireTierId != null || !!t.requireRelationship || t.minAffinity != null);
+  return !!t && (t.requireEventId != null || t.requireTierId != null || !!t.requireRelationship || t.minAffinity != null || t.requirePlaceId != null);
 }
 
 export function pickIllustration(

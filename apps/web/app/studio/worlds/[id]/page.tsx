@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, use } from "react";
 import AnniversarySection from "./AnniversarySection";
+import WorldIllustrationsSection from "./WorldIllustrationsSection";
 import DictionaryBrowser from "../../components/DictionaryBrowser";
 import ImageCropModal from "../../components/ImageCropModal";
 import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
@@ -15,6 +16,7 @@ interface World {
   description: string;
   ai_prompt: string;
   visibility: "private" | "open";
+  open_scope?: "all" | "dict_person";
   title_image_url?: string | null;
   title_color?: string | null;
   delete_scheduled_at?: string | null;
@@ -146,7 +148,7 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
   const generateTitleImage = async (p: ImageGenPayload) => {
     const res = await studioFetch(
       `/api/studio/worlds/${id}/title-image/generate`,
-      jsonInit("POST", { prompt: p.prompt, refImages: p.refImages })
+      jsonInit("POST", { prompt: p.prompt, refImages: p.refImages, refWorldIllustIds: p.refWorldIllustIds })
     );
     const r = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`생성 실패: ${r.error ?? res.statusText}`);
@@ -217,6 +219,7 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
       <div className="tabs">
         <button type="button" className={`tab ${tab === "basic" ? "active" : ""}`} onClick={() => setTab("basic")}>기본</button>
         <button type="button" className={`tab ${tab === "dict" ? "active" : ""}`} onClick={() => setTab("dict")}>사전</button>
+        <button type="button" className={`tab ${tab === "illust" ? "active" : ""}`} onClick={() => setTab("illust")}>일러스트</button>
         <button type="button" className={`tab ${tab === "anniv" ? "active" : ""}`} onClick={() => setTab("anniv")}>기념일</button>
       </div>
 
@@ -247,7 +250,7 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
         <ImageGenModal
           open={genOpen}
           title="AI 타이틀 이미지 생성"
-          initialPrompt={`세계관 타이틀 일러스트를 생성한다. 세로형 3:4.\n세계관: ${world.name}\n설정: ${(world.description ?? "").slice(0, 800)}`}
+          initialDescription={`세계관 타이틀 일러스트를 생성한다. 세로형 3:4.\n세계관: ${world.name}\n설정: ${(world.description ?? "").slice(0, 800)}`}
           submitSuffix={pricing?.illustGenCost != null ? ` (-${pricing.illustGenCost.toLocaleString()}코인)` : ""}
           onClose={() => setGenOpen(false)}
           onGenerate={generateTitleImage}
@@ -300,13 +303,21 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
           placeholder="이 세계관의 모든 캐릭터에게 공통 적용되는 AI 지침"
         />
 
-        <label>공개 여부</label>
-        <select value={world.visibility} onChange={(e) => setWorld({ ...world, visibility: e.target.value as "private" | "open" })}>
-          <option value="private">비공개 (나만 사용)</option>
-          <option value="open">공개</option>
+        <label>공유 설정</label>
+        <select
+          value={world.visibility === "open" ? (world.open_scope === "dict_person" ? "open_dict" : "open_all") : "private"}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "private") setWorld({ ...world, visibility: "private" });
+            else setWorld({ ...world, visibility: "open", open_scope: v === "open_dict" ? "dict_person" : "all" });
+          }}
+        >
+          <option value="private">비공유 (나만 사용)</option>
+          <option value="open_dict">공유 — 인명사전 인물만 캐릭터 생성 가능</option>
+          <option value="open_all">공유 — 신규 캐릭터 자유 생성</option>
         </select>
         <div className="notice">
-          세계관을 공개하면 다른 유저가 이 세계관으로 자신의 캐릭터를 만들 수 있습니다. 공개한 세계관의 캐릭터가
+          세계관을 공유하면 다른 유저가 이 세계관으로 자신의 캐릭터를 만들 수 있습니다. 공개한 세계관의 캐릭터가
           대화에 쓰이면 세계관 제작자에게 수수료가 지급됩니다.
         </div>
 
@@ -350,8 +361,17 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
           onDelete={removeEntry}
           linkChars={characters}
           onLink={linkCharacter}
+          onCreateCharacter={(title) => {
+            // 인명 항목으로 바로 캐릭터 생성 — 세계관/이름 자동 입력
+            window.location.href = `/studio/characters/new?worldId=${id}&name=${encodeURIComponent(title)}`;
+          }}
+          characterEditHref={(cid) => `/studio/characters/${cid}`}
         />
       ))}
+      </div>
+
+      <div style={{ display: tab === "illust" ? undefined : "none" }}>
+      <WorldIllustrationsSection worldId={id} titleImageUrl={world.title_image_url} genCost={pricing?.illustGenCost ?? null} />
       </div>
 
       <div style={{ display: tab === "anniv" ? undefined : "none" }}>

@@ -16,20 +16,21 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
 export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const { name, description, ai_prompt, is_active, visibility, status, title_color } = await req.json();
+  const { name, description, ai_prompt, is_active, visibility, status, title_color, open_scope } = await req.json();
   // 타이틀 컬러: #rrggbb 형식만 허용, 그 외/빈 값은 NULL
   const titleColor =
     typeof title_color === "string" && /^#[0-9a-fA-F]{6}$/.test(title_color.trim())
       ? title_color.trim().toLowerCase()
       : null;
   await execute(
-    `UPDATE worlds SET name = ?, description = ?, ai_prompt = ?, is_active = ?, visibility = ?, status = ?, title_color = ? WHERE id = ?`,
+    `UPDATE worlds SET name = ?, description = ?, ai_prompt = ?, is_active = ?, visibility = ?, open_scope = ?, status = ?, title_color = ? WHERE id = ?`,
     [
       name,
       description,
       ai_prompt,
       is_active ? 1 : 0,
       visibility === "open" ? "open" : "private",
+      open_scope === "dict_person" ? "dict_person" : "all",
       status === "suspended" ? "suspended" : "active",
       titleColor,
       id,

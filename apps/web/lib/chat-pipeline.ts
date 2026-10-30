@@ -38,6 +38,7 @@ import {
   judgeEvent,
   formatEventBlock,
   setUserRelationship,
+  setUserCurrentPlace,
   getUserTierRankInfo,
   type ActiveEventState,
   type GuestInfo,
@@ -258,6 +259,8 @@ export async function finishChatTurn(send: (data: unknown) => void, p: FinishPar
   let affinityDelta: number | undefined;
   let emotion: string | null = null;
   let guest: { name: string; entryId: number; text: string } | null = null;
+  // 현재 장면의 지역: 채점 LLM 이 지역사전 후보 중에서 식별하면 갱신 (일러스트 지역 게이트용)
+  let currentPlaceId: number | null = state.current_place_id;
   if (!p.opening) {
     try {
       const scoring = await getScoringSettings();
@@ -274,6 +277,9 @@ export async function finishChatTurn(send: (data: unknown) => void, p: FinishPar
           candidateSet.delete(ctx.character.name);
         }
         const guestCandidates = [...candidateSet].slice(0, 30);
+        // 지역 후보: 공통 location 사전 항목 (현재 장소 식별용)
+        const placeEntries = ctx.dictionary.filter((d) => d.category === "location" && d.character_id == null);
+        const placeCandidates = placeEntries.map((d) => d.title).slice(0, 30);
         const timeout = new Promise<never>((_, rej) =>
           setTimeout(() => rej(new Error(`채점 타임아웃(${scoring.timeoutMs / 1000}초)`)), scoring.timeoutMs)
         );
@@ -286,11 +292,20 @@ export async function finishChatTurn(send: (data: unknown) => void, p: FinishPar
             currentAffinity: state.affinity,
             currentFacts: state.facts,
             guestCandidates,
+            placeCandidates,
             scenario: ctx.character.scenario,
           }),
           timeout,
         ]);
         const affinity = await applyScoreResult(userId, ctx.character.id, score);
+        // 현재 장소: 후보 목록 중 하나로 식별됐을 때만 갱신 (미식별이면 기존 유지)
+        if (score.currentPlace) {
+          const pe = placeEntries.find((d) => d.title === score.currentPlace);
+          if (pe && pe.id !== currentPlaceId) {
+            await setUserCurrentPlace(userId, ctx.character.id, pe.id);
+            currentPlaceId = pe.id;
+          }
+        }
         if (score.emotionalEvent) {
           const ev = score.emotionalEvent;
           await saveMemory({
@@ -440,6 +455,7 @@ export async function finishChatTurn(send: (data: unknown) => void, p: FinishPar
       relationship: relationshipNow,
       userTierRank: tierInfo.userTierRank,
       tierRankById: tierInfo.tierRankById,
+      currentPlaceId,
     });
   } catch (e) {
     console.error("illustration gate error:", e);

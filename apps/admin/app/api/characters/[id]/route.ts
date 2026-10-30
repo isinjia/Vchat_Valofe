@@ -16,19 +16,20 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
 export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const { world_id, name, profile, personality, speech_style, ai_prompt, scenario, greeting, is_active, visibility, status } =
+  const { name, profile, personality, speech_style, ai_prompt, scenario, greeting, is_active, visibility, status } =
     await req.json();
-  // 세계관 내 캐릭터명 중복 검사
-  const dup = await query("SELECT id FROM characters WHERE world_id = ? AND name = ? AND id <> ? LIMIT 1", [world_id, name, Number(id)]);
+  // 세계관은 수정에서 바꿀 수 없다 (사전/관계/기념일이 세계관에 묶여 있음) — 현재 세계관 기준으로 중복 검사
+  const cur = await query<{ world_id: number }>("SELECT world_id FROM characters WHERE id = ?", [id]);
+  if (cur.length === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+  const dup = await query("SELECT id FROM characters WHERE world_id = ? AND name = ? AND id <> ? LIMIT 1", [cur[0].world_id, name, Number(id)]);
   if (dup.length > 0) return NextResponse.json({ error: "이 세계관에 같은 이름의 캐릭터가 이미 있습니다." }, { status: 400 });
   try {
   await execute(
     `UPDATE characters
-     SET world_id = ?, name = ?, profile = ?, personality = ?, speech_style = ?, ai_prompt = ?, scenario = ?, greeting = ?, is_active = ?,
+     SET name = ?, profile = ?, personality = ?, speech_style = ?, ai_prompt = ?, scenario = ?, greeting = ?, is_active = ?,
          visibility = ?, status = ?
      WHERE id = ?`,
     [
-      world_id,
       name,
       profile,
       personality,

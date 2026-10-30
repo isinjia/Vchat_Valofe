@@ -65,20 +65,14 @@ export default function CharacterProfilesSection({
 
   const defaultUrl = items.find((x) => x.emotion === "default")?.url ?? null;
 
-  /** 슬롯별 자동 프롬프트 (이미지 설명 / 캐릭터 프로필 2섹션) */
-  const buildPrompt = (emotion: string) => {
+  /** 슬롯별 자동 [이미지 설명] */
+  const buildDesc = (emotion: string) => {
     const emoLabel = EMOTIONS.find((e) => e.key === emotion)?.label ?? "";
-    const desc =
-      emotion === "default"
-        ? "원형 프로필용 얼굴 클로즈업 초상. 이름/외모/화풍 유지, 정면 응시, 단순한 배경."
-        : `원형 프로필용 얼굴 클로즈업 초상. 참조 이미지와 같은 인물·같은 화풍, ${emoLabel} 표정.`;
-    return `[이미지 설명]
-${desc}
-
-[캐릭터 프로필]
-이름: ${characterName}
-외모/설정: ${characterProfile.slice(0, 600)}`;
+    return emotion === "default"
+      ? "원형 프로필용 얼굴 클로즈업 초상. 이름/외모/화풍 유지, 정면 응시, 단순한 배경."
+      : `원형 프로필용 얼굴 클로즈업 초상. 참조 이미지와 같은 인물·같은 화풍, ${emoLabel} 표정.`;
   };
+  const profileText = `이름: ${characterName}\n외모/설정: ${characterProfile.slice(0, 600)}`;
 
   /** AI 생성 모달 확인 → 생성 라우트 호출 (실패 시 throw → 모달 안에 에러 표시) */
   const generate = async (p: ImageGenPayload) => {
@@ -94,6 +88,9 @@ ${desc}
         useTitleRef: p.refTitleImage && !useDefault,
         useDefaultProfileRef: p.refTitleImage && useDefault,
         refImages: p.refImages,
+        refProfileIds: p.refProfileIds,
+        refIllustIds: p.refIllustIds,
+        refWorldIllustIds: p.refWorldIllustIds,
       }),
     });
     const r = await res.json().catch(() => ({}));
@@ -161,7 +158,8 @@ ${desc}
       <ImageGenModal
         open={genTarget !== null}
         title={`프로필 AI 생성 (${EMOTIONS.find((e) => e.key === genTarget)?.label ?? ""})`}
-        initialPrompt={genTarget ? buildPrompt(genTarget) : ""}
+        initialDescription={genTarget ? buildDesc(genTarget) : ""}
+        initialProfile={profileText}
         titleImageUrl={genTarget === "default" ? titleImageUrl : (defaultUrl ?? titleImageUrl)}
         refLabel={genTarget === "default" || !defaultUrl ? "타이틀 이미지를 참조로 사용" : "기본 프로필을 참조로 사용"}
         submitSuffix={genCost != null ? ` (-${genCost.toLocaleString()}코인)` : ""}

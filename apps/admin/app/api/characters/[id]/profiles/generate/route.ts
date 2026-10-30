@@ -7,7 +7,7 @@ import {
   generateImage,
   getImageGenSettings,
 } from "@vchatbot/core";
-import { parseRefImages, fetchRefImage } from "@/lib/image-refs";
+import { parseRefImages, fetchRefImage, collectAssetRefs, MAX_REFS } from "@/lib/image-refs";
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
 
 export const runtime = "nodejs";
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const cid = Number(id);
   if (!Number.isInteger(cid) || cid <= 0) return bad("id 가 올바르지 않습니다.");
-  const exists = await query("SELECT id FROM characters WHERE id = ?", [cid]);
+  const exists = await query<{ world_id: number }>("SELECT id, world_id FROM characters WHERE id = ?", [cid]);
   if (exists.length === 0) return bad("찾을 수 없습니다.", 404);
 
   const body = await req.json().catch(() => ({}));
@@ -65,7 +65,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     const r = await fetchRefImage(d[0]?.url, req.nextUrl.origin);
     if (r) front.push(r);
   }
+  refs.push(...(await collectAssetRefs(body, { characterId: cid, worldId: Number(exists[0].world_id) }, req.nextUrl.origin)));
   refs.unshift(...front);
+  if (refs.length > MAX_REFS) return bad(`참조 이미지는 합산 최대 ${MAX_REFS}장입니다.`);
 
   let buffer: Buffer;
   try {
