@@ -33,7 +33,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   if (body.preset_id != null) {
     const presetId = Number(body.preset_id);
-    const presets = await query<{ name: string; month: number; day: number; notice_days: number; description: string }>(
+    const presets = await query<{ name: string; month: number; day: number; notice_days: number; duration_days: number; description: string }>(
       "SELECT * FROM anniversary_presets WHERE id = ?",
       [presetId]
     );
@@ -42,8 +42,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (dup.length > 0) return bad("이미 불러온 프리셋입니다.", 409);
     const p = presets[0];
     const result = await execute(
-      "INSERT INTO world_anniversaries (world_id, preset_id, name, month, day, notice_days, description) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [worldId, presetId, p.name, p.month, p.day, p.notice_days, p.description]
+      "INSERT INTO world_anniversaries (world_id, preset_id, name, month, day, notice_days, duration_days, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [worldId, presetId, p.name, p.month, p.day, p.notice_days, p.duration_days, p.description]
     );
     await invalidateChatContext();
     return NextResponse.json({ id: result.insertId }, { status: 201 });
@@ -51,10 +51,10 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const parsed = parseAnniversaryInput(body);
   if ("error" in parsed) return bad(parsed.error);
-  const { name, month, day, notice_days, description } = parsed.value;
+  const { name, month, day, notice_days, duration_days, description } = parsed.value;
   const result = await execute(
-    "INSERT INTO world_anniversaries (world_id, preset_id, name, month, day, notice_days, description) VALUES (?, NULL, ?, ?, ?, ?, ?)",
-    [worldId, name, month, day, notice_days, description]
+    "INSERT INTO world_anniversaries (world_id, preset_id, name, month, day, notice_days, duration_days, description) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)",
+    [worldId, name, month, day, notice_days, duration_days, description]
   );
   await invalidateChatContext();
   return NextResponse.json({ id: result.insertId }, { status: 201 });

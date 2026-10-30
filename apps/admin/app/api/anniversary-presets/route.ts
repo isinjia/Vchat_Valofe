@@ -12,10 +12,10 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const parsed = parseAnniversaryInput(await req.json().catch(() => ({})));
   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
-  const { name, month, day, notice_days, description } = parsed.value;
+  const { name, month, day, notice_days, duration_days, description } = parsed.value;
   const result = await execute(
-    "INSERT INTO anniversary_presets (name, month, day, notice_days, description) VALUES (?, ?, ?, ?, ?)",
-    [name, month, day, notice_days, description]
+    "INSERT INTO anniversary_presets (name, month, day, notice_days, duration_days, description) VALUES (?, ?, ?, ?, ?, ?)",
+    [name, month, day, notice_days, duration_days, description]
   );
   return NextResponse.json({ id: result.insertId }, { status: 201 });
 }

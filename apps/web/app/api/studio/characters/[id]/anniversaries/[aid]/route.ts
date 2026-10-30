@@ -23,10 +23,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if ("res" in g) return g.res;
   const parsed = parseAnniversaryInput(await req.json().catch(() => ({})));
   if ("error" in parsed) return bad(parsed.error);
-  const { name, month, day, notice_days, description } = parsed.value;
+  const { name, month, day, notice_days, duration_days, description } = parsed.value;
   await execute(
-    "UPDATE world_anniversaries SET name = ?, month = ?, day = ?, notice_days = ?, description = ? WHERE id = ?",
-    [name, month, day, notice_days, description, g.aid]
+    "UPDATE world_anniversaries SET name = ?, month = ?, day = ?, notice_days = ?, duration_days = ?, description = ? WHERE id = ?",
+    [name, month, day, notice_days, duration_days, description, g.aid]
   );
   await invalidateChatContext(g.cid);
   return NextResponse.json({ ok: true });

@@ -291,6 +291,7 @@ export interface AnniversaryPreset {
   month: number; // 1~12
   day: number; // 1~31
   notice_days: number; // 기념일 N일 전부터 언급 (0 = 당일만)
+  duration_days: number; // 시작일부터 며칠간 이어지는지 (기본 1)
   description: string;
   created_at: string;
 }
@@ -307,6 +308,8 @@ export interface WorldAnniversary {
   day: number;
   /** 기념일 N일 전부터 언급 (0 = 당일만) */
   notice_days: number;
+  /** 시작일부터 며칠간 이어지는지 (기본 1 — 축제/행사형은 여러 날) */
+  duration_days: number;
   description: string;
   created_at: string;
 }

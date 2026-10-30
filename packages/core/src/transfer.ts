@@ -39,7 +39,7 @@ export async function exportWorld(id: number): Promise<Record<string, unknown> |
     [id]
   );
   const anniversaries = await query<AnnivRow>(
-    `SELECT name, month, day, notice_days, description FROM world_anniversaries
+    `SELECT name, month, day, notice_days, duration_days, description FROM world_anniversaries
      WHERE world_id = ? AND character_id IS NULL ORDER BY month, day, id`,
     [id]
   );
@@ -70,7 +70,7 @@ export async function exportCharacter(id: number): Promise<Record<string, unknow
     [id]
   );
   const personalAnniversaries = await query<AnnivRow>(
-    "SELECT name, month, day, notice_days, description FROM world_anniversaries WHERE character_id = ? ORDER BY month, day, id",
+    "SELECT name, month, day, notice_days, duration_days, description FROM world_anniversaries WHERE character_id = ? ORDER BY month, day, id",
     [id]
   );
   const relationships = await query(
@@ -132,10 +132,10 @@ async function insertAnniv(worldId: number, characterId: number | null, e: unkno
     warnings.push(`기념일 건너뜀(${str((e as Record<string, unknown>)?.name) || "이름 없음"}): ${parsed.error}`);
     return false;
   }
-  const { name, month, day, notice_days, description } = parsed.value;
+  const { name, month, day, notice_days, duration_days, description } = parsed.value;
   await execute(
-    "INSERT INTO world_anniversaries (world_id, character_id, preset_id, name, month, day, notice_days, description) VALUES (?, ?, NULL, ?, ?, ?, ?, ?)",
-    [worldId, characterId, name, month, day, notice_days, description]
+    "INSERT INTO world_anniversaries (world_id, character_id, preset_id, name, month, day, notice_days, duration_days, description) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?)",
+    [worldId, characterId, name, month, day, notice_days, duration_days, description]
   );
   return true;
 }

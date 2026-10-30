@@ -8,11 +8,13 @@ interface Anniv {
   month: number;
   day: number;
   notice_days?: number;
+  duration_days?: number;
   description: string;
 }
 
-const EMPTY = { name: "", month: "", day: "", notice_days: "7", description: "" };
+const EMPTY = { name: "", month: "", day: "", notice_days: "7", duration_days: "1", description: "" };
 const noticeLabel = (n?: number) => ((n ?? 7) === 0 ? "당일만" : `D-${n ?? 7}부터`);
+const durLabel = (n?: number) => ((n ?? 1) > 1 ? ` (${n}일간)` : "");
 const mmdd = (m: number, d: number) => `${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
 /** 캐릭터 개인 기념일 섹션: 그 캐릭터만 기억하는 날 추가 + 목록/삭제 */
@@ -41,6 +43,7 @@ export default function CharacterAnniversarySection({ characterId }: { character
         month: Number(form.month),
         day: Number(form.day),
         notice_days: form.notice_days === "" ? 7 : Number(form.notice_days),
+        duration_days: form.duration_days === "" ? 1 : Number(form.duration_days),
         description: form.description,
       }),
     });
@@ -64,6 +67,7 @@ export default function CharacterAnniversarySection({ characterId }: { character
       month: String(a.month),
       day: String(a.day),
       notice_days: String(a.notice_days ?? 7),
+      duration_days: String(a.duration_days ?? 1),
       description: a.description ?? "",
     });
   };
@@ -84,6 +88,7 @@ export default function CharacterAnniversarySection({ characterId }: { character
         month: Number(editForm.month),
         day: Number(editForm.day),
         notice_days: editForm.notice_days === "" ? 7 : Number(editForm.notice_days),
+        duration_days: editForm.duration_days === "" ? 1 : Number(editForm.duration_days),
         description: editForm.description,
       }),
     });
@@ -124,6 +129,10 @@ export default function CharacterAnniversarySection({ characterId }: { character
             <input type="number" min={0} max={365} value={form.notice_days} onChange={(e) => setForm({ ...form, notice_days: e.target.value })} />
             <div className="muted">N일 전부터 대화에서 언급 (0=당일만)</div>
           </div>
+          <div>
+            <label title="시작일부터 며칠간 이어지는 기념일인지 (기본 1일)">기간(일)</label>
+            <input type="number" min={1} max={60} value={form.duration_days} title="시작일부터 며칠간 이어지는 기념일인지 (기본 1일)" onChange={(e) => setForm({ ...form, duration_days: e.target.value })} />
+          </div>
         </div>
         <label>설명</label>
         <textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
@@ -156,6 +165,10 @@ export default function CharacterAnniversarySection({ characterId }: { character
                         <label>언급 시작(일 전)</label>
                         <input type="number" min={0} max={365} value={editForm.notice_days} onChange={(e) => setEditForm({ ...editForm, notice_days: e.target.value })} />
                       </div>
+                      <div>
+                        <label title="시작일부터 며칠간 이어지는 기념일인지 (기본 1일)">기간(일)</label>
+                        <input type="number" min={1} max={60} value={editForm.duration_days} title="시작일부터 며칠간 이어지는 기념일인지 (기본 1일)" onChange={(e) => setEditForm({ ...editForm, duration_days: e.target.value })} />
+                      </div>
                     </div>
                     <label>설명</label>
                     <textarea rows={2} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
@@ -166,7 +179,7 @@ export default function CharacterAnniversarySection({ characterId }: { character
                 </tr>
               ) : (
               <tr key={a.id}>
-                <td>{mmdd(a.month, a.day)} <span className="muted">({noticeLabel(a.notice_days)})</span></td>
+                <td>{mmdd(a.month, a.day)}{durLabel(a.duration_days)} <span className="muted">({noticeLabel(a.notice_days)})</span></td>
                 <td>{a.name}</td>
                 <td>{a.description}</td>
                 <td>

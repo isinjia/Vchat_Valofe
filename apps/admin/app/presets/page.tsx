@@ -8,11 +8,13 @@ interface Preset {
   month: number;
   day: number;
   notice_days?: number;
+  duration_days?: number;
   description: string;
 }
 
-const EMPTY = { name: "", month: "", day: "", notice_days: "7", description: "" };
+const EMPTY = { name: "", month: "", day: "", notice_days: "7", duration_days: "1", description: "" };
 const noticeLabel = (n?: number) => ((n ?? 7) === 0 ? "당일만" : `D-${n ?? 7}부터`);
+const durLabel = (n?: number) => ((n ?? 1) > 1 ? ` (${n}일간)` : "");
 const mmdd = (m: number, d: number) => `${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
 interface EditState {
@@ -20,6 +22,7 @@ interface EditState {
   month: string;
   day: string;
   notice_days: string;
+  duration_days: string;
   description: string;
 }
 
@@ -51,6 +54,7 @@ export default function PresetsPage() {
         month: Number(form.month),
         day: Number(form.day),
         notice_days: form.notice_days === "" ? 7 : Number(form.notice_days),
+        duration_days: form.duration_days === "" ? 1 : Number(form.duration_days),
         description: form.description,
       }),
     });
@@ -76,6 +80,7 @@ export default function PresetsPage() {
       month: String(p.month),
       day: String(p.day),
       notice_days: String(p.notice_days ?? 7),
+      duration_days: String(p.duration_days ?? 1),
       description: p.description,
     });
   };
@@ -91,6 +96,7 @@ export default function PresetsPage() {
         month: Number(edit.month),
         day: Number(edit.day),
         notice_days: edit.notice_days === "" ? 7 : Number(edit.notice_days),
+        duration_days: edit.duration_days === "" ? 1 : Number(edit.duration_days),
         description: edit.description,
       }),
     });
@@ -126,6 +132,10 @@ export default function PresetsPage() {
             <input type="number" min={0} max={365} value={form.notice_days} onChange={(e) => setForm({ ...form, notice_days: e.target.value })} />
             <div className="muted">N일 전부터 대화에서 언급 (0=당일만)</div>
           </div>
+          <div>
+            <label title="시작일부터 며칠간 이어지는 기념일인지 (기본 1일)">기간(일)</label>
+            <input type="number" min={1} max={60} value={form.duration_days} title="시작일부터 며칠간 이어지는 기념일인지 (기본 1일)" onChange={(e) => setForm({ ...form, duration_days: e.target.value })} />
+          </div>
         </div>
         <label>설명 (어떤 날인지)</label>
         <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
@@ -157,6 +167,13 @@ export default function PresetsPage() {
                         onChange={(e) => setEdit({ ...edit, notice_days: e.target.value })}
                         title="기념일 N일 전부터 대화에서 언급 (0=당일만)" />
                     </div>
+                    <div style={{ marginTop: 4 }}>
+                      <span className="muted">기간</span>
+                      <input type="number" min={1} max={60} value={edit.duration_days} style={{ width: 62, display: "inline-block" }}
+                        onChange={(e) => setEdit({ ...edit, duration_days: e.target.value })}
+                        title="시작일부터 며칠간 이어지는 기념일인지 (기본 1일)" />
+                      <span className="muted">일</span>
+                    </div>
                   </td>
                   <td>
                     <input type="text" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
@@ -173,7 +190,7 @@ export default function PresetsPage() {
                 </tr>
               ) : (
                 <tr key={p.id}>
-                  <td>{mmdd(p.month, p.day)} <span className="muted">({noticeLabel(p.notice_days)})</span></td>
+                  <td>{mmdd(p.month, p.day)}{durLabel(p.duration_days)} <span className="muted">({noticeLabel(p.notice_days)})</span></td>
                   <td>{p.name}</td>
                   <td>{p.description}</td>
                   <td style={{ whiteSpace: "nowrap" }}>

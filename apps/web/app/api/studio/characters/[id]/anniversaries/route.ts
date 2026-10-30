@@ -29,11 +29,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   if ("res" in own) return own.res;
   const parsed = parseAnniversaryInput(await req.json().catch(() => ({})));
   if ("error" in parsed) return bad(parsed.error);
-  const { name, month, day, notice_days, description } = parsed.value;
+  const { name, month, day, notice_days, duration_days, description } = parsed.value;
   const characterId = Number(id);
   const result = await execute(
-    "INSERT INTO world_anniversaries (world_id, character_id, preset_id, name, month, day, notice_days, description) VALUES (?, ?, NULL, ?, ?, ?, ?, ?)",
-    [Number(own.row.world_id), characterId, name, month, day, notice_days, description]
+    "INSERT INTO world_anniversaries (world_id, character_id, preset_id, name, month, day, notice_days, duration_days, description) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?)",
+    [Number(own.row.world_id), characterId, name, month, day, notice_days, duration_days, description]
   );
   await invalidateChatContext(characterId);
   return NextResponse.json({ id: result.insertId }, { status: 201 });

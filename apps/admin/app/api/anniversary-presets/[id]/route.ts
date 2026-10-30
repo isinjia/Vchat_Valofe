@@ -10,10 +10,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const parsed = parseAnniversaryInput(await req.json().catch(() => ({})));
   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
-  const { name, month, day, notice_days, description } = parsed.value;
+  const { name, month, day, notice_days, duration_days, description } = parsed.value;
   await execute(
-    "UPDATE anniversary_presets SET name = ?, month = ?, day = ?, notice_days = ?, description = ? WHERE id = ?",
-    [name, month, day, notice_days, description, id]
+    "UPDATE anniversary_presets SET name = ?, month = ?, day = ?, notice_days = ?, duration_days = ?, description = ? WHERE id = ?",
+    [name, month, day, notice_days, duration_days, description, id]
   );
   return NextResponse.json({ ok: true });
 }

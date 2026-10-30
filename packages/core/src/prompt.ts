@@ -235,27 +235,32 @@ export function formatAnniversaryBlock(
   const upcoming: { diff: number; line: string }[] = [];
   let hasPersonal = false;
   for (const a of anniversaries) {
-    // 올해/내년 중 가장 가까운 미래(오늘 포함) 발생일 — 존재하지 않는 날짜(비윤년 2/29)는 건너뜀
-    let diff: number | null = null;
-    for (const y of [today.getFullYear(), today.getFullYear() + 1]) {
+    const duration = Math.max(1, Number(a.duration_days ?? 1));
+    // 작년/올해/내년 시작일 기준으로 ① 오늘이 기간 안인지 ② 다가오는 시작일까지 며칠인지 계산.
+    // 존재하지 않는 날짜(비윤년 2/29)는 건너뜀. 연도 경계(12월 말 시작 → 1월 초 진행 중)를 처리한다.
+    let diff: number | null = null; // 다가오는 시작일까지 남은 일수
+    let dayIndex: number | null = null; // 기간 중이면 오늘이 몇 일차인지 (0-base)
+    for (const y of [today.getFullYear() - 1, today.getFullYear(), today.getFullYear() + 1]) {
       const t = new Date(Date.UTC(y, a.month - 1, a.day));
       if (t.getUTCMonth() !== a.month - 1) continue;
-      const d = Math.round((t.getTime() - todayUtc) / 86400000);
-      if (d >= 0) {
-        diff = d;
+      const d = Math.round((todayUtc - t.getTime()) / 86400000); // 시작일로부터 지난 일수
+      if (d >= 0 && d < duration) {
+        dayIndex = d;
         break;
       }
+      if (d < 0 && diff == null) diff = -d;
     }
-    if (diff == null) continue;
     const noticeDays = Number(a.notice_days ?? 7);
     const label = a.character_id != null ? `${a.name}(개인적인 날)` : a.name;
-    if (diff === 0) {
+    if (dayIndex != null) {
       if (a.character_id != null) hasPersonal = true;
-      todayLines.push(`[기념일] 오늘은 '${label}' — ${cut(a.description)}`);
-    } else if (diff <= noticeDays) {
+      const phase = duration > 1 ? ` (${dayIndex + 1}일차 / 총 ${duration}일간 이어진다)` : "";
+      todayLines.push(`[기념일] 오늘은 '${label}'${phase} — ${cut(a.description)}`);
+    } else if (diff != null && diff <= noticeDays) {
       if (a.character_id != null) hasPersonal = true;
       const md = `${String(a.month).padStart(2, "0")}-${String(a.day).padStart(2, "0")}`;
-      upcoming.push({ diff, line: `[다가오는 기념일] ${diff}일 뒤(${md}) '${label}' — ${cut(a.description)}` });
+      const span = duration > 1 ? `${md}부터 ${duration}일간` : md;
+      upcoming.push({ diff, line: `[다가오는 기념일] ${diff}일 뒤(${span}) '${label}' — ${cut(a.description)}` });
     }
   }
   upcoming.sort((x, y) => x.diff - y.diff);
