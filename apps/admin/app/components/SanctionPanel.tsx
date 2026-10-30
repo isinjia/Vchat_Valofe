@@ -17,6 +17,7 @@ const KIND_LABEL: Record<string, string> = {
   chat_block: "모든 채팅 금지",
   new_chat_block: "신규 채팅 시작 금지",
   hide: "기간제 비공개",
+  admin_block: "관리권한 일시 정지",
 };
 
 const KIND_OPTIONS = {
@@ -95,9 +96,34 @@ export default function SanctionPanel({ targetType, targetId }: { targetType: "u
     load();
   };
 
+  const actives = list.filter((s) => statusOf(s) === "active");
+
   return (
     <div className="panel">
       <h3>제재</h3>
+      {actives.map((s) => (
+        <div
+          key={s.id}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            background: "#fdecec",
+            border: "1px solid #f0b4b4",
+            borderRadius: 8,
+            padding: "8px 12px",
+            marginBottom: 10,
+          }}
+        >
+          <span style={{ color: "#c42b2b", flex: 1 }}>
+            🚫 현재 제재 중 — {KIND_LABEL[s.kind] ?? s.kind}, {fmtDt(s.ends_at)} 까지
+            {s.reason ? ` (사유: ${s.reason})` : ""}
+          </span>
+          <button className="small" style={{ marginTop: 0 }} onClick={() => revoke(s.id)}>
+            지금 해제
+          </button>
+        </div>
+      ))}
       <div className="row">
         {options.length > 1 ? (
           <div>
