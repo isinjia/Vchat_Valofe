@@ -256,7 +256,12 @@ a { color: inherit; text-decoration: none; }
   flex-direction: column;
   gap: 6px;
 }
-.world-card .title-img { height: 96px; }
+.world-card .title-img { height: 96px; border-color: var(--world-color, var(--border)); }
+.world-card:hover .title-img {
+  border-color: var(--world-color, var(--accent));
+  box-shadow: 0 0 0 2px var(--world-color, var(--accent));
+  filter: brightness(1.08);
+}
 /* '전체' 버튼 — 세계관 카드와 같은 크기의 타일 */
 .world-all-tile {
   display: flex;
@@ -265,13 +270,23 @@ a { color: inherit; text-decoration: none; }
   font-size: 22px;
   color: var(--muted);
 }
-.world-card.active .title-img { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.world-card.active .title-img {
+  border-color: var(--world-color, var(--accent));
+  box-shadow: 0 0 0 2px var(--world-color, var(--accent));
+}
 .world-card.active span { color: var(--accent); font-weight: 600; }
 .world-card .world-card-owner { color: var(--muted); font-size: 10px; }
 .world-card.active .world-card-owner { color: var(--muted); font-weight: 400; }
 
 .char-card { display: block; width: 140px; }
-.char-card:hover .title-img { border-color: var(--accent); }
+/* 세계관 타이틀 컬러(--world-color)가 있으면 테두리에 쓰고,
+   호버 시엔 같은 색 2px 링 + 밝기 업으로 반응이 분명히 보이게 */
+.char-card .title-img { border-color: var(--world-color, var(--border)); }
+.char-card:hover .title-img {
+  border-color: var(--world-color, var(--accent));
+  box-shadow: 0 0 0 2px var(--world-color, var(--accent));
+  filter: brightness(1.08);
+}
 .char-card-name { margin-top: 6px; font-size: 14px; font-weight: 600; }
 .char-card-world { color: var(--muted); font-size: 12px; margin-top: 2px; }
 

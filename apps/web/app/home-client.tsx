@@ -49,15 +49,18 @@ interface LikeProps {
 
 function CharCard({ c, like }: { c: CharItem; like: LikeProps }) {
   const img = c.title_image_url || c.thumb;
-  // 세계관 타이틀 컬러를 카드 테두리로
-  const border = c.title_color && /^#[0-9a-fA-F]{6}$/.test(c.title_color) ? { borderColor: c.title_color } : undefined;
+  // 세계관 타이틀 컬러를 CSS 변수로 — 호버 링/테두리가 같은 색을 쓰되 호버 반응은 유지
+  const colorVar =
+    c.title_color && /^#[0-9a-fA-F]{6}$/.test(c.title_color)
+      ? ({ "--world-color": c.title_color } as React.CSSProperties)
+      : undefined;
   return (
-    <Link href={`/chat/${c.id}`} className="char-card">
+    <Link href={`/chat/${c.id}`} className="char-card" style={colorVar} title={`${c.name} — ${c.world_name}`}>
       {img ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={img} alt={c.name} className="title-img" style={border} />
+        <img src={img} alt={c.name} className="title-img" />
       ) : (
-        <div className="title-img placeholder" style={border} />
+        <div className="title-img placeholder" />
       )}
       <div className="char-card-name">{c.name}</div>
       <div className="char-card-world">
@@ -224,15 +227,19 @@ export default function HomeClient() {
           <button
             key={w.id}
             className={`world-card ${worldId === w.id ? "active" : ""}`}
+            style={
+              w.title_color && /^#[0-9a-fA-F]{6}$/.test(w.title_color)
+                ? ({ "--world-color": w.title_color } as React.CSSProperties)
+                : undefined
+            }
+            title={`${w.name}${w.owner_name ? ` — by ${w.owner_name}` : ""}`}
             onClick={() => setWorldId(worldId === w.id ? null : w.id)}
           >
             {w.title_image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={w.title_image_url} alt={w.name} className="title-img"
-                style={w.title_color && /^#[0-9a-fA-F]{6}$/.test(w.title_color) ? { borderColor: w.title_color } : undefined} />
+              <img src={w.title_image_url} alt={w.name} className="title-img" />
             ) : (
-              <div className="title-img placeholder"
-                style={w.title_color && /^#[0-9a-fA-F]{6}$/.test(w.title_color) ? { borderColor: w.title_color } : undefined} />
+              <div className="title-img placeholder" />
             )}
             <span>{w.name}</span>
             {w.owner_name && <span className="world-card-owner">by {w.owner_name}</span>}
