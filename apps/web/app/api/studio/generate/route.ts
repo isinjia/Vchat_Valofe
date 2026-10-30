@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { query, chargeCoins, getPricingSettings, getLlmSettings, type World } from "@vchatbot/core";
+import {
+  query,
+  chargeCoins,
+  getPricingSettings,
+  getLlmSettings,
+  resolveProviderById,
+  createAdapter,
+  recordLlmUsage,
+  resolveAiAssistPricing,
+  calcAiAssistCost,
+  type World,
+} from "@vchatbot/core";
 import { requireUser, ownedWorld, ownedCharacter, bad } from "@/lib/studio";
 
 export const runtime = "nodejs";
@@ -94,22 +105,80 @@ export async function POST(req: NextRequest) {
   }
   if (hint) parts.push(`# 작성 요청/힌트\n${hint}`);
 
-  const cost = (await getPricingSettings()).aiAssistCost;
+  const pricing = await getPricingSettings();
+  // 유저 본인 Claude 키(BYOK): 관리자가 허용했고 키가 등록돼 있으면 유저 키로 직접 호출 (코인은 정액만)
+  const keyRows = await query<{ claude_api_key: string | null }>(
+    "SELECT claude_api_key FROM users WHERE id = ?",
+    [userId]
+  );
+  const userKey = keyRows[0]?.claude_api_key || "";
+  const byokActive = !!(pricing.byok?.enabled && userKey);
+  let cost = byokActive ? pricing.byok!.cost : resolveAiAssistPricing(pricing, kind).minCost;
 
   let text: string;
   try {
     const llm = await getLlmSettings();
-    const response = await client.messages.create({
-      model: llm.model,
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: `${parts.join("\n\n")}\n\n---\n${TASKS[kind]}` }],
-    });
-    text = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("")
-      .trim();
+    const userContent = `${parts.join("\n\n")}\n\n---\n${TASKS[kind]}`;
+    const assist =
+      !byokActive && llm.assistProviderId ? await resolveProviderById(Number(llm.assistProviderId)) : null;
+    if (byokActive) {
+      try {
+        const response = await new Anthropic({ apiKey: userKey }).messages.create({
+          model: llm.model,
+          max_tokens: 1024,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: userContent }],
+        });
+        text = response.content
+          .filter((b): b is Anthropic.TextBlock => b.type === "text")
+          .map((b) => b.text)
+          .join("")
+          .trim();
+        // usage(response.usage)는 BYOK 과금에 쓰지 않는다 (정액)
+      } catch (err) {
+        // 유저 키 호출 실패: 코인 차감 없이 502
+        console.error("studio generate byok error:", err);
+        const detail =
+          err instanceof Anthropic.APIError
+            ? `(${err.status}): ${err.message}`
+            : `: ${(err as Error).message ?? "알 수 없는 오류"}`;
+        return NextResponse.json(
+          { error: `내 Claude API 키 호출 오류 ${detail} — 스튜디오 홈에서 키를 확인하거나 삭제할 수 있습니다.` },
+          { status: 502 }
+        );
+      }
+    } else if (assist) {
+      const adapter = await createAdapter(assist.provider, assist.account);
+      const stream = adapter.streamChat({
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userContent }],
+        maxTokens: 1024,
+      });
+      let acc = "";
+      for await (const d of stream.deltas) acc += d;
+      text = acc.trim();
+      const usage = stream.outcome().usage;
+      if (usage) {
+        await recordLlmUsage(assist.provider.id, assist.account?.id ?? null, usage);
+        cost = calcAiAssistCost(resolveAiAssistPricing(pricing, kind), usage);
+      }
+    } else {
+      const response = await client.messages.create({
+        model: llm.model,
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userContent }],
+      });
+      text = response.content
+        .filter((b): b is Anthropic.TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("")
+        .trim();
+      cost = calcAiAssistCost(resolveAiAssistPricing(pricing, kind), {
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+      });
+    }
   } catch (err) {
     console.error("studio generate error:", err);
     const msg =
@@ -121,6 +190,10 @@ export async function POST(req: NextRequest) {
   if (!text) return NextResponse.json({ error: "생성 결과가 비어 있습니다." }, { status: 502 });
 
   // 생성 성공 후 차감
-  const balance = await chargeCoins(userId, cost, "ai_assist_spend", { refType, refId, memo: kind });
-  return NextResponse.json({ text, cost, balance });
+  const balance = await chargeCoins(userId, cost, "ai_assist_spend", {
+    refType,
+    refId,
+    memo: byokActive ? `${kind} (내 키)` : kind,
+  });
+  return NextResponse.json({ text, cost, balance, byok: byokActive });
 }

@@ -16,6 +16,8 @@ interface Props {
   open: boolean;
   title?: string;
   aspect: number | "free";
+  /** true 면 크롭 프레임을 원형 마스크로 표시 (저장 이미지는 사각형) */
+  circle?: boolean;
   onCancel: () => void;
   onConfirm: (blob: Blob, filename: string) => Promise<void>;
 }
@@ -43,7 +45,7 @@ interface Src {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
-export default function ImageCropModal({ open, title, aspect, onCancel, onConfirm }: Props) {
+export default function ImageCropModal({ open, title, aspect, circle, onCancel, onConfirm }: Props) {
   const [src, setSrc] = useState<Src | null>(null);
   const [freeMode, setFreeMode] = useState<FreeMode>("orig");
   const [zoom, setZoom] = useState(1);
@@ -309,7 +311,7 @@ export default function ImageCropModal({ open, title, aspect, onCancel, onConfir
                   maxWidth: "none",
                 }}
               />
-              <div className="crop-frame" style={{ left: MARGIN, top: MARGIN, width: fw, height: fh }} />
+              <div className={`crop-frame${circle ? " circle" : ""}`} style={{ left: MARGIN, top: MARGIN, width: fw, height: fh }} />
             </div>
 
             <div className="crop-zoom-row">

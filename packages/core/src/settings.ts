@@ -24,10 +24,13 @@ export const DEFAULT_LLM_SETTINGS: LlmSettings = {
   model: "claude-opus-5-5",
   maxTokens: 4096,
   historyLimit: 100,
+  assistProviderId: null,
+  fallbackProviderId: null,
 };
 
 export async function getLlmSettings(): Promise<LlmSettings> {
-  return (await getSetting<LlmSettings>("llm")) ?? DEFAULT_LLM_SETTINGS;
+  const saved = await getSetting<Partial<LlmSettings>>("llm");
+  return { ...DEFAULT_LLM_SETTINGS, ...(saved ?? {}) };
 }
 
 export async function getStorageSettings(): Promise<StorageSettings | null> {
@@ -58,12 +61,18 @@ export interface ScoringSettings {
   guestEnabled: boolean;
   /** 최근 N개 assistant 메시지 안에 게스트가 있었으면 미발동 */
   guestMinGap: number;
+  /** 채점용 LLM (llm_providers.id). null = 위 model 로 Anthropic 직접 호출 */
+  scoringProviderId?: number | null;
+  /** 채점 타임아웃(ms) */
+  timeoutMs: number;
 }
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
   model: "claude-haiku-5-5",
   enabled: true,
   guestEnabled: true,
   guestMinGap: 5,
+  scoringProviderId: null,
+  timeoutMs: 10000,
 };
 
 export async function getScoringSettings(): Promise<ScoringSettings> {
@@ -104,14 +113,77 @@ export async function getImageGenSettings(): Promise<ImageGenSettings> {
   return { ...DEFAULT_IMAGE_GEN_SETTINGS, ...(v ?? {}) };
 }
 
+/** 스튜디오 AI 보조 기능별 과금: 1K토큰(입력+출력)당 코인 + 최소(정액) 코인 */
+export interface AiAssistPricing {
+  /** 1,000토큰당 코인. 0 이면 minCost 정액만 차감 */
+  coinsPer1k: number;
+  /** 최소(정액) 코인 */
+  minCost: number;
+}
+
+/** 스튜디오 AI 보조 기능(kind) 목록 — /api/studio/generate 의 TASKS 와 일치 */
+export const AI_ASSIST_KINDS = [
+  "world_description",
+  "world_prompt",
+  "profile",
+  "personality",
+  "speech_style",
+  "scenario",
+  "greeting",
+] as const;
+
+export const AI_ASSIST_KIND_LABELS: Record<string, string> = {
+  world_description: "세계관 설명",
+  world_prompt: "세계관 공통 프롬프트",
+  profile: "캐릭터 프로필",
+  personality: "기본 성격",
+  speech_style: "말투",
+  scenario: "상황 설정",
+  greeting: "첫 인사말",
+};
+
 /** 코인 가격 설정 */
 export interface PricingSettings {
+  /** 기능별 미설정 시 기본 정액(코인) */
   aiAssistCost: number;
   illustGenCost: number;
+  /** AI 보조 기능(kind)별 과금 설정 */
+  aiAssist?: Partial<Record<string, AiAssistPricing>>;
+  /** 유저 본인 Claude 키(BYOK) 사용 시: 허용 여부 + 1회 정액 코인 */
+  byok?: { enabled: boolean; cost: number };
 }
-export const DEFAULT_PRICING_SETTINGS: PricingSettings = { aiAssistCost: 50, illustGenCost: 500 };
+export const DEFAULT_PRICING_SETTINGS: PricingSettings = {
+  aiAssistCost: 50,
+  illustGenCost: 500,
+  aiAssist: {},
+  byok: { enabled: true, cost: 10 },
+};
 
 export async function getPricingSettings(): Promise<PricingSettings> {
   const v = await getSetting<Partial<PricingSettings>>("pricing");
-  return { ...DEFAULT_PRICING_SETTINGS, ...(v ?? {}) };
+  return {
+    ...DEFAULT_PRICING_SETTINGS,
+    ...(v ?? {}),
+    aiAssist: { ...(v?.aiAssist ?? {}) },
+    byok: { ...DEFAULT_PRICING_SETTINGS.byok!, ...(v?.byok ?? {}) },
+  };
+}
+
+/** kind 별 과금 설정 해석 (미설정 kind 는 기본 정액 aiAssistCost) */
+export function resolveAiAssistPricing(p: PricingSettings, kind: string): AiAssistPricing {
+  const k = p.aiAssist?.[kind];
+  return {
+    coinsPer1k: Math.max(0, Number(k?.coinsPer1k) || 0),
+    minCost: Math.max(0, Number(k?.minCost ?? p.aiAssistCost) || 0),
+  };
+}
+
+/** 토큰 사용량 기반 비용. 요율 0 또는 usage 미제공이면 정액(minCost) */
+export function calcAiAssistCost(
+  pr: AiAssistPricing,
+  usage?: { inputTokens?: number; outputTokens?: number } | null
+): number {
+  if (pr.coinsPer1k <= 0 || !usage) return pr.minCost;
+  const tokens = (Number(usage.inputTokens) || 0) + (Number(usage.outputTokens) || 0);
+  return Math.max(pr.minCost, Math.ceil((tokens * pr.coinsPer1k) / 1000));
 }

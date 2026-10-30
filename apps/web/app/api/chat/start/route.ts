@@ -6,10 +6,15 @@ import {
   saveMessages,
   buildSystemPrompt,
   OPENING_INSTRUCTION,
+  formatTimeBlock,
   pickIllustration,
   getLlmSettings,
   resolveLlmForUser,
+  resolveAiLevelForUser,
   createAdapter,
+  recordLlmUsage,
+  isCharacterHidden,
+  getUserChatBlockMessage,
   type LlmChatMessage,
   getRagSettings,
   chargeChatWithFees,
@@ -52,14 +57,33 @@ export async function POST(req: NextRequest) {
   if (ctx.character.status === "suspended" || ctx.world.status === "suspended") {
     return Response.json({ error: "사용이 중지된 캐릭터 또는 세계관입니다." }, { status: 403 });
   }
+  if (ctx.character.delete_scheduled_at || ctx.world.delete_scheduled_at) {
+    return Response.json({ error: "삭제 대기 중인 캐릭터 또는 세계관입니다." }, { status: 403 });
+  }
+  // 오프닝은 신규 대화 — 제재(기간제 비공개) 캐릭터는 시작 불가 (기존 대화자는 /api/chat 로 계속 가능)
+  if (await isCharacterHidden(ctx.character.id)) {
+    return Response.json({ error: "운영 제재로 신규 대화를 시작할 수 없는 캐릭터입니다." }, { status: 403 });
+  }
   const userRows = await query<{ status: string }>("SELECT status FROM users WHERE id = ?", [userId]);
   if (userRows[0]?.status === "banned") {
     return Response.json({ error: "이용이 제한된 계정입니다." }, { status: 403 });
   }
+  // 오프닝은 항상 신규 대화 — 유저 기간제 제재(전체/신규) 모두 차단
+  const blockMsg = await getUserChatBlockMessage(userId, true);
+  if (blockMsg) return Response.json({ error: blockMsg }, { status: 403 });
 
   // 이미 대화 이력이 있으면 오프닝 불필요
   const existing = await loadRecentMessages(userId, ctx.character.id, 1);
   if (existing.length > 0) return Response.json({ started: false });
+
+  // 브라우저 AI 레벨 유저 + 제작자 인사말 없음 → 서버 LLM 대신 브라우저 생성 경로로 안내
+  const greetingText = ctx.character.greeting?.trim() ?? "";
+  if (!greetingText) {
+    const level = await resolveAiLevelForUser(userId);
+    if (level?.kind === "browser") {
+      return Response.json({ started: false, browserOpening: true });
+    }
+  }
 
   const key = `${userId}:${ctx.character.id}`;
   if (inflight.has(key)) return Response.json({ started: false });
@@ -86,10 +110,13 @@ export async function POST(req: NextRequest) {
           const rag = await getRagSettings();
           const dictChars = ctx.dictionary.reduce((n, d) => n + d.title.length + d.content.length, 0);
           const systemPrompt = buildSystemPrompt(ctx, { includeDictionary: dictChars <= rag.thresholdChars });
-          const messages: LlmChatMessage[] = [{ role: "user", content: OPENING_INSTRUCTION }];
+          // 시간 블록을 함께 줘서 오프닝이 아침/밤 같은 시간대에 어울리게 한다
+          const messages: LlmChatMessage[] = [
+            { role: "user", content: `${formatTimeBlock(new Date(), null)}\n\n${OPENING_INSTRUCTION}` },
+          ];
 
-          const { provider } = await resolveLlmForUser(userId);
-          const adapter = await createAdapter(provider);
+          const { provider, account } = await resolveLlmForUser(userId);
+          const adapter = await createAdapter(provider, account);
           const llmStream = adapter.streamChat({
             system: systemPrompt,
             messages,
@@ -100,6 +127,9 @@ export async function POST(req: NextRequest) {
             send({ type: "text", delta });
           }
           const outcome = llmStream.outcome();
+          if (outcome.usage) {
+            await recordLlmUsage(provider?.id ?? null, account?.id ?? null, outcome.usage);
+          }
 
           // 과금 + 수수료 분배 (실패해도 이미 전송된 응답은 유지)
           let creatorFee = 0;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query, execute, invalidateChatContext } from "@vchatbot/core";
+import { query, execute, invalidateChatContext, scheduleDeletion, cancelDeletion } from "@vchatbot/core";
 import { requireUser, ownedCharacter, bad, canUseWorld, visibilityOf } from "@/lib/studio";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,19 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
   const own = await ownedCharacter(id, auth.userId);
   if ("res" in own) return own.res;
-  return NextResponse.json(own.row);
+  // 제작자에게 활성 제재(기간제 비공개)의 사유/기간을 함께 보여준다
+  const sanction = await query<{ reason: string | null; ends_at: string }>(
+    `SELECT reason, ends_at FROM sanctions
+     WHERE target_type = 'character' AND target_id = ? AND kind = 'hide'
+       AND revoked_at IS NULL AND ends_at > NOW()
+     ORDER BY ends_at DESC LIMIT 1`,
+    [Number(id)]
+  );
+  return NextResponse.json({
+    ...own.row,
+    sanction_until: sanction[0]?.ends_at ?? null,
+    sanction_reason: sanction[0]?.reason ?? null,
+  });
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {
@@ -64,13 +76,26 @@ export async function PUT(req: NextRequest, { params }: Params) {
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+/**
+ * DELETE body:
+ *   { name } — 이름 확인 후 3일 삭제 대기 등록 (대기 중 취소 가능)
+ *   { cancel: true } — 삭제 대기 취소
+ */
+export async function DELETE(req: NextRequest, { params }: Params) {
   const auth = await requireUser();
   if ("res" in auth) return auth.res;
   const { id } = await params;
   const own = await ownedCharacter(id, auth.userId);
   if ("res" in own) return own.res;
-  await execute("DELETE FROM characters WHERE id = ? AND owner_user_id = ?", [Number(id), auth.userId]);
-  await invalidateChatContext(Number(id));
-  return NextResponse.json({ ok: true });
+  const body = await req.json().catch(() => ({}));
+  if (body?.cancel === true) {
+    await cancelDeletion("character", Number(id), auth.userId);
+    return NextResponse.json({ ok: true, canceled: true });
+  }
+  try {
+    const { scheduledAt } = await scheduleDeletion("character", Number(id), String(body?.name ?? ""), auth.userId);
+    return NextResponse.json({ ok: true, scheduledAt });
+  } catch (e) {
+    return bad((e as Error).message);
+  }
 }

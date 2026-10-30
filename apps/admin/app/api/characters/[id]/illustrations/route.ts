@@ -37,13 +37,15 @@ export async function POST(req: NextRequest, { params }: Params) {
       .split(",")
       .map((k) => k.trim())
       .filter(Boolean);
-    if (keywords.length === 0) {
+    const reqEv = Number(form.get("requireEventId"));
+    const requireEventId = Number.isInteger(reqEv) && reqEv > 0 ? reqEv : undefined;
+    if (keywords.length === 0 && !requireEventId) {
       return NextResponse.json(
-        { error: "conditional 일러스트는 트리거 키워드가 필요합니다." },
+        { error: "conditional 일러스트는 트리거 키워드 또는 이벤트 조건이 필요합니다." },
         { status: 400 }
       );
     }
-    triggerCondition = JSON.stringify({ type: "keyword", keywords });
+    triggerCondition = JSON.stringify({ type: "keyword", keywords, ...(requireEventId ? { requireEventId } : {}) });
   }
 
   let storage;

@@ -1,5 +1,6 @@
 import { getPool, query } from "./mysql";
 import { getFeeSettings } from "./settings";
+import { resolveAiLevelForUser } from "./ai-levels";
 
 /** 잔액이 이 값 미만이면 차감 전에 자동 지급 */
 export const AUTO_TOPUP_THRESHOLD = 10_000;
@@ -124,7 +125,14 @@ export async function chargeChatWithFees(
   const worldOwner = target.worldOwnerId;
   if (charOwner && charOwner !== userId) {
     const fees = await getFeeSettings();
-    creatorFee = Math.floor(cost * fees.creatorRate);
+    // 크리에이터 등급의 수수료 가산(%p) 적용
+    const bonusRows = await query<{ fee_bonus: number | string }>(
+      `SELECT t.fee_bonus FROM users u JOIN chat_tiers t ON t.id = u.creator_tier_id WHERE u.id = ?`,
+      [charOwner]
+    );
+    const bonus = Math.max(0, Number(bonusRows[0]?.fee_bonus) || 0) / 100;
+    const rate = Math.min(0.9, fees.creatorRate + bonus);
+    creatorFee = Math.floor(cost * rate);
     if (worldOwner && worldOwner !== charOwner && worldOwner !== userId) {
       worldFee = Math.floor(creatorFee * fees.worldRate);
     }
@@ -164,12 +172,26 @@ export async function resolveTierId(userId: number): Promise<number | null> {
   return def[0]?.id ?? null;
 }
 
-/** 유저 등급의 채팅 1회 코인 비용 (등급 없으면 100) */
+/**
+ * 채팅 1회 코인 비용.
+ * AI 레벨이 있으면: 레벨 기본 비용 × (1 - 유저 등급 할인율%).
+ * 레벨이 없으면(레거시): 등급의 chat_cost.
+ */
 export async function getChatCostForUser(userId: number): Promise<number> {
+  const level = await resolveAiLevelForUser(userId);
   const tierId = await resolveTierId(userId);
-  if (tierId == null) return 100;
-  const rows = await query<{ chat_cost: number }>("SELECT chat_cost FROM chat_tiers WHERE id = ?", [
-    tierId,
-  ]);
-  return rows.length ? Number(rows[0].chat_cost) : 100;
+  let tierCost = 100;
+  let discount = 0;
+  if (tierId != null) {
+    const rows = await query<{ chat_cost: number; discount_rate: number | string }>(
+      "SELECT chat_cost, discount_rate FROM chat_tiers WHERE id = ?",
+      [tierId]
+    );
+    if (rows.length) {
+      tierCost = Number(rows[0].chat_cost);
+      discount = Math.min(100, Math.max(0, Number(rows[0].discount_rate) || 0));
+    }
+  }
+  if (level) return Math.max(0, Math.ceil(Number(level.chat_cost) * (1 - discount / 100)));
+  return tierCost;
 }

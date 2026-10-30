@@ -10,8 +10,11 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   const rows = await cached("cache:web:worlds", 3600, () =>
-    query<{ id: number; name: string; title_image_url: string | null }>(
-      "SELECT id, name, title_image_url FROM worlds WHERE is_active = 1 AND visibility = 'open' AND status = 'active' ORDER BY id"
+    query<{ id: number; name: string; title_image_url: string | null; title_color: string | null; owner_name: string | null }>(
+      `SELECT w.id, w.name, w.title_image_url, w.title_color, uo.nickname AS owner_name
+       FROM worlds w LEFT JOIN users uo ON uo.id = w.owner_user_id
+       WHERE w.is_active = 1 AND w.visibility = 'open' AND w.status = 'active' AND w.delete_scheduled_at IS NULL
+       ORDER BY w.id`
     )
   );
   return NextResponse.json(rows);

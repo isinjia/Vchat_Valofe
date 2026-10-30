@@ -14,3 +14,19 @@ export const jsonInit = (method: string, body: unknown): RequestInit => ({
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(body),
 });
+
+/** /api/studio/pricing 응답 */
+export interface PricingInfo {
+  aiAssistCost: number;
+  illustGenCost: number;
+  aiAssist: Record<string, { coinsPer1k: number; minCost: number }>;
+  byok: { enabled: boolean; cost: number; hasKey: boolean };
+}
+
+/** AI 생성 버튼의 kind별 비용 라벨 (BYOK 정액 / 토큰 비례 "N~" / 정액) */
+export function aiCostLabel(p: PricingInfo | null, kind: string): string {
+  if (!p) return "";
+  if (p.byok?.enabled && p.byok.hasKey) return ` (-${p.byok.cost.toLocaleString()}코인)`;
+  const pr = p.aiAssist?.[kind] ?? { coinsPer1k: 0, minCost: p.aiAssistCost };
+  return pr.coinsPer1k > 0 ? ` (-${pr.minCost.toLocaleString()}~코인)` : ` (-${pr.minCost.toLocaleString()}코인)`;
+}

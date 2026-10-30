@@ -5,8 +5,11 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import DictionaryBrowser from "../../components/DictionaryBrowser";
 import ImageCropModal from "../../components/ImageCropModal";
+import CharacterProfilesSection from "./CharacterProfilesSection";
 import CharacterAnniversarySection from "./CharacterAnniversarySection";
-import { studioFetch, jsonInit } from "../../studio-api";
+import CharacterEventsSection from "./CharacterEventsSection";
+import { studioFetch, jsonInit, aiCostLabel, type PricingInfo } from "../../studio-api";
+import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
 import WorldPickerModal, { WorldMini, type PickedWorld } from "../../components/WorldPickerModal";
 
 interface Character {
@@ -21,6 +24,10 @@ interface Character {
   greeting: string | null;
   visibility: "private" | "open";
   title_image_url?: string | null;
+  delete_scheduled_at?: string | null;
+  /** 활성 제재(기간제 비공개) — 제작자 안내용 */
+  sanction_until?: string | null;
+  sanction_reason?: string | null;
 }
 
 interface WorldOpt {
@@ -35,7 +42,7 @@ interface Illust {
   kind: "basic" | "conditional";
   url: string;
   description: string | null;
-  trigger_condition: { type: string; keywords: string[] } | string | null;
+  trigger_condition: { type: string; keywords: string[]; requireEventId?: number } | string | null;
 }
 
 interface DictOpt {
@@ -64,16 +71,35 @@ interface Rel {
   relation: string;
 }
 
+function triggerEventId(i: Illust): number | null {
+  if (!i.trigger_condition) return null;
+  try {
+    const t = typeof i.trigger_condition === "string" ? JSON.parse(i.trigger_condition) : i.trigger_condition;
+    return typeof t.requireEventId === "number" ? t.requireEventId : null;
+  } catch {
+    return null;
+  }
+}
+
 function triggerKeywords(i: Illust): string[] {
   if (!i.trigger_condition) return [];
   const t = typeof i.trigger_condition === "string" ? JSON.parse(i.trigger_condition) : i.trigger_condition;
   return t.keywords ?? [];
 }
 
-/** AI 일러스트 기본 프롬프트: 캐릭터 이름 + 프로필 첫 문장 */
-const defaultIllustPrompt = (c: { name: string; profile: string }) => {
-  const first = (c.profile ?? "").split(/(?<=[.!?。])\s|\n/)[0]?.trim() ?? "";
-  return `${c.name}, ${first} 세로형 캐릭터 일러스트, 고품질`.replace(/\s+/g, " ").trim();
+/** AI 이미지 생성 모달 자동 채움 프롬프트 (편집 중인 폼 값 사용) */
+const buildImagePrompt = (
+  c: { name: string; profile: string; personality: string; ai_prompt: string },
+  asTitle: boolean,
+  extra?: { kind: "basic" | "conditional"; description: string; keywords: string }
+) => {
+  let p = `캐릭터 일러스트를 생성한다.${asTitle ? " 세로형 3:4 타이틀 일러스트." : ""}\n이름: ${c.name}\n외모/설정: ${c.profile}\n성격: ${c.personality}`;
+  if (c.ai_prompt?.trim()) p += `\n상세 설정: ${c.ai_prompt.trim().slice(0, 500)}`;
+  if (!asTitle && extra?.kind === "conditional") {
+    if (extra.description.trim()) p += `\n장면 설명: ${extra.description.trim()}`;
+    if (extra.keywords.trim()) p += `\n표현할 상황/감정 키워드: ${extra.keywords.trim()}`;
+  }
+  return p;
 };
 
 type GenKind ="profile" | "personality" | "speech_style" | "scenario" | "greeting";
@@ -89,6 +115,9 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
   // 모달에서 선택한 세계관 (목록 조회 전/비공개 전환 케이스에도 표시되도록 별도 보관)
   const [pickedWorld, setPickedWorld] = useState<PickedWorld | null>(null);
   const [illusts, setIllusts] = useState<Illust[]>([]);
+  const [events, setEvents] = useState<{ id: number; name: string }[]>([]);
+  const [upReqEvent, setUpReqEvent] = useState(""); // 업로드: 이벤트 달성 필요
+  const [aiReqEvent, setAiReqEvent] = useState(""); // AI 생성: 이벤트 달성 필요
   // 관계/기억: 대상 후보(세계관 공통 사전 항목), 등록된 관계, 입력값
   const [entries, setEntries] = useState<DictOpt[]>([]);
   const [rels, setRels] = useState<Rel[]>([]);
@@ -99,7 +128,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
   const [newPriv, setNewPriv] = useState({ category: "term" as PrivEntry["category"], title: "", aliases: "", content: "" });
   const [saved, setSaved] = useState(false);
   const [tab, setTab] = useState("basic"); // 편집 탭
-  const [cost, setCost] = useState<number | null>(null);
+  const [pricing, setPricing] = useState<PricingInfo | null>(null);
   const [generating, setGenerating] = useState<string | null>(null);
   const [titleCropOpen, setTitleCropOpen] = useState(false); // 타이틀 이미지 크롭 팝업
   const [illustCropOpen, setIllustCropOpen] = useState(false); // 일러스트 크롭 팝업
@@ -109,17 +138,21 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
     keywords: "",
   });
   const [illustCost, setIllustCost] = useState<number | null>(null);
+  const [genModal, setGenModal] = useState<null | "illust" | "title">(null); // AI 이미지 생성 모달
   const [ai, setAi] = useState({
-    prompt: "",
     kind: "basic" as "basic" | "conditional",
     keywords: "",
     description: "",
-    asTitle: false,
   });
-  const [aiGenerating, setAiGenerating] = useState(false);
 
   const loadIllusts = () =>
     studioFetch(`/api/studio/characters/${id}/illustrations`).then((r) => r.json()).then(setIllusts).catch(() => {});
+  const loadEvents = () =>
+    studioFetch(`/api/studio/characters/${id}/events`).then((r) => r.json()).then((d) => setEvents(Array.isArray(d) ? d : [])).catch(() => {});
+  useEffect(() => {
+    loadEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const loadRels = () =>
     studioFetch(`/api/studio/characters/${id}/relationships`)
@@ -137,12 +170,11 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
           .then((r) => r.json())
           .then((l) => setEntries(Array.isArray(l) ? l : []))
           .catch(() => {});
-        setAi((prev) => ({ ...prev, prompt: prev.prompt || defaultIllustPrompt(d) }));
       }
     });
     studioFetch("/api/studio/worlds").then((r) => r.json()).then(setMine).catch(() => {});
     studioFetch("/api/studio/open-worlds").then((r) => r.json()).then(setOpen).catch(() => {});
-    studioFetch("/api/studio/pricing").then((r) => r.json()).then((p) => { setCost(p.aiAssistCost); setIllustCost(p.illustGenCost ?? null); }).catch(() => {});
+    studioFetch("/api/studio/pricing").then((r) => r.json()).then((p) => { setPricing(p); setIllustCost(p.illustGenCost ?? null); }).catch(() => {});
     loadIllusts();
     loadRels();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -151,7 +183,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
   if (error) return <div className="container studio"><p className="empty">{error}</p></div>;
   if (!char) return <div className="container studio"><p className="muted-center">로딩 중...</p></div>;
 
-  const costLabel = cost != null ? ` (-${cost.toLocaleString()}코인)` : "";
+  const costLabel = (kind: string) => aiCostLabel(pricing, kind);
   const myIds = new Set(mine.map((w) => w.id));
   const set = (patch: Partial<Character>) => setChar({ ...char, ...patch });
 
@@ -271,7 +303,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
 
   const GenButton = ({ kind }: { kind: GenKind }) => (
     <button type="button" className="small" onClick={() => generate(kind)} disabled={generating !== null}>
-      {generating === kind ? "생성 중..." : `AI로 생성${costLabel}`}
+      {generating === kind ? "생성 중..." : `AI로 생성${costLabel(kind)}`}
     </button>
   );
 
@@ -287,8 +319,8 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
 
   /** 업로드 버튼: 조건부인데 키워드가 비면 팝업 열기 전에 검증 */
   const openUpload = () => {
-    if (upload.kind === "conditional" && !upload.keywords.trim()) {
-      alert("조건부 일러스트는 트리거 키워드가 필요합니다.");
+    if (upload.kind === "conditional" && !upload.keywords.trim() && !upReqEvent) {
+      alert("조건부 일러스트는 트리거 키워드 또는 이벤트 조건이 필요합니다.");
       return;
     }
     setIllustCropOpen(true);
@@ -301,38 +333,39 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
     form.append("kind", upload.kind);
     form.append("description", upload.description);
     form.append("keywords", upload.keywords);
+    if (upReqEvent) form.append("requireEventId", upReqEvent);
     const res = await studioFetch(`/api/studio/characters/${id}/illustrations`, { method: "POST", body: form });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(`업로드 실패: ${err.error ?? res.statusText}`);
     }
     setUpload({ kind: "basic", description: "", keywords: "" });
+    setUpReqEvent("");
     loadIllusts();
   };
 
-  /** AI 일러스트 생성 → 성공 시 목록/타이틀 갱신 */
-  const doAiGenerate = async () => {
-    if (!ai.prompt.trim()) {
-      alert("프롬프트를 입력하세요.");
-      return;
-    }
-    if (!ai.asTitle && ai.kind === "conditional" && !ai.keywords.trim()) {
-      alert("조건부 일러스트는 트리거 키워드가 필요합니다.");
-      return;
-    }
-    setAiGenerating(true);
-    try {
-      const res = await studioFetch(`/api/studio/characters/${id}/illustrations/generate`, jsonInit("POST", ai));
-      const r = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        alert(`생성 실패: ${r.error ?? res.statusText}`);
-        return;
-      }
-      if (ai.asTitle) setChar((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
-      else loadIllusts();
+  /** 생성 모달 확인 → AI 일러스트/타이틀 생성 (실패 시 throw → 모달 안에 에러 표시) */
+  const doAiGenerate = async (p: ImageGenPayload, asTitle: boolean) => {
+    const res = await studioFetch(
+      `/api/studio/characters/${id}/illustrations/generate`,
+      jsonInit("POST", {
+        prompt: p.prompt,
+        kind: ai.kind,
+        keywords: ai.keywords,
+        requireEventId: aiReqEvent ? Number(aiReqEvent) : undefined,
+        description: ai.description,
+        asTitle,
+        refTitleImage: p.refTitleImage,
+        refImages: p.refImages,
+      })
+    );
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`생성 실패: ${r.error ?? res.statusText}`);
+    if (asTitle) setChar((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
+    else {
+      loadIllusts();
       setAi((prev) => ({ ...prev, description: "", keywords: "" }));
-    } finally {
-      setAiGenerating(false);
+      setAiReqEvent("");
     }
   };
 
@@ -343,14 +376,26 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
   };
 
   const removeChar = async () => {
-    if (!confirm("캐릭터를 삭제할까요? 대화 기록 등 관련 데이터도 함께 삭제될 수 있습니다.")) return;
-    const res = await studioFetch(`/api/studio/characters/${id}`, { method: "DELETE" });
+    const input = prompt("삭제하려면 캐릭터 이름을 똑같이 입력하세요: " + char.name);
+    if (input === null) return;
+    const res = await studioFetch(`/api/studio/characters/${id}`, jsonInit("DELETE", { name: input }));
     if (!res.ok) {
       const r = await res.json().catch(() => ({}));
       alert(`삭제 실패: ${r.error ?? res.statusText}`);
       return;
     }
+    alert("3일 후 삭제됩니다. 그 전까지 취소할 수 있습니다.");
     router.replace("/studio");
+  };
+
+  const cancelDelete = async () => {
+    const res = await studioFetch(`/api/studio/characters/${id}`, jsonInit("DELETE", { cancel: true }));
+    if (!res.ok) {
+      const r = await res.json().catch(() => ({}));
+      alert(`삭제 취소 실패: ${r.error ?? res.statusText}`);
+      return;
+    }
+    setChar((prev) => (prev ? { ...prev, delete_scheduled_at: null } : prev));
   };
 
   // 현재 세계관 표시용: 모달 선택값 > 내 세계관 > 오픈 세계관 > (목록에 없으면) 번호만 표시
@@ -368,14 +413,31 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
   return (
     <div className="container studio">
       <h2 className="page-title">
-        <Link href="/studio" style={{ color: "var(--muted)" }}>‹</Link> 캐릭터 편집: {char.name}
+        <Link href="/studio" className="back-link" title="스튜디오로">‹</Link> 캐릭터 편집: {char.name}
       </h2>
+
+      {char.delete_scheduled_at && (
+        <div className="notice" style={{ borderColor: "#e5484d", color: "#e5484d" }}>
+          이 캐릭터는 {new Date(char.delete_scheduled_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 에 삭제됩니다.{" "}
+          <button type="button" className="small" onClick={cancelDelete}>삭제 취소</button>
+        </div>
+      )}
+
+      {char.sanction_until && (
+        <div className="notice" style={{ borderColor: "#e0a030", color: "#e0b050" }}>
+          ⚠ 운영 제재로{" "}
+          {new Date(char.sanction_until).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}{" "}
+          까지 비공개 상태입니다 (신규 대화 시작 불가, 기존 대화는 유지).
+          {char.sanction_reason && <> 사유: {char.sanction_reason}</>}
+        </div>
+      )}
 
       {/* 탭 바: 비활성 탭도 언마운트하지 않고 display:none 으로만 숨겨 입력값/fetch 상태 보존 */}
       <div className="tabs">
         <button type="button" className={`tab ${tab === "basic" ? "active" : ""}`} onClick={() => setTab("basic")}>기본 설정</button>
         <button type="button" className={`tab ${tab === "rel" ? "active" : ""}`} onClick={() => setTab("rel")}>관계·기억·기념일</button>
         <button type="button" className={`tab ${tab === "dict" ? "active" : ""}`} onClick={() => setTab("dict")}>전용 사전</button>
+        <button type="button" className={`tab ${tab === "event" ? "active" : ""}`} onClick={() => setTab("event")}>이벤트</button>
         <button type="button" className={`tab ${tab === "illust" ? "active" : ""}`} onClick={() => setTab("illust")}>일러스트</button>
       </div>
 
@@ -390,7 +452,10 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
             <div className="title-img placeholder" style={{ width: 120 }} />
           )}
           <div>
-            <button type="button" className="small" onClick={() => setTitleCropOpen(true)}>이미지 업로드</button>
+            <button type="button" className="small" onClick={() => setTitleCropOpen(true)}>이미지 업로드</button>{" "}
+            <button type="button" className="small" onClick={() => setGenModal("title")}>
+              AI 생성{illustCost != null ? ` (-${illustCost.toLocaleString()}코인)` : ""}
+            </button>
           </div>
         </div>
         <ImageCropModal
@@ -400,6 +465,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
           onCancel={() => setTitleCropOpen(false)}
           onConfirm={uploadTitleImage}
         />
+        <CharacterProfilesSection characterId={char.id} />
 
         <div className="row">
           <div>
@@ -557,6 +623,10 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
       ))}
       </div>
 
+      <div style={{ display: tab === "event" ? undefined : "none" }}>
+        <CharacterEventsSection characterId={id} onChanged={loadEvents} />
+      </div>
+
       <div style={{ display: tab === "illust" ? undefined : "none" }}>
       <h3>일러스트</h3>
       <div className="panel">
@@ -577,6 +647,14 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
           <>
             <label>트리거 키워드 (쉼표 구분 — 응답에 이 단어가 포함되면 노출)</label>
             <input value={upload.keywords} onChange={(e) => setUpload({ ...upload, keywords: e.target.value })} placeholder="예: 화남, 분노, 짜증" />
+            <label>이벤트 달성 필요</label>
+            <select value={upReqEvent} onChange={(e) => setUpReqEvent(e.target.value)}>
+              <option value="">없음</option>
+              {events.map((ev) => (
+                <option key={ev.id} value={ev.id}>{ev.name}</option>
+              ))}
+            </select>
+            <div className="muted">지정하면 그 이벤트를 성공한 유저에게만 노출됩니다. 키워드 없이 지정하면 달성 후 기본 로테이션에 포함됩니다.</div>
           </>
         )}
 <button onClick={openUpload}>이미지 선택·업로드 (무료)</button>
@@ -591,12 +669,10 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
 
       <h3>AI 일러스트 생성</h3>
       <div className="panel">
-        <label>프롬프트</label>
-        <textarea rows={3} value={ai.prompt} onChange={(e) => setAi({ ...ai, prompt: e.target.value })} placeholder="생성할 이미지를 설명하세요" />
         <div className="row">
           <div>
             <label>종류</label>
-            <select value={ai.kind} onChange={(e) => setAi({ ...ai, kind: e.target.value as "basic" | "conditional" })} disabled={ai.asTitle}>
+            <select value={ai.kind} onChange={(e) => setAi({ ...ai, kind: e.target.value as "basic" | "conditional" })}>
               <option value="basic">기본 (자주 노출)</option>
               <option value="conditional">조건부 (특정 조건에서만)</option>
             </select>
@@ -606,20 +682,40 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
             <input value={ai.description} onChange={(e) => setAi({ ...ai, description: e.target.value })} />
           </div>
         </div>
-        {ai.kind === "conditional" && !ai.asTitle && (
+        {ai.kind === "conditional" && (
           <>
             <label>트리거 키워드 (쉼표 구분)</label>
             <input value={ai.keywords} onChange={(e) => setAi({ ...ai, keywords: e.target.value })} placeholder="예: 화남, 분노, 짜증" />
+            <label>이벤트 달성 필요</label>
+            <select value={aiReqEvent} onChange={(e) => setAiReqEvent(e.target.value)}>
+              <option value="">없음</option>
+              {events.map((ev) => (
+                <option key={ev.id} value={ev.id}>{ev.name}</option>
+              ))}
+            </select>
+            <div className="muted">지정하면 그 이벤트를 성공한 유저에게만 노출됩니다. 키워드 없이 지정하면 달성 후 기본 로테이션에 포함됩니다.</div>
           </>
         )}
-        <label>
-          <input type="checkbox" checked={ai.asTitle} style={{ width: "auto", marginRight: 6 }}
-            onChange={(e) => setAi({ ...ai, asTitle: e.target.checked })} />
-          타이틀 이미지로 사용
-        </label>
-        <button onClick={doAiGenerate} disabled={aiGenerating}>
-          {aiGenerating ? "생성 중... (최대 2분)" : `AI 일러스트 생성${illustCost != null ? ` (-${illustCost.toLocaleString()}코인)` : ""}`}
+        <button
+          onClick={() => {
+            if (ai.kind === "conditional" && !ai.keywords.trim() && !aiReqEvent) {
+              alert("조건부 일러스트는 트리거 키워드 또는 이벤트 조건이 필요합니다.");
+              return;
+            }
+            setGenModal("illust");
+          }}
+        >
+          {`AI 일러스트 생성${illustCost != null ? ` (-${illustCost.toLocaleString()}코인)` : ""}`}
         </button>
+        <ImageGenModal
+          open={genModal !== null}
+          title={genModal === "title" ? "AI 타이틀 이미지 생성" : "AI 일러스트 생성"}
+          initialPrompt={buildImagePrompt(char, genModal === "title", ai)}
+          titleImageUrl={char.title_image_url}
+          submitSuffix={illustCost != null ? ` (-${illustCost.toLocaleString()}코인)` : ""}
+          onClose={() => setGenModal(null)}
+          onGenerate={(p) => doAiGenerate(p, genModal === "title")}
+        />
       </div>
 
       <div className="panel">
@@ -634,7 +730,12 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
                 <td><img src={i.url} alt={i.description ?? ""} className="thumb" /></td>
                 <td><span className={`badge ${i.kind === "conditional" ? "cond" : ""}`}>{i.kind === "conditional" ? "조건부" : "기본"}</span></td>
                 <td>{i.description}</td>
-                <td className="muted">{triggerKeywords(i).join(", ")}</td>
+                <td className="muted">
+                  {triggerKeywords(i).join(", ")}
+                  {triggerEventId(i) != null && (
+                    <div>이벤트: {events.find((ev) => ev.id === triggerEventId(i))?.name ?? `#${triggerEventId(i)}`}</div>
+                  )}
+                </td>
                 <td><button className="danger small" onClick={() => removeIllust(i.id)}>삭제</button></td>
               </tr>
             ))}
@@ -644,7 +745,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
       </div>
       </div>
 
-      <button className="danger" onClick={removeChar}>캐릭터 삭제</button>
+      {!char.delete_scheduled_at && <button className="danger" onClick={removeChar}>캐릭터 삭제</button>}
     </div>
   );
 }

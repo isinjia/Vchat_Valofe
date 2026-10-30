@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query, execute } from "@vchatbot/core";
+import { query, execute, evaluateTierPromotions, sweepScheduledDeletions } from "@vchatbot/core";
 import { requireUser, bad, canUseWorld } from "@/lib/studio";
 
 export const dynamic = "force-dynamic";
@@ -8,8 +8,17 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const auth = await requireUser();
   if ("res" in auth) return auth.res;
+  await sweepScheduledDeletions();
   const rows = await query(
-    `SELECT c.id, c.name, c.world_id, c.visibility, c.status, c.title_image_url, w.name AS world_name
+    `SELECT c.id, c.name, c.world_id, c.visibility, c.status, c.title_image_url, c.delete_scheduled_at, w.name AS world_name,
+            (SELECT s.ends_at FROM sanctions s
+             WHERE s.target_type = 'character' AND s.target_id = c.id AND s.kind = 'hide'
+               AND s.revoked_at IS NULL AND s.ends_at > NOW()
+             ORDER BY s.ends_at DESC LIMIT 1) AS sanction_until,
+            (SELECT s.reason FROM sanctions s
+             WHERE s.target_type = 'character' AND s.target_id = c.id AND s.kind = 'hide'
+               AND s.revoked_at IS NULL AND s.ends_at > NOW()
+             ORDER BY s.ends_at DESC LIMIT 1) AS sanction_reason
      FROM characters c JOIN worlds w ON w.id = c.world_id
      WHERE c.owner_user_id = ? ORDER BY c.id DESC`,
     [auth.userId]
@@ -36,6 +45,8 @@ export async function POST(req: NextRequest) {
        VALUES (?, ?, '', '', '', '', ?, 'private', 'active', 1)`,
       [Number(body.world_id), name, auth.userId]
     );
+    // 크리에이터 등급 자동 승급 평가 (비동기, 실패 무시)
+    void evaluateTierPromotions(auth.userId);
     return NextResponse.json({ id: result.insertId }, { status: 201 });
   } catch (e) {
     // UNIQUE 제약 위반 (동시 요청 레이스 대비)

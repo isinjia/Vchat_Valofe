@@ -35,6 +35,14 @@ a { color: var(--accent); text-decoration: none; }
   color: #cdd5de;
 }
 .sidebar a:hover { background: #2d333b; color: #fff; }
+.sidebar .nav-group {
+  margin-top: 16px;
+  padding: 6px 20px 4px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #768390;
+  border-top: 1px solid #2d333b;
+}
 
 .main { flex: 1; padding: 28px; max-width: 1100px; }
 .main h2 { margin-bottom: 18px; }
@@ -64,19 +72,29 @@ input[type="text"], input[type="number"], input[type="password"], input:not([typ
 }
 textarea { min-height: 90px; resize: vertical; }
 
+/* 버튼 높이는 입력창(37px)과 통일 — 페이지마다 위아래 크기가 제각각이 되지 않게.
+   nowrap/flex-shrink 로 좁은 행에서 글자가 두 줄이 되거나 찌그러지는 것 방지 */
 button {
   margin-top: 12px;
-  padding: 8px 18px;
+  height: 37px;
+  padding: 0 18px;
+  white-space: nowrap;
+  flex-shrink: 0;
   background: var(--accent);
   border: none;
   border-radius: 6px;
   color: #fff;
   font-size: 14px;
   cursor: pointer;
+  vertical-align: middle;
 }
 button:hover { filter: brightness(1.08); }
 button.danger { background: var(--danger); }
-button.small { padding: 4px 10px; font-size: 12px; margin: 0; }
+button.small { height: 37px; padding: 0 12px; font-size: 13px; margin: 0; }
+/* 인라인 스타일 컨테이너(주로 flex 행) 안의 버튼은 자체 윗마진을 빼서 줄이 어긋나지 않게 —
+   간격은 컨테이너(marginTop/gap)가 책임진다 */
+div[style] > button { margin-top: 0; }
+.row button { margin-top: 0; align-self: flex-end; }
 
 .row { display: flex; gap: 14px; }
 .row > div { flex: 1; }
@@ -163,6 +181,7 @@ button.small { padding: 4px 10px; font-size: 12px; margin: 0; }
   border: 1px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
 }
+.crop-frame.circle { border-radius: 50%; }
 .crop-zoom-row { display: flex; align-items: center; gap: 10px; margin: 12px 0 0; font-size: 12px; }
 .crop-slider { flex: 1; width: auto; padding: 0; margin: 0; }
 .crop-err { color: var(--danger, #ff6b6b); margin: 10px 0 0; font-size: 13px; }
@@ -171,3 +190,61 @@ button.small { padding: 4px 10px; font-size: 12px; margin: 0; }
 
 /* 유저 관리: 정지 뱃지 */
 .badge.banned { background: #ffe0e0; color: #c42b2b; }
+
+/* ===== 로그인 화면 ===== */
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background:
+    radial-gradient(900px 480px at 20% -10%, rgba(79, 110, 247, 0.14), transparent 60%),
+    radial-gradient(700px 420px at 95% 110%, rgba(79, 110, 247, 0.10), transparent 55%),
+    #f6f7fb;
+}
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  background: #fff;
+  border: 1px solid #e4e7f0;
+  border-radius: 16px;
+  padding: 36px 32px 30px;
+  box-shadow: 0 18px 44px rgba(30, 41, 90, 0.10), 0 2px 8px rgba(30, 41, 90, 0.05);
+}
+.login-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent), #7c8cf8);
+  color: #fff;
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  box-shadow: 0 6px 16px rgba(79, 110, 247, 0.35);
+}
+.login-card h1 { font-size: 20px; text-align: center; margin: 0 0 4px; }
+.login-sub { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+.login-card label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+.login-card input { transition: border-color 0.15s, box-shadow 0.15s; }
+.login-card input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.15);
+}
+.login-card button[type="submit"], .login-card .login-btn {
+  width: 100%;
+  margin-top: 20px;
+  font-weight: 600;
+}
+.login-err {
+  margin-top: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #fdecec;
+  color: #c42b2b;
+  font-size: 13px;
+}
+.login-foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: 18px; }

@@ -8,3 +8,13 @@ dist/
 uploads/
 sampledata/
 scripts/haru-common-entries.json
+scripts/backup-*.txt
+scripts/_*.txt
+scripts/_*.json
+# 경로 조립 버그로 루트에 생긴 dry-run 출력물
+Works_ToolVChatBotscripts_*.txt
+# 빌드 아티팩트
+tsconfig.tsbuildinfo
+apps/*/tsconfig.tsbuildinfo
+# 로컬 LLM 워커 토큰 (큐-워커 공유 비밀)
+services/.worker-token

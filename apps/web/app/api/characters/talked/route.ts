@@ -27,6 +27,11 @@ export async function GET(req: NextRequest) {
     "c.status = 'active'",
     "w.visibility = 'open'",
     "w.status = 'active'",
+    "c.delete_scheduled_at IS NULL",
+    "w.delete_scheduled_at IS NULL",
+    `NOT EXISTS (SELECT 1 FROM sanctions s
+       WHERE s.target_type = 'character' AND s.target_id = c.id AND s.kind = 'hide'
+         AND s.revoked_at IS NULL AND s.ends_at > NOW())`,
   ];
   const params: (string | number)[] = [...ids];
   const worldIdRaw = req.nextUrl.searchParams.get("worldId");
@@ -40,12 +45,14 @@ export async function GET(req: NextRequest) {
   }
 
   const rows = await query<{ id: number } & Record<string, unknown>>(
-    `SELECT c.id, c.name, c.world_id, w.name AS world_name, c.title_image_url,
+    `SELECT c.id, c.name, c.world_id, w.name AS world_name, w.title_color, c.title_image_url, c.like_count,
+            uo.nickname AS owner_name,
             (SELECT url FROM illustrations i
              WHERE i.character_id = c.id AND i.kind = 'basic'
              ORDER BY i.sort_order, i.id LIMIT 1) AS thumb
      FROM characters c
      JOIN worlds w ON w.id = c.world_id
+     LEFT JOIN users uo ON uo.id = c.owner_user_id
      WHERE ${where.join(" AND ")}`,
     params
   );

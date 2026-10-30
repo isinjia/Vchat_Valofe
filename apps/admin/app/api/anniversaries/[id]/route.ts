@@ -9,10 +9,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const parsed = parseAnniversaryInput(await req.json().catch(() => ({})));
   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
-  const { name, month, day, description } = parsed.value;
+  const { name, month, day, notice_days, description } = parsed.value;
   await execute(
-    "UPDATE world_anniversaries SET name = ?, month = ?, day = ?, description = ? WHERE id = ?",
-    [name, month, day, description, id]
+    "UPDATE world_anniversaries SET name = ?, month = ?, day = ?, notice_days = ?, description = ? WHERE id = ?",
+    [name, month, day, notice_days, description, id]
   );
   await invalidateChatContext();
   return NextResponse.json({ ok: true });

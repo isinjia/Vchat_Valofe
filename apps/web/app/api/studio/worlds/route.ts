@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query, execute } from "@vchatbot/core";
+import { query, execute, evaluateTierPromotions, sweepScheduledDeletions } from "@vchatbot/core";
 import { requireUser, bad } from "@/lib/studio";
 
 export const dynamic = "force-dynamic";
@@ -8,8 +8,9 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const auth = await requireUser();
   if ("res" in auth) return auth.res;
+  await sweepScheduledDeletions();
   const rows = await query(
-    `SELECT w.id, w.name, w.visibility, w.status, w.title_image_url,
+    `SELECT w.id, w.name, w.visibility, w.status, w.title_image_url, w.delete_scheduled_at,
             (SELECT COUNT(*) FROM characters c WHERE c.world_id = w.id) AS character_count
      FROM worlds w WHERE w.owner_user_id = ? ORDER BY w.id DESC`,
     [auth.userId]
@@ -29,5 +30,7 @@ export async function POST(req: NextRequest) {
      VALUES (?, ?, ?, ?, 'private', 'active', 1)`,
     [name, String(body.description ?? ""), String(body.ai_prompt ?? ""), auth.userId]
   );
+  // 크리에이터 등급 자동 승급 평가 (비동기, 실패 무시)
+  void evaluateTierPromotions(auth.userId);
   return NextResponse.json({ id: result.insertId }, { status: 201 });
 }

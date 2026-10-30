@@ -81,6 +81,30 @@ export default function WorldPickerModal({ open, onClose, onSelect }: Props) {
 
   const kw = q.trim().toLowerCase();
   const list = kw ? worlds.filter((w) => w.name.toLowerCase().includes(kw)) : worlds;
+  const mineList = list.filter((w) => w.mine);
+  const sharedList = list.filter((w) => !w.mine);
+
+  const renderGrid = (items: PickedWorld[]) => (
+    <div className="world-picker-grid">
+      {items.map((w) => (
+        <button
+          type="button"
+          key={w.id}
+          className="world-picker-card"
+          onClick={() => { onSelect(w); onClose(); }}
+        >
+          {w.title_image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={w.title_image_url} alt={w.name} className="title-img" />
+          ) : (
+            <div className="title-img placeholder" />
+          )}
+          <div className="world-picker-name">{w.name}</div>
+          {!w.mine && w.owner_nickname && <div className="world-picker-owner">by {w.owner_nickname}</div>}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -97,26 +121,20 @@ export default function WorldPickerModal({ open, onClose, onSelect }: Props) {
         ) : list.length === 0 ? (
           <p className="muted-center">표시할 세계관이 없습니다.</p>
         ) : (
-          <div className="world-picker-grid">
-            {list.map((w) => (
-              <button
-                type="button"
-                key={w.id}
-                className="world-picker-card"
-                onClick={() => { onSelect(w); onClose(); }}
-              >
-                {w.title_image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={w.title_image_url} alt={w.name} className="title-img" />
-                ) : (
-                  <div className="title-img placeholder" />
-                )}
-                <div className="world-picker-name">{w.name}</div>
-                <span className={`badge ${w.mine ? "" : "open"}`}>{w.mine ? "내 세계관" : "오픈"}</span>
-                {!w.mine && w.owner_nickname && <div className="world-picker-owner">by {w.owner_nickname}</div>}
-              </button>
-            ))}
-          </div>
+          <>
+            {mineList.length > 0 && (
+              <>
+                <div className="world-picker-section">내 세계관</div>
+                {renderGrid(mineList)}
+              </>
+            )}
+            {sharedList.length > 0 && (
+              <>
+                <div className="world-picker-section">공유된 세계관</div>
+                {renderGrid(sharedList)}
+              </>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatMessages, query, execute } from "@vchatbot/core";
+import { getAdminSession } from "../../../../lib/admin-session";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const users = await query(
     `SELECT u.id, u.username, u.nickname, u.vfun_user_id, u.coins, u.status,
-            u.tier_id, t.name AS tier_name, u.created_at
+            u.admin_role,
+            u.tier_id, t.name AS tier_name, u.creator_tier_id, u.ai_level_id, u.created_at
      FROM users u LEFT JOIN chat_tiers t ON t.id = u.tier_id
      WHERE u.id = ?`,
     [id]
@@ -84,7 +86,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   });
 }
 
-/** 등급/상태 변경 (tier_id, status 만 허용) */
+/** 등급/상태 변경 (tier_id, creator_tier_id, ai_level_id, status 만 허용) */
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
   if (!Number.isInteger(id) || id <= 0) {
@@ -107,12 +109,57 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       vals.push(tid);
     }
   }
+  if ("creator_tier_id" in body) {
+    if (body.creator_tier_id === null) {
+      sets.push("creator_tier_id = NULL");
+    } else {
+      const cid = Number(body.creator_tier_id);
+      const found = Number.isInteger(cid)
+        ? await query("SELECT id FROM chat_tiers WHERE id = ? AND track = 'creator'", [cid])
+        : [];
+      if (!found.length) return NextResponse.json({ error: "존재하지 않는 크리에이터 등급" }, { status: 400 });
+      sets.push("creator_tier_id = ?");
+      vals.push(cid);
+    }
+  }
+  if ("ai_level_id" in body) {
+    if (body.ai_level_id === null) {
+      sets.push("ai_level_id = NULL");
+    } else {
+      const lid = Number(body.ai_level_id);
+      const found = Number.isInteger(lid)
+        ? await query("SELECT id FROM ai_levels WHERE id = ?", [lid])
+        : [];
+      if (!found.length) return NextResponse.json({ error: "존재하지 않는 AI 레벨" }, { status: 400 });
+      sets.push("ai_level_id = ?");
+      vals.push(lid);
+    }
+  }
   if ("status" in body) {
     if (body.status !== "active" && body.status !== "banned") {
       return NextResponse.json({ error: "status 는 active/banned 만 가능" }, { status: 400 });
     }
     sets.push("status = ?");
     vals.push(body.status);
+  }
+  if ("admin_role" in body) {
+    const role = body.admin_role;
+    if (role !== null && role !== "user_admin" && role !== "system_admin") {
+      return NextResponse.json({ error: "admin_role 은 null/user_admin/system_admin 만 가능" }, { status: 400 });
+    }
+    const session = await getAdminSession();
+    if (session && session.uid === id && role !== "system_admin") {
+      return NextResponse.json(
+        { error: "자기 자신의 시스템 관리자 권한은 해제할 수 없습니다." },
+        { status: 400 }
+      );
+    }
+    if (role === null) {
+      sets.push("admin_role = NULL");
+    } else {
+      sets.push("admin_role = ?");
+      vals.push(role);
+    }
   }
   if (!sets.length) return NextResponse.json({ error: "변경할 값 없음" }, { status: 400 });
 

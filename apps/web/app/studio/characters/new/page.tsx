@@ -49,7 +49,7 @@ export default function NewCharacterPage() {
   return (
     <div className="container studio">
       <h2 className="page-title">
-        <Link href="/studio" style={{ color: "var(--muted)" }}>‹</Link> 새 캐릭터
+        <Link href="/studio" className="back-link" title="스튜디오로">‹</Link> 새 캐릭터
       </h2>
       <div className="panel">
         <label>세계관</label>

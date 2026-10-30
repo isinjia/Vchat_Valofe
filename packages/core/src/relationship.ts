@@ -6,10 +6,23 @@ import type { ChatMemory } from "./types";
 const FACTS_MAX = 30;
 const MEMORY_LIMIT = 10;
 
+export type UserRelationship = "none" | "lover" | "engaged" | "married";
+
+export const RELATIONSHIP_LABELS: Record<UserRelationship, string> = {
+  none: "아직 특별한 관계 아님",
+  lover: "연인",
+  engaged: "약혼",
+  married: "결혼",
+};
+
 export interface CharacterStateView {
   affinity: number;
   facts: string[];
   message_count: number;
+  /** 이벤트 성공으로 켜지는 관계 플래그 */
+  relationship: UserRelationship;
+  /** 캐릭터가 유저를 부르는 호칭 (정해진 게 없으면 null) */
+  call_name: string | null;
 }
 
 /** 유저 x 캐릭터 상태 조회. 행이 없으면 기본값 반환 (행 생성은 하지 않음) */
@@ -17,11 +30,19 @@ export async function getUserCharacterState(
   userId: number,
   characterId: number
 ): Promise<CharacterStateView> {
-  const rows = await query<{ affinity: number; facts: string[] | string | null; message_count: number }>(
-    "SELECT affinity, facts, message_count FROM user_character_state WHERE user_id = ? AND character_id = ?",
+  const rows = await query<{
+    affinity: number;
+    facts: string[] | string | null;
+    message_count: number;
+    relationship: UserRelationship;
+    call_name: string | null;
+  }>(
+    "SELECT affinity, facts, message_count, relationship, call_name FROM user_character_state WHERE user_id = ? AND character_id = ?",
     [userId, characterId]
   );
-  if (rows.length === 0) return { affinity: 0, facts: [], message_count: 0 };
+  if (rows.length === 0) {
+    return { affinity: 0, facts: [], message_count: 0, relationship: "none", call_name: null };
+  }
   const r = rows[0];
   // mysql2 가 JSON 을 자동 파싱하지만 설정에 따라 문자열일 수 있음
   const raw = typeof r.facts === "string" ? JSON.parse(r.facts) : r.facts;
@@ -29,7 +50,23 @@ export async function getUserCharacterState(
     affinity: r.affinity,
     facts: Array.isArray(raw) ? raw.filter((f): f is string => typeof f === "string") : [],
     message_count: r.message_count,
+    relationship: r.relationship ?? "none",
+    call_name: r.call_name ?? null,
   };
+}
+
+/** 관계 플래그 설정 (이벤트 성공 시). 행이 없으면 생성 */
+export async function setUserRelationship(
+  userId: number,
+  characterId: number,
+  relationship: UserRelationship
+): Promise<void> {
+  await execute(
+    `INSERT INTO user_character_state (user_id, character_id, relationship)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE relationship = VALUES(relationship)`,
+    [userId, characterId, relationship]
+  );
 }
 
 /**
@@ -39,16 +76,19 @@ export async function getUserCharacterState(
 export async function applyScoreResult(
   userId: number,
   characterId: number,
-  result: { affinityDelta: number; updatedFacts: string[] | null }
+  result: { affinityDelta: number; updatedFacts: string[] | null; callName?: string | null }
 ): Promise<number> {
   const cur = await getUserCharacterState(userId, characterId);
   const affinity = Math.max(-100, Math.min(100, cur.affinity + result.affinityDelta));
   const facts = result.updatedFacts ? result.updatedFacts.slice(0, FACTS_MAX) : cur.facts;
+  // 호칭: 새로 정해졌을 때만 교체 (null 이면 기존 유지)
+  const callName = result.callName?.trim().slice(0, 64) || cur.call_name;
   await execute(
-    `INSERT INTO user_character_state (user_id, character_id, affinity, facts, message_count)
-     VALUES (?, ?, ?, ?, 1)
-     ON DUPLICATE KEY UPDATE affinity = VALUES(affinity), facts = VALUES(facts), message_count = message_count + 1`,
-    [userId, characterId, affinity, JSON.stringify(facts)]
+    `INSERT INTO user_character_state (user_id, character_id, affinity, facts, call_name, message_count)
+     VALUES (?, ?, ?, ?, ?, 1)
+     ON DUPLICATE KEY UPDATE affinity = VALUES(affinity), facts = VALUES(facts),
+       call_name = VALUES(call_name), message_count = message_count + 1`,
+    [userId, characterId, affinity, JSON.stringify(facts), callName]
   );
   return affinity;
 }

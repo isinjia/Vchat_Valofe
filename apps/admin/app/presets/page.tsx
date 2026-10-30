@@ -7,16 +7,30 @@ interface Preset {
   name: string;
   month: number;
   day: number;
+  notice_days?: number;
   description: string;
 }
 
-const EMPTY = { name: "", month: "", day: "", description: "" };
+const EMPTY = { name: "", month: "", day: "", notice_days: "7", description: "" };
+const noticeLabel = (n?: number) => ((n ?? 7) === 0 ? "당일만" : `D-${n ?? 7}부터`);
 const mmdd = (m: number, d: number) => `${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+interface EditState {
+  name: string;
+  month: string;
+  day: string;
+  notice_days: string;
+  description: string;
+}
 
 export default function PresetsPage() {
   const [list, setList] = useState<Preset[]>([]);
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState("");
+  // 편집 중인 프리셋 (한 번에 하나)
+  const [editId, setEditId] = useState<number | null>(null);
+  const [edit, setEdit] = useState<EditState>(EMPTY);
+  const [editError, setEditError] = useState("");
 
   const load = async () => {
     const r = await fetch("/api/anniversary-presets");
@@ -36,6 +50,7 @@ export default function PresetsPage() {
         name: form.name,
         month: Number(form.month),
         day: Number(form.day),
+        notice_days: form.notice_days === "" ? 7 : Number(form.notice_days),
         description: form.description,
       }),
     });
@@ -50,6 +65,40 @@ export default function PresetsPage() {
   const remove = async (p: Preset) => {
     if (!confirm(`"${p.name}" 프리셋을 삭제할까요? 이미 세계관에 불러온 기념일은 커스텀으로 남습니다.`)) return;
     await fetch(`/api/anniversary-presets/${p.id}`, { method: "DELETE" });
+    load();
+  };
+
+  const startEdit = (p: Preset) => {
+    setEditId(p.id);
+    setEditError("");
+    setEdit({
+      name: p.name,
+      month: String(p.month),
+      day: String(p.day),
+      notice_days: String(p.notice_days ?? 7),
+      description: p.description,
+    });
+  };
+
+  const saveEdit = async () => {
+    if (editId == null) return;
+    setEditError("");
+    const r = await fetch(`/api/anniversary-presets/${editId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: edit.name,
+        month: Number(edit.month),
+        day: Number(edit.day),
+        notice_days: edit.notice_days === "" ? 7 : Number(edit.notice_days),
+        description: edit.description,
+      }),
+    });
+    if (!r.ok) {
+      setEditError((await r.json().catch(() => ({}))).error ?? "저장 실패");
+      return;
+    }
+    setEditId(null);
     load();
   };
 
@@ -72,6 +121,11 @@ export default function PresetsPage() {
             <label>일 (1~31)</label>
             <input type="number" min={1} max={31} value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })} />
           </div>
+          <div>
+            <label>언급 시작(일 전)</label>
+            <input type="number" min={0} max={365} value={form.notice_days} onChange={(e) => setForm({ ...form, notice_days: e.target.value })} />
+            <div className="muted">N일 전부터 대화에서 언급 (0=당일만)</div>
+          </div>
         </div>
         <label>설명 (어떤 날인지)</label>
         <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
@@ -88,14 +142,47 @@ export default function PresetsPage() {
             <tr><th>날짜</th><th>이름</th><th>설명</th><th></th></tr>
           </thead>
           <tbody>
-            {list.map((p) => (
-              <tr key={p.id}>
-                <td>{mmdd(p.month, p.day)}</td>
-                <td>{p.name}</td>
-                <td>{p.description}</td>
-                <td><button className="small danger" onClick={() => remove(p)}>삭제</button></td>
-              </tr>
-            ))}
+            {list.map((p) =>
+              editId === p.id ? (
+                <tr key={p.id}>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    <input type="number" min={1} max={12} value={edit.month} style={{ width: 62, display: "inline-block" }}
+                      onChange={(e) => setEdit({ ...edit, month: e.target.value })} />{" "}
+                    /
+                    <input type="number" min={1} max={31} value={edit.day} style={{ width: 62, display: "inline-block", marginLeft: 4 }}
+                      onChange={(e) => setEdit({ ...edit, day: e.target.value })} />
+                    <div style={{ marginTop: 4 }}>
+                      <span className="muted">D-</span>
+                      <input type="number" min={0} max={365} value={edit.notice_days} style={{ width: 62, display: "inline-block" }}
+                        onChange={(e) => setEdit({ ...edit, notice_days: e.target.value })}
+                        title="기념일 N일 전부터 대화에서 언급 (0=당일만)" />
+                    </div>
+                  </td>
+                  <td>
+                    <input type="text" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
+                  </td>
+                  <td>
+                    <textarea rows={2} value={edit.description} style={{ minHeight: 48 }}
+                      onChange={(e) => setEdit({ ...edit, description: e.target.value })} />
+                    {editError && <div style={{ color: "var(--danger)", marginTop: 4 }}>{editError}</div>}
+                  </td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    <button className="small" onClick={saveEdit}>저장</button>{" "}
+                    <button className="small btn-secondary" onClick={() => setEditId(null)}>취소</button>
+                  </td>
+                </tr>
+              ) : (
+                <tr key={p.id}>
+                  <td>{mmdd(p.month, p.day)} <span className="muted">({noticeLabel(p.notice_days)})</span></td>
+                  <td>{p.name}</td>
+                  <td>{p.description}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    <button className="small" onClick={() => startEdit(p)}>편집</button>{" "}
+                    <button className="small danger" onClick={() => remove(p)}>삭제</button>
+                  </td>
+                </tr>
+              )
+            )}
             {list.length === 0 && <tr><td colSpan={4} className="muted">등록된 프리셋이 없습니다.</td></tr>}
           </tbody>
         </table>

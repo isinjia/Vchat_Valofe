@@ -1,6 +1,14 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { query, getLlmSettings, type CharacterPersona, type World } from "@vchatbot/core";
+import {
+  query,
+  getLlmSettings,
+  resolveProviderById,
+  createAdapter,
+  recordLlmUsage,
+  type CharacterPersona,
+  type World,
+} from "@vchatbot/core";
 
 export const runtime = "nodejs";
 
@@ -58,17 +66,34 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   try {
     const llm = await getLlmSettings();
-    const response = await client.messages.create({
-      model: llm.model,
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: `${context}\n\n---\n${task}` }],
-    });
-    const text = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("")
-      .trim();
+    const userContent = `${context}\n\n---\n${task}`;
+    const assist = llm.assistProviderId ? await resolveProviderById(Number(llm.assistProviderId)) : null;
+    let text: string;
+    if (assist) {
+      const adapter = await createAdapter(assist.provider, assist.account);
+      const stream = adapter.streamChat({
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userContent }],
+        maxTokens: 1024,
+      });
+      let acc = "";
+      for await (const d of stream.deltas) acc += d;
+      text = acc.trim();
+      const usage = stream.outcome().usage;
+      if (usage) await recordLlmUsage(assist.provider.id, assist.account?.id ?? null, usage);
+    } else {
+      const response = await client.messages.create({
+        model: llm.model,
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userContent }],
+      });
+      text = response.content
+        .filter((b): b is Anthropic.TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("")
+        .trim();
+    }
     if (!text) return Response.json({ error: "생성 결과가 비어 있습니다." }, { status: 502 });
     return Response.json({ text });
   } catch (err) {

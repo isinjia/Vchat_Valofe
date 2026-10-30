@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "workspaces": [
     "apps/*",
+    "services/*",
     "packages/*"
   ],
   "scripts": {
@@ -11,6 +12,9 @@
     "dev:admin": "npm run dev --workspace apps/admin",
     "build": "npm run build --workspace apps/web && npm run build --workspace apps/admin",
     "start:web": "npm run start --workspace apps/web",
-    "start:admin": "npm run start --workspace apps/admin"
+    "start:admin": "npm run start --workspace apps/admin",
+    "dev:queue": "npm run dev --workspace services/llm-queue",
+    "start:queue": "npm run start --workspace services/llm-queue",
+    "worker": "npm run start --workspace services/llm-worker"
   }
 }

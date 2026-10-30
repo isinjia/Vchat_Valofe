@@ -3,11 +3,11 @@ import { query, getPool } from "@vchatbot/core";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** PUT { assignments: [{ llm_provider_id, weight }] } — 등급의 할당 전체 교체 */
+/** PUT { assignments: [{ llm_provider_id, weight }] } — AI 레벨의 할당 전체 교체 */
 export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const tiers = await query("SELECT id FROM chat_tiers WHERE id = ?", [id]);
-  if (tiers.length === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+  const levels = await query("SELECT id FROM ai_levels WHERE id = ?", [id]);
+  if (levels.length === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
 
   const { assignments } = await req.json();
   if (!Array.isArray(assignments)) {
@@ -34,10 +34,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const conn = await getPool().getConnection();
   try {
     await conn.beginTransaction();
-    await conn.query("DELETE FROM tier_llm_assignments WHERE tier_id = ?", [id]);
+    await conn.query("DELETE FROM ai_level_llm_assignments WHERE ai_level_id = ?", [id]);
     for (const a of clean) {
       await conn.query(
-        "INSERT INTO tier_llm_assignments (tier_id, llm_provider_id, weight) VALUES (?, ?, ?)",
+        "INSERT INTO ai_level_llm_assignments (ai_level_id, llm_provider_id, weight) VALUES (?, ?, ?)",
         [id, a.llm, a.weight]
       );
     }

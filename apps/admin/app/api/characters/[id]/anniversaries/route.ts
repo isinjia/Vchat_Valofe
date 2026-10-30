@@ -23,10 +23,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (chars.length === 0) return NextResponse.json({ error: "캐릭터를 찾을 수 없습니다." }, { status: 404 });
   const parsed = parseAnniversaryInput(await req.json().catch(() => ({})));
   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
-  const { name, month, day, description } = parsed.value;
+  const { name, month, day, notice_days, description } = parsed.value;
   const result = await execute(
-    "INSERT INTO world_anniversaries (world_id, character_id, preset_id, name, month, day, description) VALUES (?, ?, NULL, ?, ?, ?, ?)",
-    [chars[0].world_id, chars[0].id, name, month, day, description]
+    "INSERT INTO world_anniversaries (world_id, character_id, preset_id, name, month, day, notice_days, description) VALUES (?, ?, NULL, ?, ?, ?, ?, ?)",
+    [chars[0].world_id, chars[0].id, name, month, day, notice_days, description]
   );
   await invalidateChatContext(chars[0].id);
   return NextResponse.json({ id: result.insertId }, { status: 201 });

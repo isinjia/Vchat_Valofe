@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
       content: m.content,
       guestName: typeof m.meta?.guest === "string" ? m.meta.guest : null,
       illustrationId: m.illustrationId ?? null,
+      emotion: typeof m.meta?.emotion === "string" ? m.meta.emotion : null,
       createdAt: m.createdAt,
     }))
   );

@@ -28,9 +28,21 @@ export async function PUT(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "max_tokens 는 1 이상의 정수여야 합니다." }, { status: 400 });
   }
 
+  const curRow = cur as unknown as Record<string, unknown>;
+  const costIn = b.cost_per_1m_input !== undefined ? Number(b.cost_per_1m_input) : Number(curRow.cost_per_1m_input ?? 0);
+  const costOut = b.cost_per_1m_output !== undefined ? Number(b.cost_per_1m_output) : Number(curRow.cost_per_1m_output ?? 0);
+  if (!Number.isFinite(costIn) || costIn < 0 || !Number.isFinite(costOut) || costOut < 0) {
+    return NextResponse.json({ error: "단가는 0 이상의 숫자여야 합니다." }, { status: 400 });
+  }
+  const currency =
+    b.cost_currency !== undefined
+      ? String(b.cost_currency).trim() || "USD"
+      : String(curRow.cost_currency ?? "USD");
+
   await execute(
     `UPDATE llm_providers
-     SET name = ?, provider = ?, model = ?, api_key = ?, base_url = ?, max_tokens = ?, is_active = ?
+     SET name = ?, provider = ?, model = ?, api_key = ?, base_url = ?, max_tokens = ?, is_active = ?,
+         cost_per_1m_input = ?, cost_per_1m_output = ?, cost_currency = ?
      WHERE id = ?`,
     [
       b.name ?? cur.name,
@@ -40,6 +52,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
       baseUrl,
       maxTokens,
       b.is_active !== undefined ? (b.is_active ? 1 : 0) : cur.is_active,
+      costIn,
+      costOut,
+      currency,
       id,
     ]
   );

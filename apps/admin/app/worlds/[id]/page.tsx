@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
+import Link from "next/link";
 import AnniversarySection from "./AnniversarySection";
 import DictionaryBrowser from "../../components/DictionaryBrowser";
 import ImageCropModal from "../../components/ImageCropModal";
+import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
 
 interface World {
   id: number;
@@ -14,6 +16,9 @@ interface World {
   visibility?: "private" | "open";
   status?: "active" | "suspended";
   title_image_url?: string | null;
+  title_color?: string | null;
+  owner_user_id?: number | null;
+  owner_nickname?: string | null;
 }
 
 interface DictEntry {
@@ -69,6 +74,7 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
   const [warnings, setWarnings] = useState<string[]>([]);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [titleCropOpen, setTitleCropOpen] = useState(false); // 타이틀 이미지 크롭 팝업
+  const [genOpen, setGenOpen] = useState(false); // AI 타이틀 생성 모달
 
   // 인물 항목 ↔ 캐릭터 연결 변경
   const linkCharacter = async (entryId: number, value: string) => {
@@ -97,6 +103,18 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
     const res = await fetch(`/api/worlds/${id}/title-image`, { method: "POST", body: form });
     const r = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`업로드 실패: ${r.error ?? res.statusText}`);
+    setWorld((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
+  };
+
+  /** 생성 모달 확인 → AI 타이틀 이미지 생성 (실패 시 throw → 모달 안에 에러 표시) */
+  const generateTitleImage = async (p: ImageGenPayload) => {
+    const res = await fetch(`/api/worlds/${id}/title-image/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: p.prompt, refImages: p.refImages }),
+    });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`생성 실패: ${r.error ?? res.statusText}`);
     setWorld((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
   };
 
@@ -246,7 +264,22 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
 
   return (
     <>
-      <h2>세계관 편집: {world.name}</h2>
+      <h2 style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        세계관 편집: {world.name}
+        <a href={`/api/worlds/${world.id}/export`} download>
+          <button type="button" className="small btn-secondary">JSON 내보내기</button>
+        </a>
+        <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>
+          제작자:{" "}
+          {world.owner_user_id ? (
+            <Link href={`/users/${world.owner_user_id}`} style={{ textDecoration: "underline" }}>
+              {world.owner_nickname ?? "유저"} #{world.owner_user_id}
+            </Link>
+          ) : (
+            "운영"
+          )}
+        </span>
+      </h2>
 
       {/* 탭 바: 비활성 탭도 언마운트하지 않고 display:none 으로만 숨겨 입력값/fetch 상태 보존 */}
       <div className="tabs">
@@ -270,7 +303,8 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
             <div style={{ width: 120, height: 160, background: "#888", borderRadius: 6 }} />
           )}
           <div>
-            <button type="button" onClick={() => setTitleCropOpen(true)}>이미지 업로드</button>
+            <button type="button" onClick={() => setTitleCropOpen(true)}>이미지 업로드</button>{" "}
+            <button type="button" onClick={() => setGenOpen(true)}>AI 생성</button>
           </div>
         </div>
         <ImageCropModal
@@ -280,6 +314,30 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
           onCancel={() => setTitleCropOpen(false)}
           onConfirm={uploadTitleImage}
         />
+        <ImageGenModal
+          open={genOpen}
+          title="AI 타이틀 이미지 생성"
+          initialPrompt={`세계관 타이틀 일러스트를 생성한다. 세로형 3:4.\n세계관: ${world.name}\n설정: ${(world.description ?? "").slice(0, 800)}`}
+          onClose={() => setGenOpen(false)}
+          onGenerate={generateTitleImage}
+        />
+        <label>타이틀 컬러</label>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
+          <input
+            type="color"
+            value={world.title_color ?? "#7c8cf8"}
+            onChange={(e) => setWorld({ ...world, title_color: e.target.value })}
+            style={{ width: 44, height: 32, padding: 2, cursor: "pointer" }}
+          />
+          <span className="muted" style={{ fontSize: 12 }}>
+            {world.title_color ?? "미지정"} — 메인의 캐릭터 카드 테두리와 세계관 선택 시 배경 톤에 쓰입니다.
+          </span>
+          {world.title_color && (
+            <button type="button" className="small btn-secondary" onClick={() => setWorld({ ...world, title_color: null })}>
+              지우기
+            </button>
+          )}
+        </div>
         <label>이름</label>
         <input value={world.name} onChange={(e) => setWorld({ ...world, name: e.target.value })} />
         <label>기본 세계관 설정</label>
@@ -324,6 +382,7 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
           </div>
         </div>
         <button onClick={saveWorld}>{saved ? "저장됨 ✓" : "저장"}</button>
+        <a href={`/api/worlds/${id}/export`} download style={{ marginLeft: 12 }}>내보내기 (JSON)</a>
       </div>
       </div>
 

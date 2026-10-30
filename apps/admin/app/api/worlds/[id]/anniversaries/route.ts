@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   if (body.preset_id != null) {
     const presetId = Number(body.preset_id);
-    const presets = await query<{ name: string; month: number; day: number; description: string }>(
+    const presets = await query<{ name: string; month: number; day: number; notice_days: number; description: string }>(
       "SELECT * FROM anniversary_presets WHERE id = ?",
       [presetId]
     );
@@ -36,8 +36,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (dup.length > 0) return NextResponse.json({ error: "이미 불러온 프리셋입니다." }, { status: 409 });
     const p = presets[0];
     const result = await execute(
-      "INSERT INTO world_anniversaries (world_id, preset_id, name, month, day, description) VALUES (?, ?, ?, ?, ?, ?)",
-      [id, presetId, p.name, p.month, p.day, p.description]
+      "INSERT INTO world_anniversaries (world_id, preset_id, name, month, day, notice_days, description) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [id, presetId, p.name, p.month, p.day, p.notice_days, p.description]
     );
     await invalidateChatContext();
     return NextResponse.json({ id: result.insertId }, { status: 201 });
@@ -45,10 +45,10 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const parsed = parseAnniversaryInput(body);
   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
-  const { name, month, day, description } = parsed.value;
+  const { name, month, day, notice_days, description } = parsed.value;
   const result = await execute(
-    "INSERT INTO world_anniversaries (world_id, preset_id, name, month, day, description) VALUES (?, NULL, ?, ?, ?, ?)",
-    [id, name, month, day, description]
+    "INSERT INTO world_anniversaries (world_id, preset_id, name, month, day, notice_days, description) VALUES (?, NULL, ?, ?, ?, ?, ?)",
+    [id, name, month, day, notice_days, description]
   );
   await invalidateChatContext();
   return NextResponse.json({ id: result.insertId }, { status: 201 });

@@ -1,14 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query, execute } from "@vchatbot/core";
+import { query, execute, sweepScheduledDeletions, type SqlParam } from "@vchatbot/core";
 
+/** 목록 필터: q(이름), worldId, visibility(open|private), status(active|suspended), owner(admin|user) */
 export async function GET(req: NextRequest) {
-  const worldId = req.nextUrl.searchParams.get("worldId");
+  // 만기 지난 삭제 대기 건 정리 (lazy sweep)
+  await sweepScheduledDeletions();
+  const sp = req.nextUrl.searchParams;
+  const where: string[] = [];
+  const params: SqlParam[] = [];
+  const q = (sp.get("q") ?? "").trim();
+  if (q) {
+    where.push("c.name LIKE ?");
+    params.push(`%${q.replace(/[\\%_]/g, (c) => "\\" + c)}%`);
+  }
+  const worldId = sp.get("worldId");
+  if (worldId) {
+    where.push("c.world_id = ?");
+    params.push(worldId);
+  }
+  const visibility = sp.get("visibility");
+  if (visibility === "open" || visibility === "private") {
+    where.push("c.visibility = ?");
+    params.push(visibility);
+  }
+  const status = sp.get("status");
+  if (status === "active" || status === "suspended") {
+    where.push("c.status = ?");
+    params.push(status);
+  }
+  const owner = sp.get("owner");
+  if (owner === "admin") where.push("c.owner_user_id IS NULL");
+  else if (owner === "user") where.push("c.owner_user_id IS NOT NULL");
+  // 제재/삭제 대기 상태 필터
+  const state = sp.get("state");
+  if (state === "sanctioned") {
+    where.push(`EXISTS (SELECT 1 FROM sanctions s2
+      WHERE s2.target_type = 'character' AND s2.target_id = c.id AND s2.kind = 'hide'
+        AND s2.revoked_at IS NULL AND s2.ends_at > NOW())`);
+  } else if (state === "delete_pending") {
+    where.push("c.delete_scheduled_at IS NOT NULL");
+  }
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
   const sql = `
-    SELECT c.*, w.name AS world_name
+    SELECT c.*, w.name AS world_name, u.nickname AS owner_nickname,
+           u.vfun_user_id AS owner_vfun_id, u.vfun_u_no AS owner_u_no,
+           (SELECT COUNT(*) FROM user_character_state s WHERE s.character_id = c.id) AS user_count
     FROM characters c JOIN worlds w ON w.id = c.world_id
-    ${worldId ? "WHERE c.world_id = ?" : ""}
+    LEFT JOIN users u ON u.id = c.owner_user_id
+    ${whereSql}
     ORDER BY c.id DESC`;
-  const rows = await query(sql, worldId ? [worldId] : []);
+  const rows = await query(sql, params);
   return NextResponse.json(rows);
 }
 

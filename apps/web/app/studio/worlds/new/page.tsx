@@ -26,7 +26,7 @@ export default function NewWorldPage() {
   return (
     <div className="container studio">
       <h2 className="page-title">
-        <Link href="/studio" style={{ color: "var(--muted)" }}>‹</Link> 새 세계관
+        <Link href="/studio" className="back-link" title="스튜디오로">‹</Link> 새 세계관
       </h2>
       <div className="panel">
         <label>세계관 이름</label>

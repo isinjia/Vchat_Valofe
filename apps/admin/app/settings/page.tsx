@@ -14,13 +14,33 @@ interface Settings {
       basePath: string; publicBaseUrl: string;
     };
   };
-  llm: { model: string; maxTokens: number; historyLimit: number };
+  llm: {
+    model: string; maxTokens: number; historyLimit: number;
+    assistProviderId: number | null; fallbackProviderId: number | null;
+  };
+  scoring: { scoringProviderId: number | null; timeoutMs: number };
   /** 비율은 화면에서 % (0~100) 로 편집, 저장 시 0~1 */
   fees: { creatorRate: number; worldRate: number };
-  pricing: { aiAssistCost: number; illustGenCost: number };
+  pricing: {
+    aiAssistCost: number;
+    illustGenCost: number;
+    aiAssist: Record<string, { coinsPer1k: number; minCost: number }>;
+    byok: { enabled: boolean; cost: number };
+  };
   /** apiKey 는 서버가 마스킹해서 내려주며, 수정하지 않으면 그대로 전송(서버가 기존 값 유지) */
   image_gen: { enabled: boolean; baseUrl: string; apiKey: string; model: string; size: string };
 }
+
+/** AI 보조 기능(kind) 목록 + 라벨 (client 컴포넌트라 core 에서 import 하지 않고 하드코딩) */
+const AI_KINDS: [string, string][] = [
+  ["world_description", "세계관 설명"],
+  ["world_prompt", "세계관 공통 프롬프트"],
+  ["profile", "캐릭터 프로필"],
+  ["personality", "기본 성격"],
+  ["speech_style", "말투"],
+  ["scenario", "상황 설정"],
+  ["greeting", "첫 인사말"],
+];
 
 const EMPTY: Settings = {
   storage: {
@@ -28,15 +48,24 @@ const EMPTY: Settings = {
     s3: { region: "ap-northeast-2", bucket: "", accessKeyId: "", secretAccessKey: "", endpoint: "", publicBaseUrl: "" },
     ftp: { host: "", port: 21, user: "", password: "", basePath: "/", publicBaseUrl: "" },
   },
-  llm: { model: "claude-opus-5-5", maxTokens: 4096, historyLimit: 30 },
+  llm: { model: "claude-opus-5-5", maxTokens: 4096, historyLimit: 30, assistProviderId: null, fallbackProviderId: null },
+  scoring: { scoringProviderId: null, timeoutMs: 10000 },
   fees: { creatorRate: 30, worldRate: 20 },
-  pricing: { aiAssistCost: 50, illustGenCost: 500 },
+  pricing: { aiAssistCost: 50, illustGenCost: 500, aiAssist: {}, byok: { enabled: true, cost: 10 } },
   image_gen: { enabled: false, baseUrl: "https://api.openai.com/v1", apiKey: "", model: "gpt-image-1", size: "1024x1536" },
 };
 
 export default function SettingsPage() {
   const [s, setS] = useState<Settings>(EMPTY);
   const [saved, setSaved] = useState(false);
+  const [providers, setProviders] = useState<{ id: number; name: string; model: string; is_active: number | boolean }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/llm")
+      .then((r) => r.json())
+      .then((d) => setProviders(Array.isArray(d) ? d : []))
+      .catch(() => setProviders([]));
+  }, []);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -49,11 +78,22 @@ export default function SettingsPage() {
             ftp: { ...EMPTY.storage.ftp, ...(data.storage?.ftp ?? {}) },
           },
           llm: { ...EMPTY.llm, ...(data.llm ?? {}) },
+          scoring: {
+            scoringProviderId: data.scoring?.scoringProviderId ?? null,
+            timeoutMs: data.scoring?.timeoutMs ?? EMPTY.scoring.timeoutMs,
+          },
           fees: {
             creatorRate: Math.round((data.fees?.creatorRate ?? 0.3) * 1000) / 10,
             worldRate: Math.round((data.fees?.worldRate ?? 0.2) * 1000) / 10,
           },
-          pricing: { ...EMPTY.pricing, ...(data.pricing ?? {}) },
+          pricing: (() => {
+            const p = { ...EMPTY.pricing, ...(data.pricing ?? {}) };
+            const aiAssist: Settings["pricing"]["aiAssist"] = {};
+            for (const [k] of AI_KINDS) {
+              aiAssist[k] = data.pricing?.aiAssist?.[k] ?? { coinsPer1k: 0, minCost: p.aiAssistCost };
+            }
+            return { ...p, aiAssist, byok: { ...EMPTY.pricing.byok, ...(data.pricing?.byok ?? {}) } };
+          })(),
           image_gen: { ...EMPTY.image_gen, ...(data.image_gen ?? {}) },
         });
       });
@@ -189,6 +229,48 @@ export default function SettingsPage() {
               onChange={(e) => setS({ ...s, llm: { ...s.llm, historyLimit: Number(e.target.value) } })} />
           </div>
         </div>
+        <div className="row">
+          <div>
+            <label>보조용 LLM</label>
+            <select value={s.llm.assistProviderId ?? ""}
+              onChange={(e) => setS({ ...s, llm: { ...s.llm, assistProviderId: e.target.value ? Number(e.target.value) : null } })}>
+              <option value="">기본 (설정 모델 직접 호출)</option>
+              {providers.map((p) => (
+                <option key={p.id} value={p.id}>{p.name} ({p.model}){p.is_active ? "" : " (OFF)"}</option>
+              ))}
+            </select>
+            <p className="muted">스튜디오 AI 생성, 캐릭터 생성 보조에 사용. 게임데이터 분석은 Claude 고정</p>
+          </div>
+          <div>
+            <label>폴백 LLM</label>
+            <select value={s.llm.fallbackProviderId ?? ""}
+              onChange={(e) => setS({ ...s, llm: { ...s.llm, fallbackProviderId: e.target.value ? Number(e.target.value) : null } })}>
+              <option value="">기본 (설정 모델 직접 호출)</option>
+              {providers.map((p) => (
+                <option key={p.id} value={p.id}>{p.name} ({p.model}){p.is_active ? "" : " (OFF)"}</option>
+              ))}
+            </select>
+            <p className="muted">등급 할당이 없거나 모든 계정이 월 한도 소진일 때 사용</p>
+          </div>
+        </div>
+        <div className="row">
+          <div>
+            <label>채점용 LLM</label>
+            <select value={s.scoring.scoringProviderId ?? ""}
+              onChange={(e) => setS({ ...s, scoring: { ...s.scoring, scoringProviderId: e.target.value ? Number(e.target.value) : null } })}>
+              <option value="">기본 (Claude Haiku 직접 호출)</option>
+              {providers.map((p) => (
+                <option key={p.id} value={p.id}>{p.name} ({p.model}){p.is_active ? "" : " (OFF)"}</option>
+              ))}
+            </select>
+            <p className="muted">호감도 채점·게스트 난입 판단에 사용</p>
+          </div>
+          <div>
+            <label>채점 타임아웃(ms)</label>
+            <input type="number" min={1000} step={1000} value={s.scoring.timeoutMs}
+              onChange={(e) => setS({ ...s, scoring: { ...s.scoring, timeoutMs: Number(e.target.value) } })} />
+          </div>
+        </div>
         <p className="muted" style={{ marginTop: 8 }}>
           API 키는 보안상 DB 가 아닌 서버 환경변수(ANTHROPIC_API_KEY)로 설정합니다.
         </p>
@@ -247,7 +329,7 @@ export default function SettingsPage() {
         </div>
         <div className="row">
           <div>
-            <label>AI 보조 1회 비용(코인)</label>
+            <label>기본 정액(코인) — 기능별 설정이 없을 때 AI 보조 1회 비용</label>
             <input type="number" min={0} value={s.pricing.aiAssistCost}
               onChange={(e) => setS({ ...s, pricing: { ...s.pricing, aiAssistCost: Number(e.target.value) } })} />
           </div>
@@ -255,6 +337,56 @@ export default function SettingsPage() {
             <label>일러스트 생성 1회 비용(코인)</label>
             <input type="number" min={0} value={s.pricing.illustGenCost}
               onChange={(e) => setS({ ...s, pricing: { ...s.pricing, illustGenCost: Number(e.target.value) } })} />
+          </div>
+        </div>
+
+        <label style={{ marginTop: 12 }}>AI 보조 기능별 과금</label>
+        <table>
+          <thead>
+            <tr>
+              <th>기능</th>
+              <th>1K토큰당 코인 (0=정액만)</th>
+              <th>최소/정액 코인</th>
+            </tr>
+          </thead>
+          <tbody>
+            {AI_KINDS.map(([k, label]) => {
+              const v = s.pricing.aiAssist[k] ?? { coinsPer1k: 0, minCost: s.pricing.aiAssistCost };
+              const setK = (patch: Partial<typeof v>) =>
+                setS({
+                  ...s,
+                  pricing: { ...s.pricing, aiAssist: { ...s.pricing.aiAssist, [k]: { ...v, ...patch } } },
+                });
+              return (
+                <tr key={k}>
+                  <td>{label}</td>
+                  <td>
+                    <input type="number" min={0} value={v.coinsPer1k}
+                      onChange={(e) => setK({ coinsPer1k: Number(e.target.value) })} />
+                  </td>
+                  <td>
+                    <input type="number" min={0} value={v.minCost}
+                      onChange={(e) => setK({ minCost: Number(e.target.value) })} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <p className="muted">요율이 0 이면 최소/정액 코인만 차감, 0 초과면 max(최소, 올림((입력+출력 토큰)×요율/1000)) 코인을 차감합니다.</p>
+
+        <div className="row" style={{ marginTop: 12 }}>
+          <div>
+            <label>
+              <input type="checkbox" checked={s.pricing.byok.enabled} style={{ width: "auto", marginRight: 6 }}
+                onChange={(e) => setS({ ...s, pricing: { ...s.pricing, byok: { ...s.pricing.byok, enabled: e.target.checked } } })} />
+              유저 본인 Claude 키 사용 허용
+            </label>
+          </div>
+          <div>
+            <label>BYOK 1회 정액(코인)</label>
+            <input type="number" min={0} value={s.pricing.byok.cost}
+              onChange={(e) => setS({ ...s, pricing: { ...s.pricing, byok: { ...s.pricing.byok, cost: Number(e.target.value) } } })} />
           </div>
         </div>
       </div>

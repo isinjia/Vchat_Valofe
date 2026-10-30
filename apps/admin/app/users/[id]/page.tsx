@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
+import SanctionPanel from "../../components/SanctionPanel";
 
 interface Detail {
   user: {
@@ -11,7 +12,10 @@ interface Detail {
     vfun_user_id: string | null;
     coins: number;
     status: "active" | "banned";
+    admin_role: "user_admin" | "system_admin" | null;
     tier_id: number | null;
+    creator_tier_id: number | null;
+    ai_level_id: number | null;
     created_at: string;
   };
   coinSummary: { type: string; count: number; total: number }[];
@@ -49,7 +53,8 @@ const signed = (n: number) => (n > 0 ? `+${fmt(n)}` : fmt(n));
 export default function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [data, setData] = useState<Detail | null>(null);
-  const [tiers, setTiers] = useState<{ id: number; name: string }[]>([]);
+  const [tiers, setTiers] = useState<{ id: number; name: string; track: string }[]>([]);
+  const [aiLevels, setAiLevels] = useState<{ id: number; level: number; name: string }[]>([]);
   const [err, setErr] = useState("");
 
   const load = () =>
@@ -64,6 +69,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     load();
     fetch("/api/tiers").then((r) => r.json()).then(setTiers);
+    fetch("/api/ai-levels").then((r) => r.json()).then(setAiLevels);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -112,8 +118,42 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
               onChange={(e) => update({ tier_id: e.target.value === "" ? null : Number(e.target.value) })}
             >
               <option value="">기본 등급</option>
-              {tiers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              {tiers.filter((t) => t.track === "user").map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
+          </div>
+          <div>
+            <label>크리에이터 등급</label>
+            <select
+              value={user.creator_tier_id ?? ""}
+              onChange={(e) => update({ creator_tier_id: e.target.value === "" ? null : Number(e.target.value) })}
+            >
+              <option value="">없음</option>
+              {tiers.filter((t) => t.track === "creator").map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label>AI 레벨</label>
+            <select
+              value={user.ai_level_id ?? ""}
+              onChange={(e) => update({ ai_level_id: e.target.value === "" ? null : Number(e.target.value) })}
+            >
+              <option value="">선택 안 함(기본)</option>
+              {aiLevels.map((l) => <option key={l.id} value={l.id}>Lv.{l.level} {l.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label>관리자 권한</label>
+            <select
+              value={user.admin_role ?? ""}
+              onChange={(e) => update({ admin_role: e.target.value === "" ? null : e.target.value })}
+            >
+              <option value="">없음</option>
+              <option value="user_admin">유저 관리자</option>
+              <option value="system_admin">시스템 관리자</option>
+            </select>
+            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+              권한 변경은 해당 관리자가 다시 로그인해야 반영됩니다.
+            </div>
           </div>
           <div>
             <label>상태</label>
@@ -127,6 +167,8 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
       </div>
+
+      <SanctionPanel targetType="user" targetId={id} />
 
       <div className="panel">
         <h3>코인 사용 요약</h3>

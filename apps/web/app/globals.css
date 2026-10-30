@@ -26,6 +26,33 @@ a { color: inherit; text-decoration: none; }
 .container { max-width: 860px; margin: 0 auto; padding: 24px 16px; }
 
 .page-title { font-size: 22px; margin-bottom: 6px; }
+/* 상단바 유저 등급 뱃지 */
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tier-badge .tier-icon { width: 16px; height: 16px; object-fit: contain; border-radius: 3px; }
+
+/* 페이지 상단 뒤로가기 — 터치하기 좋게 크게 */
+.back-link {
+  display: inline-block;
+  font-size: 28px;
+  line-height: 1;
+  padding: 2px 12px 4px 2px;
+  margin-right: 2px;
+  color: var(--muted);
+  vertical-align: -3px;
+  border-radius: 8px;
+}
+.back-link:hover { color: var(--text); background: var(--panel); }
 .page-sub { color: var(--muted); margin-bottom: 24px; }
 
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
@@ -70,6 +97,44 @@ a { color: inherit; text-decoration: none; }
 
 .msg { display: flex; margin-bottom: 14px; }
 .msg.user { justify-content: flex-end; }
+
+/* 날짜 구분선 + 말풍선 옆 시간 */
+.date-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 12px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.date-divider::before,
+.date-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.msg-time {
+  font-size: 10px;
+  color: var(--muted);
+  align-self: flex-end;
+  margin: 0 6px 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* 말풍선 앞 원형 프로필 (감정에 따라 교체) */
+.msg-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  margin-right: 8px;
+  flex-shrink: 0;
+  align-self: flex-end;
+  background: var(--panel);
+}
 .bubble {
   max-width: 75%;
   padding: 10px 14px;
@@ -121,6 +186,23 @@ a { color: inherit; text-decoration: none; }
   cursor: pointer;
 }
 .chat-input button:disabled { opacity: 0.5; cursor: default; }
+/* 채팅 입력창 앞 AI 레벨 선택 */
+.chat-input .level-select {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  padding: 0 10px;
+  font-size: 13px;
+  font-family: inherit;
+  min-height: 44px;
+  max-width: 170px;
+  cursor: pointer;
+  appearance: none;
+}
+.chat-input .level-select:hover { background: var(--panel-hover); color: var(--text); }
+.chat-input .level-select:focus { outline: none; border-color: var(--accent); color: var(--text); }
+.chat-input .level-select:disabled { opacity: 0.5; cursor: default; }
 
 .typing { color: var(--muted); font-size: 13px; padding: 0 16px 6px; }
 .error-banner {
@@ -175,8 +257,18 @@ a { color: inherit; text-decoration: none; }
   gap: 6px;
 }
 .world-card .title-img { height: 96px; }
+/* '전체' 버튼 — 세계관 카드와 같은 크기의 타일 */
+.world-all-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: var(--muted);
+}
 .world-card.active .title-img { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .world-card.active span { color: var(--accent); font-weight: 600; }
+.world-card .world-card-owner { color: var(--muted); font-size: 10px; }
+.world-card.active .world-card-owner { color: var(--muted); font-weight: 400; }
 
 .char-card { display: block; width: 140px; }
 .char-card:hover .title-img { border-color: var(--accent); }
@@ -185,6 +277,20 @@ a { color: inherit; text-decoration: none; }
 
 .char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; }
 .char-grid .char-card { width: auto; }
+
+.like-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.like-btn:hover:not(:disabled) { border-color: var(--accent); }
+.like-btn.liked { color: var(--accent); border-color: var(--accent); }
+.char-card-like { margin-top: 4px; }
 
 .sort-toggle { display: flex; gap: 6px; }
 .sort-btn {
@@ -333,6 +439,15 @@ a { color: inherit; text-decoration: none; }
 .world-picker-card:hover { background: var(--panel-hover); border-color: var(--accent); }
 .world-picker-name { font-size: 13px; font-weight: 600; word-break: break-all; }
 .world-picker-owner { color: var(--muted); font-size: 11px; }
+.world-picker-section {
+  margin: 14px 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 5px;
+}
 .world-mini { display: flex; align-items: center; gap: 12px; }
 .world-mini .title-img { width: 48px; flex: 0 0 48px; }
 .world-mini-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
@@ -393,6 +508,7 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
 }
+.crop-frame.circle { border-radius: 50%; }
 .crop-zoom-row { display: flex; align-items: center; gap: 10px; margin: 12px 0 0; font-size: 12px; color: var(--muted); }
 .crop-slider { flex: 1; width: auto; padding: 0; margin: 0; }
 .crop-err { color: #ff6b6b; margin: 10px 0 0; font-size: 13px; }

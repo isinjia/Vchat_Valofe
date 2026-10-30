@@ -1,0 +1,250 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { studioFetch } from "../../studio-api";
+
+export interface CharEvent {
+  id: number;
+  name: string;
+  trigger_affinity_min: number | null;
+  trigger_keywords: string | null;
+  trigger_relationship: string | null;
+  situation: string;
+  success_condition: string;
+  fail_condition: string | null;
+  set_relationship: string | null;
+  retry_hours: number;
+  max_turns: number;
+  is_active: number;
+  success_count?: number;
+}
+
+const EMPTY = {
+  name: "",
+  trigger_affinity_min: "",
+  trigger_keywords: "",
+  trigger_relationship: "",
+  situation: "",
+  success_condition: "",
+  fail_condition: "",
+  set_relationship: "",
+  retry_hours: "72",
+  max_turns: "6",
+  is_active: true,
+};
+
+const REL_LABEL: Record<string, string> = { none: "관계 없음", lover: "연인", engaged: "약혼", married: "결혼" };
+
+function condSummary(e: CharEvent): string {
+  const parts: string[] = [];
+  if (e.trigger_affinity_min != null) parts.push(`호감도 ${e.trigger_affinity_min}+`);
+  if (e.trigger_keywords) parts.push(`키워드: ${e.trigger_keywords}`);
+  if (e.trigger_relationship) parts.push(`관계: ${REL_LABEL[e.trigger_relationship] ?? e.trigger_relationship}`);
+  return parts.length ? parts.join(" / ") : "조건 없음";
+}
+
+/** 이벤트 채팅 설정 섹션: 발동 조건 + 상황/성공/실패 조건 + 보상(관계 설정) CRUD */
+export default function CharacterEventsSection({
+  characterId,
+  onChanged,
+}: {
+  characterId: string;
+  onChanged?: () => void;
+}) {
+  const [list, setList] = useState<CharEvent[]>([]);
+  const [form, setForm] = useState(EMPTY);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [error, setError] = useState("");
+
+  const base = `/api/studio/characters/${characterId}/events`;
+
+  const load = () =>
+    studioFetch(base).then((r) => r.json()).then((d) => setList(Array.isArray(d) ? d : [])).catch(() => {});
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [characterId]);
+
+  const startEdit = (e: CharEvent) => {
+    setEditId(e.id);
+    setError("");
+    setForm({
+      name: e.name,
+      trigger_affinity_min: e.trigger_affinity_min == null ? "" : String(e.trigger_affinity_min),
+      trigger_keywords: e.trigger_keywords ?? "",
+      trigger_relationship: e.trigger_relationship ?? "",
+      situation: e.situation ?? "",
+      success_condition: e.success_condition ?? "",
+      fail_condition: e.fail_condition ?? "",
+      set_relationship: e.set_relationship ?? "",
+      retry_hours: String(e.retry_hours),
+      max_turns: String(e.max_turns),
+      is_active: !!e.is_active,
+    });
+  };
+
+  const reset = () => {
+    setEditId(null);
+    setError("");
+    setForm(EMPTY);
+  };
+
+  const save = async () => {
+    setError("");
+    const body = {
+      name: form.name,
+      trigger_affinity_min: form.trigger_affinity_min.trim() === "" ? null : Number(form.trigger_affinity_min),
+      trigger_keywords: form.trigger_keywords,
+      trigger_relationship: form.trigger_relationship || null,
+      situation: form.situation,
+      success_condition: form.success_condition,
+      fail_condition: form.fail_condition,
+      set_relationship: form.set_relationship || null,
+      retry_hours: Number(form.retry_hours),
+      max_turns: Number(form.max_turns),
+      is_active: form.is_active,
+    };
+    const r = await studioFetch(editId == null ? base : `${base}/${editId}`, {
+      method: editId == null ? "POST" : "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) {
+      setError((await r.json().catch(() => ({}))).error ?? "저장 실패");
+      return;
+    }
+    reset();
+    load();
+    onChanged?.();
+  };
+
+  const remove = async (e: CharEvent) => {
+    if (!confirm(`"${e.name}" 이벤트를 삭제할까요? 유저 달성 기록도 함께 삭제됩니다.`)) return;
+    await studioFetch(`${base}/${e.id}`, { method: "DELETE" });
+    if (editId === e.id) reset();
+    load();
+    onChanged?.();
+  };
+
+  return (
+    <>
+      <h3>이벤트 채팅 ({list.length})</h3>
+      <div className="panel">
+        <div className="notice">
+          발동 조건(지정한 것만 모두 충족)이 맞으면 캐릭터가 지정한 상황을 연기하고, 매 턴 채점 LLM 이 성공/실패를 판정합니다.
+          최대 턴을 넘기면 실패이며, 성공은 유저당 1회만 저장됩니다. 실패하면 재발동 텀이 지난 뒤 조건이 맞을 때 다시 발동합니다.
+        </div>
+        <div className="row">
+          <div>
+            <label>이름</label>
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="예: 첫 고백" />
+          </div>
+          <div>
+            <label>발동: 호감도 최소</label>
+            <input
+              type="number"
+              value={form.trigger_affinity_min}
+              onChange={(e) => setForm({ ...form, trigger_affinity_min: e.target.value })}
+              placeholder="빈값=조건 없음"
+            />
+          </div>
+          <div>
+            <label>발동: 키워드 (쉼표 구분)</label>
+            <input
+              value={form.trigger_keywords}
+              onChange={(e) => setForm({ ...form, trigger_keywords: e.target.value })}
+              placeholder="예: 사랑해, 좋아해"
+            />
+          </div>
+          <div>
+            <label>발동: 관계 조건</label>
+            <select value={form.trigger_relationship} onChange={(e) => setForm({ ...form, trigger_relationship: e.target.value })}>
+              <option value="">조건 없음</option>
+              <option value="none">관계 없음일 때만</option>
+              <option value="lover">연인일 때만</option>
+              <option value="engaged">약혼일 때만</option>
+              <option value="married">결혼일 때만</option>
+            </select>
+          </div>
+        </div>
+        <label>상황 지시</label>
+        <textarea
+          rows={3}
+          value={form.situation}
+          onChange={(e) => setForm({ ...form, situation: e.target.value })}
+          placeholder="발동 시 캐릭터가 연기할 상황 (예: 해질녘 공원에서 떨리는 목소리로 고백을 준비한다)"
+        />
+        <label>성공 조건</label>
+        <textarea
+          rows={2}
+          value={form.success_condition}
+          onChange={(e) => setForm({ ...form, success_condition: e.target.value })}
+          placeholder="채점 LLM 이 성공으로 판단할 기준"
+        />
+        <label>실패 조건 (선택)</label>
+        <textarea
+          rows={2}
+          value={form.fail_condition}
+          onChange={(e) => setForm({ ...form, fail_condition: e.target.value })}
+          placeholder="비워두면 최대 턴 초과 시에만 실패"
+        />
+        <div className="row">
+          <div>
+            <label>성공 시 관계 설정</label>
+            <select value={form.set_relationship} onChange={(e) => setForm({ ...form, set_relationship: e.target.value })}>
+              <option value="">없음</option>
+              <option value="lover">연인</option>
+              <option value="engaged">약혼</option>
+              <option value="married">결혼</option>
+            </select>
+          </div>
+          <div>
+            <label>재발동 텀 (시간, 1~720)</label>
+            <input type="number" min={1} max={720} value={form.retry_hours} onChange={(e) => setForm({ ...form, retry_hours: e.target.value })} />
+          </div>
+          <div>
+            <label>최대 턴 (1~20)</label>
+            <input type="number" min={1} max={20} value={form.max_turns} onChange={(e) => setForm({ ...form, max_turns: e.target.value })} />
+          </div>
+          <div>
+            <label>활성</label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: "normal" }}>
+              <input
+                type="checkbox"
+                style={{ width: "auto" }}
+                checked={form.is_active}
+                onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+              />
+              사용
+            </label>
+          </div>
+        </div>
+        {error && <p style={{ color: "var(--danger)", marginTop: 8 }}>{error}</p>}
+        <button onClick={save}>{editId == null ? "이벤트 추가" : "수정 저장"}</button>{" "}
+        {editId != null && <button className="small" onClick={reset}>취소</button>}
+
+        <table style={{ marginTop: 16 }}>
+          <thead>
+            <tr><th>이름</th><th>발동 조건</th><th>달성</th><th>상태</th><th></th></tr>
+          </thead>
+          <tbody>
+            {list.map((e) => (
+              <tr key={e.id}>
+                <td>{e.name}</td>
+                <td className="muted">{condSummary(e)}</td>
+                <td>{Number(e.success_count ?? 0)}명</td>
+                <td>{e.is_active ? <span className="badge">활성</span> : <span className="muted">비활성</span>}</td>
+                <td>
+                  <button className="small" onClick={() => startEdit(e)}>수정</button>{" "}
+                  <button className="danger small" onClick={() => remove(e)}>삭제</button>
+                </td>
+              </tr>
+            ))}
+            {list.length === 0 && <tr><td colSpan={5} className="muted">등록된 이벤트가 없습니다.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}

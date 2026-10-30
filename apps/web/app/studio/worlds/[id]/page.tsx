@@ -5,8 +5,9 @@ import { useEffect, useState, use } from "react";
 import AnniversarySection from "./AnniversarySection";
 import DictionaryBrowser from "../../components/DictionaryBrowser";
 import ImageCropModal from "../../components/ImageCropModal";
+import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
 import { useRouter } from "next/navigation";
-import { studioFetch, jsonInit } from "../../studio-api";
+import { studioFetch, jsonInit, aiCostLabel, type PricingInfo } from "../../studio-api";
 
 interface World {
   id: number;
@@ -15,6 +16,8 @@ interface World {
   ai_prompt: string;
   visibility: "private" | "open";
   title_image_url?: string | null;
+  title_color?: string | null;
+  delete_scheduled_at?: string | null;
 }
 
 interface DictEntry {
@@ -42,6 +45,7 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
   const router = useRouter();
   const [world, setWorld] = useState<World | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [dictKey, setDictKey] = useState(0); // 사전 목록 재조회 트리거
   const [newEntry, setNewEntry] = useState({
     category: "location" as DictEntry["category"],
@@ -53,7 +57,8 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
   const [saved, setSaved] = useState(false);
   const [tab, setTab] = useState("basic"); // 편집 탭
   const [titleCropOpen, setTitleCropOpen] = useState(false); // 타이틀 이미지 크롭 팝업
-  const [cost, setCost] = useState<number | null>(null);
+  const [genOpen, setGenOpen] = useState(false); // AI 타이틀 생성 모달
+  const [pricing, setPricing] = useState<PricingInfo | null>(null);
   const [generating, setGenerating] = useState<string | null>(null);
 
   // 인물 항목 ↔ 내 캐릭터 연결 변경
@@ -76,7 +81,7 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
       if (!r.ok) setError(d.error ?? "불러오기 실패");
       else setWorld(d);
     });
-    studioFetch("/api/studio/pricing").then((r) => r.json()).then((p) => setCost(p.aiAssistCost)).catch(() => {});
+    studioFetch("/api/studio/pricing").then((r) => r.json()).then((p) => setPricing(p)).catch(() => {});
     // 내 캐릭터 중 이 세계관 소속만 연결 캐릭터 옵션으로 사용
     studioFetch("/api/studio/characters")
       .then((r) => r.json())
@@ -85,12 +90,12 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
       )
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, reloadKey]);
 
   if (error) return <div className="container studio"><p className="empty">{error}</p></div>;
   if (!world) return <div className="container studio"><p className="muted-center">로딩 중...</p></div>;
 
-  const costLabel = cost != null ? ` (-${cost.toLocaleString()}코인)` : "";
+  const costLabel = (kind: string) => aiCostLabel(pricing, kind);
 
   const save = async () => {
     const res = await studioFetch(`/api/studio/worlds/${id}`, jsonInit("PUT", world));
@@ -137,6 +142,17 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
     setWorld((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
   };
 
+  /** 생성 모달 확인 → AI 타이틀 이미지 생성 (실패 시 throw → 모달 안에 에러 표시) */
+  const generateTitleImage = async (p: ImageGenPayload) => {
+    const res = await studioFetch(
+      `/api/studio/worlds/${id}/title-image/generate`,
+      jsonInit("POST", { prompt: p.prompt, refImages: p.refImages })
+    );
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`생성 실패: ${r.error ?? res.statusText}`);
+    setWorld((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
+  };
+
   const addEntry = async () => {
     if (!newEntry.title.trim()) return;
     const res = await studioFetch(
@@ -162,21 +178,40 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
   };
 
   const removeWorld = async () => {
-    if (!confirm("세계관을 삭제할까요? 사전과 이 세계관의 캐릭터도 함께 삭제됩니다.")) return;
-    const res = await studioFetch(`/api/studio/worlds/${id}`, { method: "DELETE" });
+    const input = prompt("삭제하려면 세계관 이름을 똑같이 입력하세요: " + world.name);
+    if (input === null) return;
+    const res = await studioFetch(`/api/studio/worlds/${id}`, jsonInit("DELETE", { name: input }));
     if (!res.ok) {
       const r = await res.json().catch(() => ({}));
       alert(`삭제 실패: ${r.error ?? res.statusText}`);
       return;
     }
+    alert("3일 후 삭제됩니다. 그 전까지 취소할 수 있습니다.");
     router.replace("/studio");
+  };
+
+  const cancelDelete = async () => {
+    const res = await studioFetch(`/api/studio/worlds/${id}`, jsonInit("DELETE", { cancel: true }));
+    if (!res.ok) {
+      const r = await res.json().catch(() => ({}));
+      alert(`삭제 취소 실패: ${r.error ?? res.statusText}`);
+      return;
+    }
+    setReloadKey((n) => n + 1);
   };
 
   return (
     <div className="container studio">
       <h2 className="page-title">
-        <Link href="/studio" style={{ color: "var(--muted)" }}>‹</Link> 세계관 편집: {world.name}
+        <Link href="/studio" className="back-link" title="스튜디오로">‹</Link> 세계관 편집: {world.name}
       </h2>
+
+      {world.delete_scheduled_at && (
+        <div className="notice" style={{ borderColor: "#e5484d", color: "#e5484d" }}>
+          이 세계관은 {new Date(world.delete_scheduled_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 에 삭제됩니다.{" "}
+          <button type="button" className="small" onClick={cancelDelete}>삭제 취소</button>
+        </div>
+      )}
 
       {/* 탭 바: 비활성 탭도 언마운트하지 않고 display:none 으로만 숨겨 입력값/fetch 상태 보존 */}
       <div className="tabs">
@@ -196,7 +231,10 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
             <div className="title-img placeholder" style={{ width: 120 }} />
           )}
           <div>
-            <button type="button" className="small" onClick={() => setTitleCropOpen(true)}>이미지 업로드</button>
+            <button type="button" className="small" onClick={() => setTitleCropOpen(true)}>이미지 업로드</button>{" "}
+            <button type="button" className="small" onClick={() => setGenOpen(true)}>
+              AI 생성{pricing?.illustGenCost != null ? ` (-${pricing.illustGenCost.toLocaleString()}코인)` : ""}
+            </button>
           </div>
         </div>
         <ImageCropModal
@@ -206,6 +244,32 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
           onCancel={() => setTitleCropOpen(false)}
           onConfirm={uploadTitleImage}
         />
+        <ImageGenModal
+          open={genOpen}
+          title="AI 타이틀 이미지 생성"
+          initialPrompt={`세계관 타이틀 일러스트를 생성한다. 세로형 3:4.\n세계관: ${world.name}\n설정: ${(world.description ?? "").slice(0, 800)}`}
+          submitSuffix={pricing?.illustGenCost != null ? ` (-${pricing.illustGenCost.toLocaleString()}코인)` : ""}
+          onClose={() => setGenOpen(false)}
+          onGenerate={generateTitleImage}
+        />
+
+        <label>타이틀 컬러</label>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
+          <input
+            type="color"
+            value={world.title_color ?? "#7c8cf8"}
+            onChange={(e) => setWorld({ ...world, title_color: e.target.value })}
+            style={{ width: 44, height: 32, padding: 2, cursor: "pointer" }}
+          />
+          <span className="muted" style={{ fontSize: 12 }}>
+            {world.title_color ?? "미지정"} — 메인의 캐릭터 카드 테두리와 세계관 선택 시 배경 톤에 쓰입니다.
+          </span>
+          {world.title_color && (
+            <button type="button" className="small ghost" onClick={() => setWorld({ ...world, title_color: null })}>
+              지우기
+            </button>
+          )}
+        </div>
 
         <label>이름</label>
         <input value={world.name} onChange={(e) => setWorld({ ...world, name: e.target.value })} />
@@ -213,7 +277,7 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
         <label>
           기본 세계관 설정{" "}
           <button type="button" className="small" onClick={() => generate("world_description", "description")} disabled={generating !== null}>
-            {generating === "world_description" ? "생성 중..." : `AI로 생성${costLabel}`}
+            {generating === "world_description" ? "생성 중..." : `AI로 생성${costLabel("world_description")}`}
           </button>
         </label>
         <textarea
@@ -226,7 +290,7 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
         <label>
           AI 명령용 프롬프트 (세계관 공통){" "}
           <button type="button" className="small" onClick={() => generate("world_prompt", "ai_prompt")} disabled={generating !== null}>
-            {generating === "world_prompt" ? "생성 중..." : `AI로 생성${costLabel}`}
+            {generating === "world_prompt" ? "생성 중..." : `AI로 생성${costLabel("world_prompt")}`}
           </button>
         </label>
         <textarea
@@ -294,7 +358,7 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
       <AnniversarySection worldId={id} />
       </div>
 
-      <button className="danger" onClick={removeWorld}>세계관 삭제</button>
+      {!world.delete_scheduled_at && <button className="danger" onClick={removeWorld}>세계관 삭제</button>}
     </div>
   );
 }

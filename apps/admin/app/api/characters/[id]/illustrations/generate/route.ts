@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, execute, getStorage, invalidateChatContext, generateImage, getImageGenSettings } from "@vchatbot/core";
+import { parseRefImages, fetchRefImage } from "@/lib/image-refs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,8 +34,10 @@ export async function POST(req: NextRequest, { params }: Params) {
       .split(",")
       .map((k: string) => k.trim())
       .filter(Boolean);
-    if (keywords.length === 0) return bad("conditional 일러스트는 트리거 키워드가 필요합니다.");
-    triggerCondition = JSON.stringify({ type: "keyword", keywords });
+    const reqEv = Number(body.requireEventId);
+    const requireEventId = Number.isInteger(reqEv) && reqEv > 0 ? reqEv : undefined;
+    if (keywords.length === 0 && !requireEventId) return bad("conditional 일러스트는 트리거 키워드 또는 이벤트 조건이 필요합니다.");
+    triggerCondition = JSON.stringify({ type: "keyword", keywords, ...(requireEventId ? { requireEventId } : {}) });
   }
 
   // 스토리지 접근/외부 호출 전에 설정 여부부터 확인
@@ -50,9 +53,19 @@ export async function POST(req: NextRequest, { params }: Params) {
     return bad((e as Error).message);
   }
 
+  // 참조 이미지: 업로드(base64) + (선택) 캐릭터 타이틀 이미지
+  const parsed = parseRefImages(body.refImages);
+  if ("error" in parsed) return bad(parsed.error);
+  const refs = parsed.refs;
+  if (body.refTitleImage === true) {
+    const t = await query<{ title_image_url: string | null }>("SELECT title_image_url FROM characters WHERE id = ?", [characterId]);
+    const tr = await fetchRefImage(t[0]?.title_image_url, req.nextUrl.origin);
+    if (tr) refs.unshift(tr);
+  }
+
   let buffer: Buffer;
   try {
-    buffer = await generateImage(prompt);
+    buffer = await generateImage(prompt, refs);
   } catch (e) {
     const msg = (e as Error).message;
     console.error("admin illust generate error:", e);

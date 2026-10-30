@@ -2,8 +2,12 @@
 
 import DictionaryBrowser from "../../components/DictionaryBrowser";
 import ImageCropModal from "../../components/ImageCropModal";
+import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
 import { useEffect, useState, use } from "react";
+import CharacterProfilesSection from "./CharacterProfilesSection";
 import CharacterAnniversarySection from "./CharacterAnniversarySection";
+import CharacterEventsSection from "./CharacterEventsSection";
+import SanctionPanel from "../../components/SanctionPanel";
 
 interface Character {
   id: number;
@@ -19,6 +23,8 @@ interface Character {
   visibility?: "private" | "open";
   status?: "active" | "suspended";
   title_image_url?: string | null;
+  owner_user_id?: number | null;
+  owner_nickname?: string | null;
 }
 
 interface WorldOption { id: number; name: string; }
@@ -54,7 +60,17 @@ interface Illust {
   kind: "basic" | "conditional";
   url: string;
   description: string | null;
-  trigger_condition: { type: string; keywords: string[] } | string | null;
+  trigger_condition: { type: string; keywords: string[]; requireEventId?: number } | string | null;
+}
+
+function triggerEventId(i: Illust): number | null {
+  if (!i.trigger_condition) return null;
+  try {
+    const t = typeof i.trigger_condition === "string" ? JSON.parse(i.trigger_condition) : i.trigger_condition;
+    return typeof t.requireEventId === "number" ? t.requireEventId : null;
+  } catch {
+    return null;
+  }
 }
 
 function triggerKeywords(i: Illust): string[] {
@@ -65,10 +81,19 @@ function triggerKeywords(i: Illust): string[] {
   return t.keywords ?? [];
 }
 
-/** AI 일러스트 기본 프롬프트: 캐릭터 이름 + 프로필 첫 문장 */
-const defaultIllustPrompt = (c: { name: string; profile: string }) => {
-  const first = (c.profile ?? "").split(/(?<=[.!?。])\s|\n/)[0]?.trim() ?? "";
-  return `${c.name}, ${first} 세로형 캐릭터 일러스트, 고품질`.replace(/\s+/g, " ").trim();
+/** AI 이미지 생성 모달 자동 채움 프롬프트 (편집 중인 폼 값 사용) */
+const buildImagePrompt = (
+  c: { name: string; profile: string; personality: string; ai_prompt: string },
+  asTitle: boolean,
+  extra?: { kind: "basic" | "conditional"; description: string; keywords: string }
+) => {
+  let p = `캐릭터 일러스트를 생성한다.${asTitle ? " 세로형 3:4 타이틀 일러스트." : ""}\n이름: ${c.name}\n외모/설정: ${c.profile}\n성격: ${c.personality}`;
+  if (c.ai_prompt?.trim()) p += `\n상세 설정: ${c.ai_prompt.trim().slice(0, 500)}`;
+  if (!asTitle && extra?.kind === "conditional") {
+    if (extra.description.trim()) p += `\n장면 설명: ${extra.description.trim()}`;
+    if (extra.keywords.trim()) p += `\n표현할 상황/감정 키워드: ${extra.keywords.trim()}`;
+  }
+  return p;
 };
 
 export default function CharacterEditPage({ params }: { params: Promise<{ id: string }> }) {
@@ -80,6 +105,9 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
   const [newPerson, setNewPerson] = useState("");
   const [rels, setRels] = useState<Relationship[]>([]);
   const [illusts, setIllusts] = useState<Illust[]>([]);
+  const [events, setEvents] = useState<{ id: number; name: string }[]>([]);
+  const [upReqEvent, setUpReqEvent] = useState(""); // 업로드: 이벤트 달성 필요
+  const [aiReqEvent, setAiReqEvent] = useState(""); // AI 생성: 이벤트 달성 필요
   // 전용 사전: 이 캐릭터만 아는 지식
   const [privKey, setPrivKey] = useState(0); // 전용 사전 목록 재조회 트리거
   const [newPriv, setNewPriv] = useState({ category: "term" as PrivEntry["category"], title: "", aliases: "", content: "" });
@@ -93,14 +121,12 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
     keywords: "",
   });
   const [illustCropOpen, setIllustCropOpen] = useState(false); // 일러스트 크롭 팝업
+  const [genModal, setGenModal] = useState<null | "illust" | "title">(null); // AI 이미지 생성 모달
   const [ai, setAi] = useState({
-    prompt: "",
     kind: "basic" as "basic" | "conditional",
     keywords: "",
     description: "",
-    asTitle: false,
   });
-  const [aiGenerating, setAiGenerating] = useState(false);
   const [titleCropOpen, setTitleCropOpen] = useState(false); // 타이틀 이미지 크롭 팝업
   // AI 생성 중인 필드 (scenario | greeting)
   const [generating, setGenerating] = useState<"scenario" | "greeting" | null>(null);
@@ -109,13 +135,18 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
     fetch(`/api/characters/${id}/relationships`).then((r) => r.json()).then(setRels);
   const loadIllusts = () =>
     fetch(`/api/characters/${id}/illustrations`).then((r) => r.json()).then(setIllusts);
+  const loadEvents = () =>
+    fetch(`/api/characters/${id}/events`).then((r) => r.json()).then((d) => setEvents(Array.isArray(d) ? d : [])).catch(() => {});
+  useEffect(() => {
+    loadEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   useEffect(() => {
     fetch(`/api/characters/${id}`)
       .then((r) => r.json())
       .then((c: Character) => {
         setChar(c);
-        setAi((prev) => ({ ...prev, prompt: prev.prompt || defaultIllustPrompt(c) }));
         // 관계 대상 후보: 공용 사전 전체 (페이징 API 를 100건씩 순회)
         (async () => {
           const all: DictOption[] = [];
@@ -254,8 +285,8 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
 
   /** 업로드 버튼: 조건부인데 키워드가 비면 팝업 열기 전에 검증 */
   const openUpload = () => {
-    if (upload.kind === "conditional" && !upload.keywords.trim()) {
-      alert("조건부 일러스트는 트리거 키워드가 필요합니다.");
+    if (upload.kind === "conditional" && !upload.keywords.trim() && !upReqEvent) {
+      alert("조건부 일러스트는 트리거 키워드 또는 이벤트 조건이 필요합니다.");
       return;
     }
     setIllustCropOpen(true);
@@ -268,6 +299,7 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
     form.append("kind", upload.kind);
     form.append("description", upload.description);
     form.append("keywords", upload.keywords);
+    if (upReqEvent) form.append("requireEventId", upReqEvent);
     const res = await fetch(`/api/characters/${id}/illustrations`, {
       method: "POST",
       body: form,
@@ -277,36 +309,33 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
       throw new Error(`업로드 실패: ${err.error ?? res.statusText}`);
     }
     setUpload({ kind: "basic", description: "", keywords: "" });
+    setUpReqEvent("");
     loadIllusts();
   };
 
-  /** AI 일러스트 생성 → 성공 시 목록/타이틀 갱신 */
-  const doAiGenerate = async () => {
-    if (!ai.prompt.trim()) {
-      alert("프롬프트를 입력하세요.");
-      return;
-    }
-    if (!ai.asTitle && ai.kind === "conditional" && !ai.keywords.trim()) {
-      alert("조건부 일러스트는 트리거 키워드가 필요합니다.");
-      return;
-    }
-    setAiGenerating(true);
-    try {
-      const res = await fetch(`/api/characters/${id}/illustrations/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ai),
-      });
-      const r = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        alert(`생성 실패: ${r.error ?? res.statusText}`);
-        return;
-      }
-      if (ai.asTitle) setChar((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
-      else loadIllusts();
+  /** 생성 모달 확인 → AI 일러스트/타이틀 생성 (실패 시 throw → 모달 안에 에러 표시) */
+  const doAiGenerate = async (p: ImageGenPayload, asTitle: boolean) => {
+    const res = await fetch(`/api/characters/${id}/illustrations/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: p.prompt,
+        kind: ai.kind,
+        keywords: ai.keywords,
+        requireEventId: aiReqEvent ? Number(aiReqEvent) : undefined,
+        description: ai.description,
+        asTitle,
+        refTitleImage: p.refTitleImage,
+        refImages: p.refImages,
+      }),
+    });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`생성 실패: ${r.error ?? res.statusText}`);
+    if (asTitle) setChar((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
+    else {
+      loadIllusts();
       setAi((prev) => ({ ...prev, description: "", keywords: "" }));
-    } finally {
-      setAiGenerating(false);
+      setAiReqEvent("");
     }
   };
 
@@ -318,13 +347,29 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
 
   return (
     <>
-      <h2>캐릭터 편집: {char.name}</h2>
+      <h2 style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        캐릭터 편집: {char.name}
+        <a href={`/api/characters/${char.id}/export`} download>
+          <button type="button" className="small btn-secondary">JSON 내보내기</button>
+        </a>
+        <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>
+          제작자:{" "}
+          {char.owner_user_id ? (
+            <a href={`/users/${char.owner_user_id}`} style={{ textDecoration: "underline" }}>
+              {char.owner_nickname ?? "유저"} #{char.owner_user_id}
+            </a>
+          ) : (
+            "운영"
+          )}
+        </span>
+      </h2>
 
       {/* 탭 바: 비활성 탭도 언마운트하지 않고 display:none 으로만 숨겨 입력값/fetch 상태 보존 */}
       <div className="tabs">
         <button type="button" className={`tab ${tab === "basic" ? "active" : ""}`} onClick={() => setTab("basic")}>기본 설정</button>
         <button type="button" className={`tab ${tab === "rel" ? "active" : ""}`} onClick={() => setTab("rel")}>관계·기억·기념일</button>
         <button type="button" className={`tab ${tab === "dict" ? "active" : ""}`} onClick={() => setTab("dict")}>전용 사전</button>
+        <button type="button" className={`tab ${tab === "event" ? "active" : ""}`} onClick={() => setTab("event")}>이벤트</button>
         <button type="button" className={`tab ${tab === "illust" ? "active" : ""}`} onClick={() => setTab("illust")}>일러스트</button>
       </div>
 
@@ -345,7 +390,8 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
               <div style={{ width: 120, height: 160, background: "#888", borderRadius: 6 }} />
             )}
             <div>
-              <button type="button" onClick={() => setTitleCropOpen(true)}>이미지 업로드</button>
+              <button type="button" onClick={() => setTitleCropOpen(true)}>이미지 업로드</button>{" "}
+              <button type="button" onClick={() => setGenModal("title")}>AI 생성</button>
             </div>
           </div>
           <ImageCropModal
@@ -355,6 +401,7 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
             onCancel={() => setTitleCropOpen(false)}
             onConfirm={uploadTitleImage}
           />
+          <CharacterProfilesSection characterId={char.id} />
         </div>
         <div className="row">
           <div>
@@ -462,7 +509,9 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
         <button onClick={save}>{saved ? "저장됨 ✓" : "저장"}</button>
+        <a href={`/api/characters/${id}/export`} download style={{ marginLeft: 12 }}>내보내기 (JSON)</a>
       </div>
+      <SanctionPanel targetType="character" targetId={id} />
       </div>
 
       <div style={{ display: tab === "rel" ? undefined : "none" }}>
@@ -572,6 +621,10 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
       ))}
       </div>
 
+      <div style={{ display: tab === "event" ? undefined : "none" }}>
+        <CharacterEventsSection characterId={id} onChanged={loadEvents} />
+      </div>
+
       <div style={{ display: tab === "illust" ? undefined : "none" }}>
       <h3>일러스트</h3>
       <div className="panel">
@@ -604,6 +657,14 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
               onChange={(e) => setUpload({ ...upload, keywords: e.target.value })}
               placeholder="예: 화남, 분노, 짜증"
             />
+            <label>이벤트 달성 필요</label>
+            <select value={upReqEvent} onChange={(e) => setUpReqEvent(e.target.value)}>
+              <option value="">없음</option>
+              {events.map((ev) => (
+                <option key={ev.id} value={ev.id}>{ev.name}</option>
+              ))}
+            </select>
+            <div className="muted">지정하면 그 이벤트를 성공한 유저에게만 노출됩니다. 키워드 없이 지정하면 달성 후 기본 로테이션에 포함됩니다.</div>
           </>
         )}
 <button onClick={openUpload}>이미지 선택·업로드</button>
@@ -621,12 +682,10 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
 
       <h3>AI 일러스트 생성</h3>
       <div className="panel">
-        <label>프롬프트</label>
-        <textarea rows={3} value={ai.prompt} onChange={(e) => setAi({ ...ai, prompt: e.target.value })} placeholder="생성할 이미지를 설명하세요" />
         <div className="row">
           <div>
             <label>종류</label>
-            <select value={ai.kind} onChange={(e) => setAi({ ...ai, kind: e.target.value as "basic" | "conditional" })} disabled={ai.asTitle}>
+            <select value={ai.kind} onChange={(e) => setAi({ ...ai, kind: e.target.value as "basic" | "conditional" })}>
               <option value="basic">기본 (자주 노출)</option>
               <option value="conditional">조건부 (특정 조건에서만)</option>
             </select>
@@ -636,20 +695,39 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
             <input value={ai.description} onChange={(e) => setAi({ ...ai, description: e.target.value })} />
           </div>
         </div>
-        {ai.kind === "conditional" && !ai.asTitle && (
+        {ai.kind === "conditional" && (
           <>
             <label>트리거 키워드 (쉼표 구분)</label>
             <input value={ai.keywords} onChange={(e) => setAi({ ...ai, keywords: e.target.value })} placeholder="예: 화남, 분노, 짜증" />
+            <label>이벤트 달성 필요</label>
+            <select value={aiReqEvent} onChange={(e) => setAiReqEvent(e.target.value)}>
+              <option value="">없음</option>
+              {events.map((ev) => (
+                <option key={ev.id} value={ev.id}>{ev.name}</option>
+              ))}
+            </select>
+            <div className="muted">지정하면 그 이벤트를 성공한 유저에게만 노출됩니다. 키워드 없이 지정하면 달성 후 기본 로테이션에 포함됩니다.</div>
           </>
         )}
-        <label>
-          <input type="checkbox" checked={ai.asTitle} style={{ width: "auto", marginRight: 6 }}
-            onChange={(e) => setAi({ ...ai, asTitle: e.target.checked })} />
-          타이틀 이미지로 사용
-        </label>
-        <button onClick={doAiGenerate} disabled={aiGenerating}>
-          {aiGenerating ? "생성 중... (최대 2분)" : "AI 일러스트 생성"}
+        <button
+          onClick={() => {
+            if (ai.kind === "conditional" && !ai.keywords.trim() && !aiReqEvent) {
+              alert("조건부 일러스트는 트리거 키워드 또는 이벤트 조건이 필요합니다.");
+              return;
+            }
+            setGenModal("illust");
+          }}
+        >
+          AI 일러스트 생성
         </button>
+        <ImageGenModal
+          open={genModal !== null}
+          title={genModal === "title" ? "AI 타이틀 이미지 생성" : "AI 일러스트 생성"}
+          initialPrompt={buildImagePrompt(char, genModal === "title", ai)}
+          titleImageUrl={char.title_image_url}
+          onClose={() => setGenModal(null)}
+          onGenerate={(p) => doAiGenerate(p, genModal === "title")}
+        />
       </div>
 
       <div className="panel">
@@ -668,7 +746,12 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
                   </span>
                 </td>
                 <td>{i.description}</td>
-                <td className="muted">{triggerKeywords(i).join(", ")}</td>
+                <td className="muted">
+                  {triggerKeywords(i).join(", ")}
+                  {triggerEventId(i) != null && (
+                    <div>이벤트: {events.find((ev) => ev.id === triggerEventId(i))?.name ?? `#${triggerEventId(i)}`}</div>
+                  )}
+                </td>
                 <td><button className="danger small" onClick={() => removeIllust(i.id)}>삭제</button></td>
               </tr>
             ))}
