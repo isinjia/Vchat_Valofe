@@ -30,6 +30,25 @@ export async function GET(req: NextRequest) {
   // 삭제 대기 상태 필터
   if (sp.get("state") === "delete_pending") where.push("w.delete_scheduled_at IS NOT NULL");
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+  // limit 파라미터가 있으면 페이징 응답 {items, total}, 없으면 기존 배열 (셀렉트 박스 등 호환)
+  const limitRaw = sp.get("limit");
+  if (limitRaw != null) {
+    const limit = Math.min(100, Math.max(1, Number(limitRaw) || 20));
+    const offset = Math.max(0, Number(sp.get("offset")) || 0);
+    const [{ total }] = await query<{ total: number }>(
+      `SELECT COUNT(*) AS total FROM worlds w ${whereSql}`,
+      params
+    );
+    const items = await query(
+      `SELECT w.*, u.nickname AS owner_nickname, u.vfun_user_id AS owner_vfun_id, u.vfun_u_no AS owner_u_no,
+              (SELECT COUNT(*) FROM characters c WHERE c.world_id = w.id) AS character_count
+       FROM worlds w LEFT JOIN users u ON u.id = w.owner_user_id ${whereSql}
+       ORDER BY w.id DESC LIMIT ${limit} OFFSET ${offset}`,
+      params
+    );
+    return NextResponse.json({ items, total: Number(total) });
+  }
   const worlds = await query(
     `SELECT w.*, u.nickname AS owner_nickname, u.vfun_user_id AS owner_vfun_id, u.vfun_u_no AS owner_u_no,
             (SELECT COUNT(*) FROM characters c WHERE c.world_id = w.id) AS character_count

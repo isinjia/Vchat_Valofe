@@ -14,6 +14,8 @@ export type EventFields = {
   retry_hours: number;
   max_turns: number;
   is_active: number;
+  success_line: string | null;
+  success_illustration_id: number | null;
 };
 
 const has = (o: Record<string, unknown>, k: string) => Object.prototype.hasOwnProperty.call(o, k);
@@ -80,6 +82,20 @@ export function parseEventInput(
     const n = b.max_turns === undefined || b.max_turns === "" ? 6 : Number(b.max_turns);
     if (!Number.isInteger(n) || n < 1 || n > 20) return { error: "최대 턴은 1~20 이어야 합니다." };
     v.max_turns = n;
+  }
+  if (want("success_line")) {
+    const s = typeof b.success_line === "string" ? b.success_line.trim() : "";
+    if (s.length > 2000) return { error: "달성 시 대사는 2000자 이하여야 합니다." };
+    v.success_line = s || null;
+  }
+  if (want("success_illustration_id")) {
+    const raw = b.success_illustration_id;
+    if (raw === null || raw === undefined || raw === "") v.success_illustration_id = null;
+    else {
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n <= 0) return { error: "달성 시 이미지 값이 올바르지 않습니다." };
+      v.success_illustration_id = n;
+    }
   }
   if (want("is_active")) v.is_active = b.is_active === false || b.is_active === 0 || b.is_active === "0" ? 0 : 1;
   return { value: v };

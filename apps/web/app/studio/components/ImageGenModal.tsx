@@ -25,6 +25,8 @@ interface Props {
   initialPrompt: string;
   /** 타이틀 이미지 URL — 있을 때만 "타이틀 이미지를 참조로 사용" 노출 */
   titleImageUrl?: string | null;
+  /** 참조 체크박스 라벨 (기본: "타이틀 이미지를 참조로 사용") */
+  refLabel?: string;
   /** 생성 버튼 라벨 보조(예: 비용 표시) */
   submitSuffix?: string;
   onClose: () => void;
@@ -48,7 +50,7 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
-export default function ImageGenModal({ open, title, initialPrompt, titleImageUrl, submitSuffix, onClose, onGenerate }: Props) {
+export default function ImageGenModal({ open, title, initialPrompt, titleImageUrl, refLabel, submitSuffix, onClose, onGenerate }: Props) {
   const [prompt, setPrompt] = useState(initialPrompt);
   const [useTitle, setUseTitle] = useState(true);
   const [refs, setRefs] = useState<Ref[]>([]);
@@ -159,7 +161,7 @@ export default function ImageGenModal({ open, title, initialPrompt, titleImageUr
             />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={titleImageUrl} alt="" style={{ width: 36, height: 48, objectFit: "cover", borderRadius: 4 }} />
-            타이틀 이미지를 참조로 사용
+            {refLabel ?? "타이틀 이미지를 참조로 사용"}
           </label>
         )}
 

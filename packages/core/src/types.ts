@@ -87,10 +87,16 @@ export type IllustrationKind = "basic" | "conditional";
 
 export interface IllustrationTrigger {
   type: "keyword";
-  /** 응답 텍스트에 이 키워드가 포함되면 노출 (비어 있으면 이벤트 달성 시 기본 로테이션 합류) */
+  /** 응답 텍스트에 이 키워드가 포함되면 노출 (비어 있으면 게이트 충족 시 기본 로테이션 합류) */
   keywords: string[];
   /** 이 이벤트를 달성(성공)한 유저에게만 노출 */
   requireEventId?: number | null;
+  /** 이 등급(chat_tiers.id, user 트랙) '이상'인 유저에게만 노출 — 평가 시점의 tier_rank 로 비교 */
+  requireTierId?: number | null;
+  /** 이 관계 '이상'(none<lover<engaged<married)인 유저에게만 노출 */
+  requireRelationship?: "lover" | "engaged" | "married" | null;
+  /** 호감도가 이 값 이상인 유저에게만 노출 */
+  minAffinity?: number | null;
 }
 
 export interface Illustration {

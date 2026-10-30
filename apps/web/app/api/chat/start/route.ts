@@ -15,6 +15,7 @@ import {
   recordLlmUsage,
   isCharacterHidden,
   getUserChatBlockMessage,
+  getUserTierRankInfo,
   type LlmChatMessage,
   getRagSettings,
   chargeChatWithFees,
@@ -167,7 +168,17 @@ export async function POST(req: NextRequest) {
           };
         }
 
-        const illustration = pickIllustration(ctx.illustrations, assistantText);
+        // 오프닝은 첫 대화라 호감도/관계/이벤트가 초기값 — 등급 게이트만 실제 평가
+        let illustration = null;
+        try {
+          const tierInfo = await getUserTierRankInfo(userId);
+          illustration = pickIllustration(ctx.illustrations, assistantText, {
+            userTierRank: tierInfo.userTierRank,
+            tierRankById: tierInfo.tierRankById,
+          });
+        } catch {
+          illustration = pickIllustration(ctx.illustrations, assistantText);
+        }
         if (illustration) {
           send({
             type: "illustration",

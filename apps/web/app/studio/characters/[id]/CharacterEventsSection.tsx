@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
+import { buildImagePrompt } from "../../components/imagePrompt";
 import { studioFetch } from "../../studio-api";
 
 export interface CharEvent {
@@ -17,6 +19,8 @@ export interface CharEvent {
   max_turns: number;
   is_active: number;
   success_count?: number;
+  success_line?: string | null;
+  success_illustration_id?: number | null;
 }
 
 const EMPTY = {
@@ -31,6 +35,8 @@ const EMPTY = {
   retry_hours: "72",
   max_turns: "6",
   is_active: true,
+  success_line: "",
+  success_illustration_id: "" as string,
 };
 
 const REL_LABEL: Record<string, string> = { none: "관계 없음", lover: "연인", engaged: "약혼", married: "결혼" };
@@ -47,10 +53,23 @@ function condSummary(e: CharEvent): string {
 export default function CharacterEventsSection({
   characterId,
   onChanged,
+  character,
+  titleImageUrl,
+  illusts,
+  onIllustsChanged,
+  genCost,
 }: {
   characterId: string;
   onChanged?: () => void;
+  character: { name: string; profile: string; personality: string };
+  titleImageUrl?: string | null;
+  /** 이 캐릭터의 일러스트 목록 ("달성 시 이미지" 선택용) */
+  illusts: { id: number; description: string | null; url: string }[];
+  onIllustsChanged?: () => void;
+  /** AI 생성 비용(코인) — web 에서만 표시 */
+  genCost?: number | null;
 }) {
+  const [genOpen, setGenOpen] = useState(false);
   const [list, setList] = useState<CharEvent[]>([]);
   const [form, setForm] = useState(EMPTY);
   const [editId, setEditId] = useState<number | null>(null);
@@ -81,6 +100,8 @@ export default function CharacterEventsSection({
       retry_hours: String(e.retry_hours),
       max_turns: String(e.max_turns),
       is_active: !!e.is_active,
+      success_line: e.success_line ?? "",
+      success_illustration_id: e.success_illustration_id ? String(e.success_illustration_id) : "",
     });
   };
 
@@ -104,6 +125,8 @@ export default function CharacterEventsSection({
       retry_hours: Number(form.retry_hours),
       max_turns: Number(form.max_turns),
       is_active: form.is_active,
+      success_line: form.success_line.trim() || null,
+      success_illustration_id: form.success_illustration_id ? Number(form.success_illustration_id) : null,
     };
     const r = await studioFetch(editId == null ? base : `${base}/${editId}`, {
       method: editId == null ? "POST" : "PUT",
@@ -118,6 +141,36 @@ export default function CharacterEventsSection({
     load();
     onChanged?.();
   };
+
+  /** 이벤트 달성 이미지 AI 생성: 기존 일러스트 생성 라우트를 requireEventId=이 이벤트 로 호출 */
+  const generateSuccessImage = async (p: ImageGenPayload) => {
+    if (editId == null) throw new Error("먼저 이벤트를 저장하세요.");
+    const res = await studioFetch(`/api/studio/characters/${characterId}/illustrations/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: p.prompt,
+        kind: "conditional",
+        keywords: "",
+        requireEventId: editId,
+        description: `${form.name || "이벤트"} 달성 이미지`,
+        refTitleImage: p.refTitleImage,
+        refImages: p.refImages,
+      }),
+    });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`생성 실패: ${r.error ?? res.statusText}`);
+    onIllustsChanged?.();
+    setForm((prev) => ({ ...prev, success_illustration_id: String(r.id) }));
+  };
+
+  const eventImagePrompt = () =>
+    buildImagePrompt(
+      character,
+      `이벤트 달성 장면: ${form.name}
+상황: ${form.situation.slice(0, 300)}
+성공 조건: ${form.success_condition.slice(0, 200)}`
+    );
 
   const remove = async (e: CharEvent) => {
     if (!confirm(`"${e.name}" 이벤트를 삭제할까요? 유저 달성 기록도 함께 삭제됩니다.`)) return;
@@ -220,6 +273,39 @@ export default function CharacterEventsSection({
             </label>
           </div>
         </div>
+        <label>달성 시 대사 (선택 — 비우면 출력 없음)</label>
+        <textarea
+          rows={2}
+          value={form.success_line}
+          onChange={(e) => setForm({ ...form, success_line: e.target.value })}
+          placeholder="이벤트 성공 시 별도 말풍선으로 출력할 고정 대사"
+        />
+        <label>달성 시 이미지</label>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <select
+            style={{ flex: 1, minWidth: 200 }}
+            value={form.success_illustration_id}
+            onChange={(e) => setForm({ ...form, success_illustration_id: e.target.value })}
+          >
+            <option value="">없음</option>
+            {illusts.map((i) => (
+              <option key={i.id} value={i.id}>{i.description ? `${i.description} (#${i.id})` : `#${i.id}`}</option>
+            ))}
+          </select>
+          <button type="button" className="small" disabled={editId == null} onClick={() => setGenOpen(true)}>
+            이미지 AI 생성{genCost != null ? ` (-${genCost.toLocaleString()}코인)` : ""}
+          </button>
+          {editId == null && <span className="muted">먼저 저장하세요 (저장된 이벤트 수정 중에만 생성 가능)</span>}
+        </div>
+        <ImageGenModal
+          open={genOpen}
+          title="이벤트 달성 이미지 AI 생성"
+          initialPrompt={eventImagePrompt()}
+          titleImageUrl={titleImageUrl}
+          submitSuffix={genCost != null ? ` (-${genCost.toLocaleString()}코인)` : ""}
+          onClose={() => setGenOpen(false)}
+          onGenerate={generateSuccessImage}
+        />
         {error && <p style={{ color: "var(--danger)", marginTop: 8 }}>{error}</p>}
         <button onClick={save}>{editId == null ? "이벤트 추가" : "수정 저장"}</button>{" "}
         {editId != null && <button className="small" onClick={reset}>취소</button>}
@@ -231,7 +317,11 @@ export default function CharacterEventsSection({
           <tbody>
             {list.map((e) => (
               <tr key={e.id}>
-                <td>{e.name}</td>
+                <td>
+                  {e.name}
+                  {e.success_line ? <span title="달성 대사 있음"> 💬</span> : null}
+                  {e.success_illustration_id ? <span title="달성 이미지 있음"> 🖼</span> : null}
+                </td>
                 <td className="muted">{condSummary(e)}</td>
                 <td>{Number(e.success_count ?? 0)}명</td>
                 <td>{e.is_active ? <span className="badge">활성</span> : <span className="muted">비활성</span>}</td>

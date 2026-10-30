@@ -23,6 +23,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if ("res" in g) return g.res;
   const parsed = parseEventInput(await req.json().catch(() => ({})), true);
   if ("error" in parsed) return bad(parsed.error);
+  const sid = parsed.value.success_illustration_id;
+  if (sid) {
+    const il = await query("SELECT id FROM illustrations WHERE id = ? AND character_id = ?", [sid, g.cid]);
+    if (il.length === 0) return bad("달성 시 이미지가 이 캐릭터의 일러스트가 아닙니다.");
+  }
   const entries = Object.entries(parsed.value);
   if (entries.length === 0) return bad("변경할 필드가 없습니다.");
   await execute(`UPDATE character_events SET ${entries.map(([k]) => `${k} = ?`).join(", ")} WHERE id = ?`, [

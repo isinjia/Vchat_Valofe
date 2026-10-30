@@ -8,6 +8,7 @@ import {
 } from "recharts";
 
 interface DailyItem { date: string; nu: number; dau: number; pu: number; messages: number; coinsSpent: number }
+interface ContentCounts { worlds: number; worldsOpen: number; characters: number; charactersOpen: number }
 interface CcuItem { hour: string; users: number; messages: number }
 interface RankData {
   topUsers: { id: number; vfunUserId: string | null; uNo: number | null; nickname: string | null; messages: number }[];
@@ -143,6 +144,7 @@ export default function StatsPage() {
   const [range, setRange] = useState(30);
   const [rankDays, setRankDays] = useState(30);
   const [daily, setDaily] = useState<DailyItem[] | null>(null);
+  const [counts, setCounts] = useState<ContentCounts | null>(null);
   const [share, setShare] = useState<ShareData | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
 
@@ -154,6 +156,7 @@ export default function StatsPage() {
     ]).then(([d]) => {
       if (!alive) return;
       setDaily(d && Array.isArray(d.items) ? d.items : []);
+      if (d?.counts) setCounts(d.counts);
       setMetricsLoading(false);
     });
     return () => { alive = false; };
@@ -256,6 +259,8 @@ export default function StatsPage() {
         <Tile label="오늘 신규(NU)" value={today?.nu ?? 0} />
         <Tile label="오늘 PU(코인 사용)" value={today?.pu ?? 0} note="결제 도입 전: 코인 소비 유저 기준" />
         <Tile label="오늘 메시지" value={today?.messages ?? 0} />
+        <Tile label="세계관 수" value={counts?.worlds ?? 0} note={`공개 ${(counts?.worldsOpen ?? 0).toLocaleString()}개`} />
+        <Tile label="캐릭터 수" value={counts?.characters ?? 0} note={`공개 ${(counts?.charactersOpen ?? 0).toLocaleString()}개`} />
       </div>
 
       <h3>일별 유저 지표</h3>

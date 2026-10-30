@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ImageCropModal from "../../components/ImageCropModal";
+import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
 import { studioFetch } from "../../studio-api";
 
 const EMOTIONS: { key: string; label: string }[] = [
@@ -22,11 +23,25 @@ interface Profile {
 }
 
 /** 프로필 이미지 (채팅 말풍선 앞 원형 표시) — 기본 + 감정별 8슬롯 */
-export default function CharacterProfilesSection({ characterId }: { characterId: number | string }) {
+export default function CharacterProfilesSection({
+  characterId,
+  characterName,
+  characterProfile,
+  titleImageUrl,
+  genCost,
+}: {
+  characterId: number | string;
+  characterName: string;
+  characterProfile: string;
+  titleImageUrl?: string | null;
+  /** AI 생성 비용(코인) — web 에서만 표시 */
+  genCost?: number | null;
+}) {
   const base = `/api/studio/characters/${characterId}/profiles`;
   const [items, setItems] = useState<Profile[]>([]);
   const [target, setTarget] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
+  const [genTarget, setGenTarget] = useState<string | null>(null); // AI 생성 모달 대상 슬롯
 
   const load = async () => {
     const res = await studioFetch(base);
@@ -45,6 +60,44 @@ export default function CharacterProfilesSection({ characterId }: { characterId:
     const res = await studioFetch(base, { method: "POST", body: form });
     const r = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`업로드 실패: ${r.error ?? res.statusText}`);
+    await load();
+  };
+
+  const defaultUrl = items.find((x) => x.emotion === "default")?.url ?? null;
+
+  /** 슬롯별 자동 프롬프트 (이미지 설명 / 캐릭터 프로필 2섹션) */
+  const buildPrompt = (emotion: string) => {
+    const emoLabel = EMOTIONS.find((e) => e.key === emotion)?.label ?? "";
+    const desc =
+      emotion === "default"
+        ? "원형 프로필용 얼굴 클로즈업 초상. 이름/외모/화풍 유지, 정면 응시, 단순한 배경."
+        : `원형 프로필용 얼굴 클로즈업 초상. 참조 이미지와 같은 인물·같은 화풍, ${emoLabel} 표정.`;
+    return `[이미지 설명]
+${desc}
+
+[캐릭터 프로필]
+이름: ${characterName}
+외모/설정: ${characterProfile.slice(0, 600)}`;
+  };
+
+  /** AI 생성 모달 확인 → 생성 라우트 호출 (실패 시 throw → 모달 안에 에러 표시) */
+  const generate = async (p: ImageGenPayload) => {
+    if (!genTarget) return;
+    const isDefault = genTarget === "default";
+    const useDefault = !isDefault && !!defaultUrl;
+    const res = await studioFetch(`${base}/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        emotion: genTarget,
+        prompt: p.prompt,
+        useTitleRef: p.refTitleImage && !useDefault,
+        useDefaultProfileRef: p.refTitleImage && useDefault,
+        refImages: p.refImages,
+      }),
+    });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`생성 실패: ${r.error ?? res.statusText}`);
     await load();
   };
 
@@ -88,6 +141,9 @@ export default function CharacterProfilesSection({ characterId }: { characterId:
               <div style={{ fontSize: 13, margin: "6px 0 4px" }}>{e.label}</div>
               <button type="button" className="small" onClick={() => setTarget(e.key)}>
                 {p ? "교체" : "업로드"}
+              </button>{" "}
+              <button type="button" className="small" onClick={() => setGenTarget(e.key)}>
+                AI 생성{genCost != null ? ` (-${genCost.toLocaleString()}코인)` : ""}
               </button>
               {p && (
                 <>
@@ -102,6 +158,16 @@ export default function CharacterProfilesSection({ characterId }: { characterId:
         })}
       </div>
       {msg && <p style={{ color: "#ff6b6b", fontSize: 13 }}>{msg}</p>}
+      <ImageGenModal
+        open={genTarget !== null}
+        title={`프로필 AI 생성 (${EMOTIONS.find((e) => e.key === genTarget)?.label ?? ""})`}
+        initialPrompt={genTarget ? buildPrompt(genTarget) : ""}
+        titleImageUrl={genTarget === "default" ? titleImageUrl : (defaultUrl ?? titleImageUrl)}
+        refLabel={genTarget === "default" || !defaultUrl ? "타이틀 이미지를 참조로 사용" : "기본 프로필을 참조로 사용"}
+        submitSuffix={genCost != null ? ` (-${genCost.toLocaleString()}코인)` : ""}
+        onClose={() => setGenTarget(null)}
+        onGenerate={generate}
+      />
       <ImageCropModal
         open={target !== null}
         title={`프로필 이미지 업로드 (${label})`}

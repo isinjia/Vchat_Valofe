@@ -135,6 +135,28 @@ export async function getUserTierMetrics(userId: number): Promise<Record<string,
   };
 }
 
+/**
+ * 일러스트 등급 게이트 평가용: 유저의 user 트랙 tier_rank 와 등급 id→rank 맵.
+ * 등급 미지정 유저는 기본 등급 rank (기본 등급이 없으면 0).
+ */
+export async function getUserTierRankInfo(
+  userId: number
+): Promise<{ userTierRank: number; tierRankById: Map<number, number> }> {
+  const [tiers, me] = await Promise.all([
+    query<{ id: number; tier_rank: number; is_default: number }>(
+      "SELECT id, tier_rank, is_default FROM chat_tiers WHERE track = 'user'"
+    ),
+    query<{ tier_id: number | null }>("SELECT tier_id FROM users WHERE id = ?", [userId]),
+  ]);
+  const tierRankById = new Map(tiers.map((t) => [t.id, Number(t.tier_rank)]));
+  const myTierId = me[0]?.tier_id ?? null;
+  const userTierRank =
+    myTierId != null
+      ? tierRankById.get(myTierId) ?? 0
+      : Number(tiers.find((t) => t.is_default)?.tier_rank ?? 0);
+  return { userTierRank, tierRankById };
+}
+
 function parseConditions(raw: unknown): TierConditions | null {
   if (raw == null) return null;
   const obj = typeof raw === "string" ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;

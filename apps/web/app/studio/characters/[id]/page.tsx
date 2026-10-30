@@ -10,6 +10,7 @@ import CharacterAnniversarySection from "./CharacterAnniversarySection";
 import CharacterEventsSection from "./CharacterEventsSection";
 import { studioFetch, jsonInit, aiCostLabel, type PricingInfo } from "../../studio-api";
 import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
+import { buildImagePrompt } from "../../components/imagePrompt";
 import WorldPickerModal, { WorldMini, type PickedWorld } from "../../components/WorldPickerModal";
 
 interface Character {
@@ -37,12 +38,29 @@ interface WorldOpt {
   owner_nickname?: string | null;
 }
 
+interface IllustTrigger {
+  type: string;
+  keywords?: string[];
+  requireEventId?: number;
+  requireTierId?: number;
+  requireRelationship?: "lover" | "engaged" | "married";
+  minAffinity?: number;
+}
+
+interface TierOpt {
+  id: number;
+  name: string;
+  tier_rank: number;
+}
+
+const REL_REQ_LABEL = { lover: "연인 이상", engaged: "약혼 이상", married: "결혼" } as const;
+
 interface Illust {
   id: number;
   kind: "basic" | "conditional";
   url: string;
   description: string | null;
-  trigger_condition: { type: string; keywords: string[]; requireEventId?: number } | string | null;
+  trigger_condition: IllustTrigger | string | null;
 }
 
 interface DictOpt {
@@ -71,35 +89,35 @@ interface Rel {
   relation: string;
 }
 
-function triggerEventId(i: Illust): number | null {
-  if (!i.trigger_condition) return null;
+function parseTrigger(i: Illust): IllustTrigger {
+  if (!i.trigger_condition) return { type: "keyword" };
   try {
     const t = typeof i.trigger_condition === "string" ? JSON.parse(i.trigger_condition) : i.trigger_condition;
-    return typeof t.requireEventId === "number" ? t.requireEventId : null;
+    return t && typeof t === "object" ? t : { type: "keyword" };
   } catch {
-    return null;
+    return { type: "keyword" };
   }
 }
 
-function triggerKeywords(i: Illust): string[] {
-  if (!i.trigger_condition) return [];
-  const t = typeof i.trigger_condition === "string" ? JSON.parse(i.trigger_condition) : i.trigger_condition;
-  return t.keywords ?? [];
+/** 게이트 조건 요약 (예: "연인 이상 · 호감도 50+ · 등급: 단골 이상") */
+function triggerGateSummary(t: IllustTrigger, events: { id: number; name: string }[], tiers: TierOpt[]): string {
+  const parts: string[] = [];
+  if (t.requireEventId != null) parts.push(`이벤트: ${events.find((ev) => ev.id === t.requireEventId)?.name ?? `#${t.requireEventId}`}`);
+  if (t.requireRelationship) parts.push(REL_REQ_LABEL[t.requireRelationship] ?? t.requireRelationship);
+  if (typeof t.minAffinity === "number") parts.push(`호감도 ${t.minAffinity}+`);
+  if (t.requireTierId != null) parts.push(`등급: ${tiers.find((x) => x.id === t.requireTierId)?.name ?? `#${t.requireTierId}`} 이상`);
+  return parts.join(" · ");
 }
 
-/** AI 이미지 생성 모달 자동 채움 프롬프트 (편집 중인 폼 값 사용) */
-const buildImagePrompt = (
-  c: { name: string; profile: string; personality: string; ai_prompt: string },
-  asTitle: boolean,
-  extra?: { kind: "basic" | "conditional"; description: string; keywords: string }
-) => {
-  let p = `캐릭터 일러스트를 생성한다.${asTitle ? " 세로형 3:4 타이틀 일러스트." : ""}\n이름: ${c.name}\n외모/설정: ${c.profile}\n성격: ${c.personality}`;
-  if (c.ai_prompt?.trim()) p += `\n상세 설정: ${c.ai_prompt.trim().slice(0, 500)}`;
-  if (!asTitle && extra?.kind === "conditional") {
-    if (extra.description.trim()) p += `\n장면 설명: ${extra.description.trim()}`;
-    if (extra.keywords.trim()) p += `\n표현할 상황/감정 키워드: ${extra.keywords.trim()}`;
-  }
-  return p;
+/** 일러스트 패널 입력 (업로드/AI 생성 공용) */
+const EMPTY_PANEL = {
+  kind: "basic" as "basic" | "conditional",
+  description: "",
+  keywords: "",
+  reqEvent: "",
+  reqTier: "",
+  reqRel: "",
+  minAff: "",
 };
 
 type GenKind ="profile" | "personality" | "speech_style" | "scenario" | "greeting";
@@ -116,8 +134,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
   const [pickedWorld, setPickedWorld] = useState<PickedWorld | null>(null);
   const [illusts, setIllusts] = useState<Illust[]>([]);
   const [events, setEvents] = useState<{ id: number; name: string }[]>([]);
-  const [upReqEvent, setUpReqEvent] = useState(""); // 업로드: 이벤트 달성 필요
-  const [aiReqEvent, setAiReqEvent] = useState(""); // AI 생성: 이벤트 달성 필요
+  const [tiers, setTiers] = useState<TierOpt[]>([]); // user 트랙 등급
   // 관계/기억: 대상 후보(세계관 공통 사전 항목), 등록된 관계, 입력값
   const [entries, setEntries] = useState<DictOpt[]>([]);
   const [rels, setRels] = useState<Rel[]>([]);
@@ -132,18 +149,9 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
   const [generating, setGenerating] = useState<string | null>(null);
   const [titleCropOpen, setTitleCropOpen] = useState(false); // 타이틀 이미지 크롭 팝업
   const [illustCropOpen, setIllustCropOpen] = useState(false); // 일러스트 크롭 팝업
-  const [upload, setUpload] = useState({
-    kind: "basic" as "basic" | "conditional",
-    description: "",
-    keywords: "",
-  });
+  const [panel, setPanel] = useState(EMPTY_PANEL); // 일러스트 패널 공용 입력 (업로드/AI 생성)
   const [illustCost, setIllustCost] = useState<number | null>(null);
   const [genModal, setGenModal] = useState<null | "illust" | "title">(null); // AI 이미지 생성 모달
-  const [ai, setAi] = useState({
-    kind: "basic" as "basic" | "conditional",
-    keywords: "",
-    description: "",
-  });
 
   const loadIllusts = () =>
     studioFetch(`/api/studio/characters/${id}/illustrations`).then((r) => r.json()).then(setIllusts).catch(() => {});
@@ -177,6 +185,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
     studioFetch("/api/studio/pricing").then((r) => r.json()).then((p) => { setPricing(p); setIllustCost(p.illustGenCost ?? null); }).catch(() => {});
     loadIllusts();
     loadRels();
+    studioFetch("/api/studio/tiers").then((r) => r.json()).then((d) => setTiers(Array.isArray(d) ? d : [])).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -317,55 +326,83 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
     setChar((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
   };
 
-  /** 업로드 버튼: 조건부인데 키워드가 비면 팝업 열기 전에 검증 */
-  const openUpload = () => {
-    if (upload.kind === "conditional" && !upload.keywords.trim() && !upReqEvent) {
-      alert("조건부 일러스트는 트리거 키워드 또는 이벤트 조건이 필요합니다.");
-      return;
+  /** 패널 공용 입력 검증 (업로드/AI 생성 공통). 문제 있으면 alert 후 false */
+  const validatePanel = () => {
+    if (panel.kind === "conditional") {
+      const hasGate = !!panel.reqEvent || !!panel.reqTier || !!panel.reqRel || panel.minAff.trim() !== "";
+      if (!panel.keywords.trim() && !hasGate) {
+        alert("조건부 일러스트는 트리거 키워드 또는 조건(이벤트/등급/관계/호감도) 중 하나 이상이 필요합니다.");
+        return false;
+      }
+      if (panel.minAff.trim() !== "") {
+        const n = Number(panel.minAff);
+        if (!Number.isInteger(n) || n < -100 || n > 100) {
+          alert("호감도 최소는 -100~100 사이 정수여야 합니다.");
+          return false;
+        }
+      }
     }
-    setIllustCropOpen(true);
+    return true;
   };
 
-  /** 크롭 팝업 확인 → 현재 폼 값과 함께 일러스트 업로드 (실패 시 throw → 팝업 안에 에러 표시) */
+  /** 조건부일 때만 게이트 값을 서버로 보냄 (빈 값은 생략) */
+  const gateFields = () =>
+    panel.kind === "conditional"
+      ? {
+          requireEventId: panel.reqEvent || undefined,
+          requireTierId: panel.reqTier || undefined,
+          requireRelationship: panel.reqRel || undefined,
+          minAffinity: panel.minAff.trim() !== "" ? panel.minAff.trim() : undefined,
+        }
+      : {};
+
+  const openUpload = () => {
+    if (validatePanel()) setIllustCropOpen(true);
+  };
+
+  const openAiGenerate = () => {
+    if (validatePanel()) setGenModal("illust");
+  };
+
+  /** 크롭 팝업 확인 → 현재 패널 값과 함께 일러스트 업로드 (실패 시 throw → 팝업 안에 에러 표시) */
   const doUpload = async (blob: Blob, filename: string) => {
     const form = new FormData();
     form.append("file", blob, filename);
-    form.append("kind", upload.kind);
-    form.append("description", upload.description);
-    form.append("keywords", upload.keywords);
-    if (upReqEvent) form.append("requireEventId", upReqEvent);
+    form.append("kind", panel.kind);
+    form.append("description", panel.description);
+    form.append("keywords", panel.kind === "conditional" ? panel.keywords : "");
+    for (const [k, v] of Object.entries(gateFields())) if (v !== undefined) form.append(k, String(v));
     const res = await studioFetch(`/api/studio/characters/${id}/illustrations`, { method: "POST", body: form });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(`업로드 실패: ${err.error ?? res.statusText}`);
     }
-    setUpload({ kind: "basic", description: "", keywords: "" });
-    setUpReqEvent("");
+    setPanel(EMPTY_PANEL);
     loadIllusts();
   };
 
   /** 생성 모달 확인 → AI 일러스트/타이틀 생성 (실패 시 throw → 모달 안에 에러 표시) */
   const doAiGenerate = async (p: ImageGenPayload, asTitle: boolean) => {
-    const res = await studioFetch(
-      `/api/studio/characters/${id}/illustrations/generate`,
-      jsonInit("POST", {
+    const res = await studioFetch(`/api/studio/characters/${id}/illustrations/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         prompt: p.prompt,
-        kind: ai.kind,
-        keywords: ai.keywords,
-        requireEventId: aiReqEvent ? Number(aiReqEvent) : undefined,
-        description: ai.description,
+        kind: panel.kind,
+        keywords: panel.kind === "conditional" ? panel.keywords : "",
+        ...gateFields(),
+        description: panel.description,
         asTitle,
         refTitleImage: p.refTitleImage,
         refImages: p.refImages,
-      })
-    );
+      }),
+    });
     const r = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`생성 실패: ${r.error ?? res.statusText}`);
     if (asTitle) setChar((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
     else {
       loadIllusts();
-      setAi((prev) => ({ ...prev, description: "", keywords: "" }));
-      setAiReqEvent("");
+      setPanel(EMPTY_PANEL);
     }
   };
 
@@ -458,14 +495,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
             </button>
           </div>
         </div>
-        <ImageCropModal
-          open={titleCropOpen}
-          title="타이틀 이미지 업로드"
-          aspect={3 / 4}
-          onCancel={() => setTitleCropOpen(false)}
-          onConfirm={uploadTitleImage}
-        />
-        <CharacterProfilesSection characterId={char.id} />
+        <CharacterProfilesSection characterId={char.id} characterName={char.name} characterProfile={char.profile} titleImageUrl={char.title_image_url} genCost={illustCost} />
 
         <div className="row">
           <div>
@@ -624,7 +654,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
       </div>
 
       <div style={{ display: tab === "event" ? undefined : "none" }}>
-        <CharacterEventsSection characterId={id} onChanged={loadEvents} />
+        <CharacterEventsSection characterId={id} onChanged={loadEvents} character={char} titleImageUrl={char.title_image_url} illusts={illusts} onIllustsChanged={loadIllusts} genCost={illustCost} />
       </div>
 
       <div style={{ display: tab === "illust" ? undefined : "none" }}>
@@ -633,95 +663,71 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
         <div className="row">
           <div>
             <label>종류</label>
-            <select value={upload.kind} onChange={(e) => setUpload({ ...upload, kind: e.target.value as "basic" | "conditional" })}>
+            <select value={panel.kind} onChange={(e) => setPanel({ ...panel, kind: e.target.value as "basic" | "conditional" })}>
               <option value="basic">기본 (자주 노출)</option>
               <option value="conditional">조건부 (특정 조건에서만)</option>
             </select>
           </div>
           <div>
             <label>설명</label>
-            <input value={upload.description} onChange={(e) => setUpload({ ...upload, description: e.target.value })} />
+            <input value={panel.description} onChange={(e) => setPanel({ ...panel, description: e.target.value })} />
           </div>
         </div>
-        {upload.kind === "conditional" && (
+        {panel.kind === "conditional" && (
           <>
             <label>트리거 키워드 (쉼표 구분 — 응답에 이 단어가 포함되면 노출)</label>
-            <input value={upload.keywords} onChange={(e) => setUpload({ ...upload, keywords: e.target.value })} placeholder="예: 화남, 분노, 짜증" />
+            <input value={panel.keywords} onChange={(e) => setPanel({ ...panel, keywords: e.target.value })} placeholder="예: 화남, 분노, 짜증" />
             <label>이벤트 달성 필요</label>
-            <select value={upReqEvent} onChange={(e) => setUpReqEvent(e.target.value)}>
+            <select value={panel.reqEvent} onChange={(e) => setPanel({ ...panel, reqEvent: e.target.value })}>
               <option value="">없음</option>
               {events.map((ev) => (
                 <option key={ev.id} value={ev.id}>{ev.name}</option>
               ))}
             </select>
-            <div className="muted">지정하면 그 이벤트를 성공한 유저에게만 노출됩니다. 키워드 없이 지정하면 달성 후 기본 로테이션에 포함됩니다.</div>
+            <div className="row">
+              <div>
+                <label>유저 등급 이상</label>
+                <select value={panel.reqTier} onChange={(e) => setPanel({ ...panel, reqTier: e.target.value })}>
+                  <option value="">없음</option>
+                  {tiers.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name} (순위 {t.tier_rank})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label>관계 이상</label>
+                <select value={panel.reqRel} onChange={(e) => setPanel({ ...panel, reqRel: e.target.value })}>
+                  <option value="">없음</option>
+                  <option value="lover">연인 이상</option>
+                  <option value="engaged">약혼 이상</option>
+                  <option value="married">결혼</option>
+                </select>
+              </div>
+              <div>
+                <label>호감도 최소 (-100~100)</label>
+                <input
+                  type="number"
+                  min={-100}
+                  max={100}
+                  value={panel.minAff}
+                  onChange={(e) => setPanel({ ...panel, minAff: e.target.value })}
+                  placeholder="빈값=없음"
+                />
+              </div>
+            </div>
+            <div className="muted">지정한 조건을 모두 충족한 유저에게만 노출됩니다. 키워드 없이 조건만 지정하면 조건 충족 시 기본 로테이션에 포함됩니다.</div>
           </>
         )}
-<button onClick={openUpload}>이미지 선택·업로드 (무료)</button>
-        <ImageCropModal
-          open={illustCropOpen}
-          title="일러스트 업로드"
-          aspect="free"
-          onCancel={() => setIllustCropOpen(false)}
-          onConfirm={doUpload}
-        />
-      </div>
-
-      <h3>AI 일러스트 생성</h3>
-      <div className="panel">
-        <div className="row">
-          <div>
-            <label>종류</label>
-            <select value={ai.kind} onChange={(e) => setAi({ ...ai, kind: e.target.value as "basic" | "conditional" })}>
-              <option value="basic">기본 (자주 노출)</option>
-              <option value="conditional">조건부 (특정 조건에서만)</option>
-            </select>
-          </div>
-          <div>
-            <label>설명</label>
-            <input value={ai.description} onChange={(e) => setAi({ ...ai, description: e.target.value })} />
-          </div>
-        </div>
-        {ai.kind === "conditional" && (
-          <>
-            <label>트리거 키워드 (쉼표 구분)</label>
-            <input value={ai.keywords} onChange={(e) => setAi({ ...ai, keywords: e.target.value })} placeholder="예: 화남, 분노, 짜증" />
-            <label>이벤트 달성 필요</label>
-            <select value={aiReqEvent} onChange={(e) => setAiReqEvent(e.target.value)}>
-              <option value="">없음</option>
-              {events.map((ev) => (
-                <option key={ev.id} value={ev.id}>{ev.name}</option>
-              ))}
-            </select>
-            <div className="muted">지정하면 그 이벤트를 성공한 유저에게만 노출됩니다. 키워드 없이 지정하면 달성 후 기본 로테이션에 포함됩니다.</div>
-          </>
-        )}
-        <button
-          onClick={() => {
-            if (ai.kind === "conditional" && !ai.keywords.trim() && !aiReqEvent) {
-              alert("조건부 일러스트는 트리거 키워드 또는 이벤트 조건이 필요합니다.");
-              return;
-            }
-            setGenModal("illust");
-          }}
-        >
-          {`AI 일러스트 생성${illustCost != null ? ` (-${illustCost.toLocaleString()}코인)` : ""}`}
+        <button type="button" onClick={openUpload}>업로드 (무료)</button>{" "}
+        <button type="button" onClick={openAiGenerate}>
+          {`AI 생성${illustCost != null ? ` (-${illustCost.toLocaleString()}코인)` : ""}`}
         </button>
-        <ImageGenModal
-          open={genModal !== null}
-          title={genModal === "title" ? "AI 타이틀 이미지 생성" : "AI 일러스트 생성"}
-          initialPrompt={buildImagePrompt(char, genModal === "title", ai)}
-          titleImageUrl={char.title_image_url}
-          submitSuffix={illustCost != null ? ` (-${illustCost.toLocaleString()}코인)` : ""}
-          onClose={() => setGenModal(null)}
-          onGenerate={(p) => doAiGenerate(p, genModal === "title")}
-        />
       </div>
 
       <div className="panel">
         <table>
           <thead>
-            <tr><th>미리보기</th><th>종류</th><th>설명</th><th>트리거 키워드</th><th></th></tr>
+            <tr><th>미리보기</th><th>종류</th><th>설명</th><th>트리거 / 조건</th><th></th></tr>
           </thead>
           <tbody>
             {illusts.map((i) => (
@@ -731,9 +737,9 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
                 <td><span className={`badge ${i.kind === "conditional" ? "cond" : ""}`}>{i.kind === "conditional" ? "조건부" : "기본"}</span></td>
                 <td>{i.description}</td>
                 <td className="muted">
-                  {triggerKeywords(i).join(", ")}
-                  {triggerEventId(i) != null && (
-                    <div>이벤트: {events.find((ev) => ev.id === triggerEventId(i))?.name ?? `#${triggerEventId(i)}`}</div>
+                  {(parseTrigger(i).keywords ?? []).join(", ")}
+                  {triggerGateSummary(parseTrigger(i), events, tiers) && (
+                    <div>{triggerGateSummary(parseTrigger(i), events, tiers)}</div>
                   )}
                 </td>
                 <td><button className="danger small" onClick={() => removeIllust(i.id)}>삭제</button></td>
@@ -744,6 +750,35 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
         </table>
       </div>
       </div>
+
+      {/* 모달은 탭 컨테이너(display:none) 바깥 최상위에 렌더 — 어느 탭에서든 보이도록 */}
+      <ImageCropModal
+        open={titleCropOpen}
+        title="타이틀 이미지 업로드"
+        aspect={3 / 4}
+        onCancel={() => setTitleCropOpen(false)}
+        onConfirm={uploadTitleImage}
+      />
+      <ImageCropModal
+        open={illustCropOpen}
+        title="일러스트 업로드"
+        aspect="free"
+        onCancel={() => setIllustCropOpen(false)}
+        onConfirm={doUpload}
+      />
+      <ImageGenModal
+        open={genModal !== null}
+        title={genModal === "title" ? "AI 타이틀 이미지 생성" : "AI 일러스트 생성"}
+        initialPrompt={
+          genModal === "title"
+            ? buildImagePrompt(char, "세로형 3:4 타이틀 일러스트")
+            : buildImagePrompt(char, panel.description, panel.kind === "conditional" ? panel.keywords : "")
+        }
+        titleImageUrl={char.title_image_url}
+        submitSuffix={illustCost != null ? ` (-${illustCost.toLocaleString()}코인)` : ""}
+        onClose={() => setGenModal(null)}
+        onGenerate={(p) => doAiGenerate(p, genModal === "title")}
+      />
 
       {!char.delete_scheduled_at && <button className="danger" onClick={removeChar}>캐릭터 삭제</button>}
     </div>

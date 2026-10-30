@@ -197,11 +197,14 @@ CREATE TABLE IF NOT EXISTS character_events (
   success_condition TEXT NOT NULL,
   fail_condition TEXT NULL,
   set_relationship ENUM('lover','engaged','married') NULL,
+  success_line TEXT NULL,                               -- 달성 시 캐릭터가 하는 고정 대사
+  success_illustration_id BIGINT UNSIGNED NULL,         -- 달성 시 출력할 일러스트
   retry_hours INT NOT NULL DEFAULT 72,
   max_turns INT NOT NULL DEFAULT 6,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_cev_char FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+  CONSTRAINT fk_cev_char FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+  CONSTRAINT fk_cev_sill FOREIGN KEY (success_illustration_id) REFERENCES illustrations(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS user_character_events (

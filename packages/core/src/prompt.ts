@@ -4,6 +4,7 @@ import type {
   CharacterRelationship,
   DictionaryEntry,
   Illustration,
+  IllustrationTrigger,
   World,
   WorldAnniversary,
 } from "./types";
@@ -281,34 +282,69 @@ export function formatAnniversaryBlock(
  * 1) conditional 일러스트 중 키워드가 매칭되는 것 우선
  * 2) 없으면 basic 일러스트 중 하나 (sort_order 우선, 간단한 로테이션)
  */
+/** 일러스트 노출 게이트 평가에 쓰는 유저 상태 */
+export interface IllustrationViewerContext {
+  /** 달성한 이벤트 id 집합 */
+  achievedEventIds?: ReadonlySet<number>;
+  /** 현재 호감도 (-100~100) */
+  affinity?: number;
+  /** 유저-캐릭터 관계 */
+  relationship?: "none" | "lover" | "engaged" | "married";
+  /** 유저 등급의 tier_rank (user 트랙) */
+  userTierRank?: number;
+  /** chat_tiers.id → tier_rank 매핑 (requireTierId 평가용) */
+  tierRankById?: ReadonlyMap<number, number>;
+}
+
+const RELATIONSHIP_ORDER: Record<string, number> = { none: 0, lover: 1, engaged: 2, married: 3 };
+
+/** 조건부 일러스트의 게이트(이벤트/등급/관계/호감도)를 모두 충족하는지 */
+function gatesOk(i: Illustration, v: IllustrationViewerContext): boolean {
+  const t = i.trigger_condition;
+  if (!t) return true;
+  if (t.requireEventId != null && !(v.achievedEventIds?.has(Number(t.requireEventId)))) return false;
+  if (t.minAffinity != null && (v.affinity ?? 0) < Number(t.minAffinity)) return false;
+  if (t.requireRelationship) {
+    const need = RELATIONSHIP_ORDER[t.requireRelationship] ?? 99;
+    const have = RELATIONSHIP_ORDER[v.relationship ?? "none"] ?? 0;
+    if (have < need) return false;
+  }
+  if (t.requireTierId != null) {
+    const needRank = v.tierRankById?.get(Number(t.requireTierId));
+    // 등급이 삭제돼 rank 를 모르면 잠금 유지 (fail-closed)
+    if (needRank == null || (v.userTierRank ?? -1) < needRank) return false;
+  }
+  return true;
+}
+
+/** 키워드 외의 게이트 조건이 하나라도 걸려 있는지 */
+function hasGates(t: IllustrationTrigger | null | undefined): boolean {
+  return !!t && (t.requireEventId != null || t.requireTierId != null || !!t.requireRelationship || t.minAffinity != null);
+}
+
 export function pickIllustration(
   illustrations: Illustration[],
   assistantText: string,
-  /** 이 유저가 달성한 이벤트 id — requireEventId 조건부 일러스트의 노출 게이트 */
-  achievedEventIds?: ReadonlySet<number>
+  /** 유저 상태 (미지정 시 게이트 걸린 일러스트는 노출 안 됨) */
+  viewer: IllustrationViewerContext = {}
 ): Illustration | null {
-  const achieved = achievedEventIds ?? new Set<number>();
-  const eventOk = (i: Illustration) => {
-    const req = i.trigger_condition?.requireEventId;
-    return req == null || achieved.has(Number(req));
-  };
   for (const illust of illustrations) {
     if (illust.kind !== "conditional" || !illust.trigger_condition) continue;
-    if (!eventOk(illust)) continue;
+    if (!gatesOk(illust, viewer)) continue;
     const { type, keywords } = illust.trigger_condition;
     if (type === "keyword" && keywords?.some((k) => k && assistantText.includes(k))) {
       return illust;
     }
   }
-  // 기본 로테이션: basic + (키워드 없이 이벤트 달성 조건만 있는 conditional 중 달성된 것)
+  // 기본 로테이션: basic + (키워드 없이 게이트 조건만 있는 conditional 중 게이트 통과한 것)
   const basics = illustrations
     .filter(
       (i) =>
         i.kind === "basic" ||
         (i.kind === "conditional" &&
-          i.trigger_condition?.requireEventId != null &&
-          !(i.trigger_condition.keywords?.length) &&
-          eventOk(i))
+          hasGates(i.trigger_condition) &&
+          !(i.trigger_condition?.keywords?.length) &&
+          gatesOk(i, viewer))
     )
     .sort((a, b) => a.sort_order - b.sort_order);
   if (basics.length === 0) return null;

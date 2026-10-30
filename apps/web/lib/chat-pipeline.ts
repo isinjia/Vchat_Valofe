@@ -38,6 +38,7 @@ import {
   judgeEvent,
   formatEventBlock,
   setUserRelationship,
+  getUserTierRankInfo,
   type ActiveEventState,
   type GuestInfo,
   type LlmChatMessage,
@@ -358,6 +359,9 @@ export async function finishChatTurn(send: (data: unknown) => void, p: FinishPar
 
   // 이벤트 판정: 턴 집계 → 채점 LLM 판정 → 턴 초과 시 실패. 오프닝 턴은 제외
   let eventResult: { status: "success" | "failed"; name: string; retryHours?: number } | null = null;
+  // 달성 시 지정 대사/이미지 (별도 말풍선으로 내보내고 저장)
+  let successLine: { text: string; illustrationId?: number; illustrationUrl?: string } | null = null;
+  let relationshipNow = state.relationship;
   if (p.event && !p.opening) {
     try {
       const ev = p.event.event;
@@ -373,17 +377,37 @@ export async function finishChatTurn(send: (data: unknown) => void, p: FinishPar
         await finishEvent(p.event.uceId, "success");
         if (ev.set_relationship) {
           await setUserRelationship(userId, ctx.character.id, ev.set_relationship);
+          relationshipNow = ev.set_relationship;
         }
         await execute(
           "INSERT INTO user_notifications (user_id, type, title, body) VALUES (?, 'event', ?, ?)",
           [userId, `이벤트 성공 — ${ev.name}`, ev.situation.slice(0, 200)]
         );
         eventResult = { status: "success", name: ev.name };
+        // 달성 지정 대사/이미지
+        if (ev.success_line?.trim() || ev.success_illustration_id) {
+          const sill = ev.success_illustration_id
+            ? ctx.illustrations.find((i) => i.id === Number(ev.success_illustration_id))
+            : undefined;
+          successLine = {
+            text: ev.success_line?.trim() || "",
+            illustrationId: sill?.id,
+            illustrationUrl: sill?.url,
+          };
+        }
       } else if (verdict === "fail") {
         await finishEvent(p.event.uceId, "failed");
         eventResult = { status: "failed", name: ev.name, retryHours: ev.retry_hours };
       }
-      if (eventResult) send({ type: "event", ...eventResult });
+      if (eventResult) {
+        send({
+          type: "event",
+          ...eventResult,
+          ...(successLine
+            ? { line: successLine.text, illustrationUrl: successLine.illustrationUrl }
+            : {}),
+        });
+      }
     } catch (e) {
       console.error("event judge error:", e);
     }
@@ -403,14 +427,24 @@ export async function finishChatTurn(send: (data: unknown) => void, p: FinishPar
     console.error("tier evaluation error:", e);
   }
 
-  // 응답 내용 기반 일러스트 선택 (이벤트 달성 조건 → 조건부 키워드 매칭 → 기본 로테이션)
-  let achievedEvents: Set<number> | undefined;
+  // 응답 내용 기반 일러스트 선택 (게이트: 이벤트 달성/등급/관계/호감도 → 키워드 매칭 → 기본 로테이션)
+  let illustration: ReturnType<typeof pickIllustration> = null;
   try {
-    achievedEvents = await getAchievedEventIds(userId, ctx.character.id);
-  } catch {
-    achievedEvents = undefined;
+    const [achievedEventIds, tierInfo] = await Promise.all([
+      getAchievedEventIds(userId, ctx.character.id),
+      getUserTierRankInfo(userId),
+    ]);
+    illustration = pickIllustration(ctx.illustrations, assistantText, {
+      achievedEventIds,
+      affinity: state.affinity,
+      relationship: relationshipNow,
+      userTierRank: tierInfo.userTierRank,
+      tierRankById: tierInfo.tierRankById,
+    });
+  } catch (e) {
+    console.error("illustration gate error:", e);
+    illustration = pickIllustration(ctx.illustrations, assistantText);
   }
-  const illustration = pickIllustration(ctx.illustrations, assistantText, achievedEvents);
   if (illustration) {
     send({
       type: "illustration",
@@ -459,6 +493,18 @@ export async function finishChatTurn(send: (data: unknown) => void, p: FinishPar
       content: guest.text,
       meta: { guest: guest.name, guestEntryId: guest.entryId },
       createdAt: new Date(now.getTime() + 2),
+    });
+  }
+  if (successLine && (successLine.text || successLine.illustrationId)) {
+    // 이벤트 달성 지정 대사/이미지는 별도 말풍선으로 저장 (이력 복원용)
+    toSave.push({
+      userId,
+      characterId: ctx.character.id,
+      role: "assistant",
+      content: successLine.text,
+      illustrationId: successLine.illustrationId,
+      meta: { eventLine: eventResult?.name ?? true },
+      createdAt: new Date(now.getTime() + 3),
     });
   }
   await saveMessages(toSave);

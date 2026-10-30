@@ -24,19 +24,28 @@ export async function GET(req: NextRequest) {
   const todayKst = kstDateStr(new Date());
   const startUtc = new Date(new Date(`${todayKst}T00:00:00+09:00`).getTime() - (days - 1) * 24 * 60 * 60 * 1000);
 
-  const [nuRows, puRows, col] = await Promise.all([
+  const [nuRows, puRows, col, worldCnt, charCnt] = await Promise.all([
+    // DATE() 는 mysql2 가 Date 객체로 돌려줘 키 매칭이 깨지므로 문자열로 포맷해서 받는다
     query<{ d: string; n: number }>(
-      `SELECT DATE(DATE_ADD(created_at, INTERVAL 9 HOUR)) AS d, COUNT(*) AS n
+      `SELECT DATE_FORMAT(DATE_ADD(created_at, INTERVAL 9 HOUR), '%Y-%m-%d') AS d, COUNT(*) AS n
        FROM users WHERE created_at >= ? GROUP BY d`,
       [startUtc]
     ),
     query<{ d: string; n: number; spent: number | string }>(
-      `SELECT DATE(DATE_ADD(created_at, INTERVAL 9 HOUR)) AS d,
+      `SELECT DATE_FORMAT(DATE_ADD(created_at, INTERVAL 9 HOUR), '%Y-%m-%d') AS d,
               COUNT(DISTINCT user_id) AS n, COALESCE(SUM(-amount), 0) AS spent
        FROM coin_transactions WHERE amount < 0 AND created_at >= ? GROUP BY d`,
       [startUtc]
     ),
     chatMessages(),
+    query<{ total: number; open: number | string | null }>(
+      `SELECT COUNT(*) AS total, COALESCE(SUM(visibility = 'open'), 0) AS open
+       FROM worlds WHERE delete_scheduled_at IS NULL`
+    ),
+    query<{ total: number; open: number | string | null }>(
+      `SELECT COUNT(*) AS total, COALESCE(SUM(visibility = 'open'), 0) AS open
+       FROM characters WHERE delete_scheduled_at IS NULL`
+    ),
   ]);
 
   const chatAgg = await col
@@ -73,5 +82,14 @@ export async function GET(req: NextRequest) {
       coinsSpent: pu?.spent ?? 0,
     });
   }
-  return NextResponse.json({ days, items });
+  return NextResponse.json({
+    days,
+    items,
+    counts: {
+      worlds: Number(worldCnt[0]?.total) || 0,
+      worldsOpen: Number(worldCnt[0]?.open) || 0,
+      characters: Number(charCnt[0]?.total) || 0,
+      charactersOpen: Number(charCnt[0]?.open) || 0,
+    },
+  });
 }

@@ -16,6 +16,10 @@ export interface CharacterEventRow {
   success_condition: string;
   fail_condition: string | null;
   set_relationship: Exclude<UserRelationship, "none"> | null;
+  /** 달성 시 캐릭터가 하는 고정 대사 */
+  success_line: string | null;
+  /** 달성 시 출력할 일러스트 */
+  success_illustration_id: number | null;
   retry_hours: number;
   max_turns: number;
   is_active: number;

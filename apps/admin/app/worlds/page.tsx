@@ -30,12 +30,24 @@ export default function WorldsPage() {
   const [status, setStatus] = useState("");
   const [owner, setOwner] = useState("");
   const [state, setState] = useState("");
+  const PAGE_SIZE = 20;
+  const [offset, setOffset] = useState(0);
+  const [total, setTotal] = useState(0);
 
-  // 검색어 디바운스 300ms
+  // 검색어 디바운스 300ms (검색 변경 시 첫 페이지로)
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(q.trim()), 300);
+    const t = setTimeout(() => {
+      setDebounced(q.trim());
+      setOffset(0);
+    }, 300);
     return () => clearTimeout(t);
   }, [q]);
+
+  /** 필터 select 변경: 값 반영 + 첫 페이지로 */
+  const onFilter = (set: (v: string) => void) => (e: React.ChangeEvent<HTMLSelectElement>) => {
+    set(e.target.value);
+    setOffset(0);
+  };
 
   const load = () => {
     const sp = new URLSearchParams();
@@ -44,13 +56,20 @@ export default function WorldsPage() {
     if (status) sp.set("status", status);
     if (owner) sp.set("owner", owner);
     if (state) sp.set("state", state);
-    return fetch(`/api/worlds?${sp.toString()}`).then((r) => r.json()).then(setWorlds);
+    sp.set("limit", String(PAGE_SIZE));
+    sp.set("offset", String(offset));
+    return fetch(`/api/worlds?${sp.toString()}`)
+      .then((r) => r.json())
+      .then((d) => {
+        setWorlds(d.items ?? []);
+        setTotal(Number(d.total) || 0);
+      });
   };
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debounced, visibility, status, owner, state]);
+  }, [debounced, visibility, status, owner, state, offset]);
 
   const create = async () => {
     if (!name.trim()) return;
@@ -148,28 +167,28 @@ export default function WorldsPage() {
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="세계관 이름 검색" />
           </div>
           <div>
-            <select value={visibility} onChange={(e) => setVisibility(e.target.value)}>
+            <select value={visibility} onChange={onFilter(setVisibility)}>
               <option value="">공개여부: 전체</option>
               <option value="open">공개</option>
               <option value="private">비공개</option>
             </select>
           </div>
           <div>
-            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+            <select value={status} onChange={onFilter(setStatus)}>
               <option value="">상태: 전체</option>
               <option value="active">active</option>
               <option value="suspended">suspended</option>
             </select>
           </div>
           <div>
-            <select value={owner} onChange={(e) => setOwner(e.target.value)}>
+            <select value={owner} onChange={onFilter(setOwner)}>
               <option value="">소유: 전체</option>
               <option value="admin">운영 (owner NULL)</option>
               <option value="user">유저 제작</option>
             </select>
           </div>
           <div>
-            <select value={state} onChange={(e) => setState(e.target.value)}>
+            <select value={state} onChange={onFilter(setState)}>
               <option value="">삭제 대기: 전체</option>
               <option value="delete_pending">삭제 대기만</option>
             </select>
@@ -216,6 +235,17 @@ export default function WorldsPage() {
             )}
           </tbody>
         </table>
+        <div className="pager">
+          <button className="small" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>
+            이전
+          </button>
+          <span>
+            {total === 0 ? 0 : Math.floor(offset / PAGE_SIZE) + 1} / {Math.max(1, Math.ceil(total / PAGE_SIZE))} 페이지 (총 {total.toLocaleString()}건)
+          </span>
+          <button className="small" disabled={offset + PAGE_SIZE >= total} onClick={() => setOffset(offset + PAGE_SIZE)}>
+            다음
+          </button>
+        </div>
       </div>
     </>
   );

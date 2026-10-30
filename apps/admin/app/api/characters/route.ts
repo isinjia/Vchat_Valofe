@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     where.push("c.delete_scheduled_at IS NOT NULL");
   }
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
-  const sql = `
+  const selectSql = `
     SELECT c.*, w.name AS world_name, u.nickname AS owner_nickname,
            u.vfun_user_id AS owner_vfun_id, u.vfun_u_no AS owner_u_no,
            (SELECT COUNT(*) FROM user_character_state s WHERE s.character_id = c.id) AS user_count
@@ -49,7 +49,21 @@ export async function GET(req: NextRequest) {
     LEFT JOIN users u ON u.id = c.owner_user_id
     ${whereSql}
     ORDER BY c.id DESC`;
-  const rows = await query(sql, params);
+
+  // limit 파라미터가 있으면 페이징 응답 {items, total}, 없으면 기존 배열 (호환)
+  const limitRaw = sp.get("limit");
+  if (limitRaw != null) {
+    const limit = Math.min(100, Math.max(1, Number(limitRaw) || 20));
+    const offset = Math.max(0, Number(sp.get("offset")) || 0);
+    const [{ total }] = await query<{ total: number }>(
+      `SELECT COUNT(*) AS total FROM characters c JOIN worlds w ON w.id = c.world_id ${whereSql}`,
+      params
+    );
+    const items = await query(`${selectSql} LIMIT ${limit} OFFSET ${offset}`, params);
+    return NextResponse.json({ items, total: Number(total) });
+  }
+
+  const rows = await query(selectSql, params);
   return NextResponse.json(rows);
 }
 

@@ -248,6 +248,18 @@ export default function ChatClient({
           );
           if (tierTimer.current) clearTimeout(tierTimer.current);
           tierTimer.current = setTimeout(() => setTierToast(null), 6000);
+          // 달성 지정 대사/이미지는 별도 말풍선으로
+          if (event.line || event.illustrationUrl) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: event.line ?? "",
+                illustrationUrl: event.illustrationUrl ?? null,
+                createdAt: new Date(),
+              },
+            ]);
+          }
         } else if (event.type === "tier") {
           // 등급 변경 알림 (유저/크리에이터, 우선 적용 등급은 '변경')
           const up = event.direction !== "changed";

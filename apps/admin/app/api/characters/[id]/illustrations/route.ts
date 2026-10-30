@@ -1,3 +1,4 @@
+import { buildIllustTrigger } from "@/lib/illust-trigger";
 import { NextRequest, NextResponse } from "next/server";
 import { query, execute, getStorage, invalidateChatContext, imageExtFromMime } from "@vchatbot/core";
 
@@ -33,19 +34,15 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   let triggerCondition: string | null = null;
   if (kind === "conditional") {
-    const keywords = ((form.get("keywords") as string) || "")
-      .split(",")
-      .map((k) => k.trim())
-      .filter(Boolean);
-    const reqEv = Number(form.get("requireEventId"));
-    const requireEventId = Number.isInteger(reqEv) && reqEv > 0 ? reqEv : undefined;
-    if (keywords.length === 0 && !requireEventId) {
-      return NextResponse.json(
-        { error: "conditional 일러스트는 트리거 키워드 또는 이벤트 조건이 필요합니다." },
-        { status: 400 }
-      );
-    }
-    triggerCondition = JSON.stringify({ type: "keyword", keywords, ...(requireEventId ? { requireEventId } : {}) });
+    const t = buildIllustTrigger({
+      keywords: form.get("keywords"),
+      requireEventId: form.get("requireEventId"),
+      requireTierId: form.get("requireTierId"),
+      requireRelationship: form.get("requireRelationship"),
+      minAffinity: form.get("minAffinity"),
+    });
+    if ("error" in t) return NextResponse.json({ error: t.error }, { status: 400 });
+    triggerCondition = t.value;
   }
 
   let storage;

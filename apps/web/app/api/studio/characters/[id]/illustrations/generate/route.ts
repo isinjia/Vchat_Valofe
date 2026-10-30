@@ -1,3 +1,4 @@
+import { buildIllustTrigger } from "@/lib/illust-trigger";
 import { NextRequest, NextResponse } from "next/server";
 import {
   query,
@@ -39,14 +40,9 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   let triggerCondition: string | null = null;
   if (!asTitle && kind === "conditional") {
-    const keywords = (typeof body.keywords === "string" ? body.keywords : "")
-      .split(",")
-      .map((k: string) => k.trim())
-      .filter(Boolean);
-    const reqEv = Number(body.requireEventId);
-    const requireEventId = Number.isInteger(reqEv) && reqEv > 0 ? reqEv : undefined;
-    if (keywords.length === 0 && !requireEventId) return bad("conditional 일러스트는 트리거 키워드 또는 이벤트 조건이 필요합니다.");
-    triggerCondition = JSON.stringify({ type: "keyword", keywords, ...(requireEventId ? { requireEventId } : {}) });
+    const t = buildIllustTrigger(body);
+    if ("error" in t) return bad(t.error);
+    triggerCondition = t.value;
   }
 
   // 스토리지 접근/외부 호출 전에 설정 여부부터 확인

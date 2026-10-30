@@ -31,13 +31,19 @@ export async function POST(req: NextRequest, { params }: Params) {
   const parsed = parseEventInput(await req.json().catch(() => ({})), false);
   if ("error" in parsed) return bad(parsed.error);
   const v = parsed.value as EventFields; // partial=false 이므로 전 필드 존재
+  if (v.success_illustration_id) {
+    const il = await query("SELECT id FROM illustrations WHERE id = ? AND character_id = ?", [v.success_illustration_id, Number(id)]);
+    if (il.length === 0) return bad("달성 시 이미지가 이 캐릭터의 일러스트가 아닙니다.");
+  }
   const result = await execute(
     `INSERT INTO character_events (character_id, name, trigger_affinity_min, trigger_keywords, trigger_relationship,
-       situation, success_condition, fail_condition, set_relationship, retry_hours, max_turns, is_active)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       situation, success_condition, fail_condition, set_relationship, retry_hours, max_turns, is_active,
+       success_line, success_illustration_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       Number(id), v.name, v.trigger_affinity_min, v.trigger_keywords, v.trigger_relationship, v.situation,
       v.success_condition, v.fail_condition, v.set_relationship, v.retry_hours, v.max_turns, v.is_active,
+      v.success_line ?? null, v.success_illustration_id ?? null,
     ]
   );
   await invalidateChatContext(Number(id));
