@@ -229,7 +229,16 @@ a { color: inherit; text-decoration: none; }
 }
 .title-img.placeholder { background: var(--panel); }
 
-.h-scroll { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; align-items: flex-start; }
+/* 가로 스크롤 리스트: overflow 가 호버 링(2px)을 잘라내지 않도록 안쪽 여백을 주고
+   음수 마진으로 다른 섹션과의 정렬을 유지한다 */
+.h-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 4px 10px;
+  margin: -4px -4px 0;
+  align-items: flex-start;
+}
 .h-scroll > * { flex: 0 0 auto; }
 
 .chip {
