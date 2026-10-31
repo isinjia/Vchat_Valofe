@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import ImageCropModal from "../../components/ImageCropModal";
-import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
+import { type ImageGenPayload } from "../../components/ImageGenModal";
+import AiGenFlow from "../../components/AiGenFlow";
 import { studioFetch } from "../../studio-api";
 
 const EMOTIONS: { key: string; label: string }[] = [
@@ -74,9 +75,9 @@ export default function CharacterProfilesSection({
   };
   const profileText = `이름: ${characterName}\n외모/설정: ${characterProfile.slice(0, 600)}`;
 
-  /** AI 생성 모달 확인 → 생성 라우트 호출 (실패 시 throw → 모달 안에 에러 표시) */
-  const generate = async (p: ImageGenPayload) => {
-    if (!genTarget) return;
+  /** AI 생성 호출 (저장 안 함) — dataURL 반환. 저장은 AiGenFlow 의 save 에서 업로드 라우트로 */
+  const generate = async (p: ImageGenPayload): Promise<string> => {
+    if (!genTarget) throw new Error("대상 슬롯이 없습니다.");
     const isDefault = genTarget === "default";
     const useDefault = !isDefault && !!defaultUrl;
     const res = await studioFetch(`${base}/generate`, {
@@ -95,6 +96,18 @@ export default function CharacterProfilesSection({
     });
     const r = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`생성 실패: ${r.error ?? res.statusText}`);
+    return `data:${r.mime ?? "image/png"};base64,${r.image}`;
+  };
+
+  /** 선택한 생성 결과를 해당 감정 슬롯에 업로드 */
+  const saveGenerated = async (blob: Blob, filename: string) => {
+    if (!genTarget) return;
+    const form = new FormData();
+    form.append("file", blob, filename);
+    form.append("emotion", genTarget);
+    const res = await studioFetch(base, { method: "POST", body: form });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`업로드 실패: ${r.error ?? res.statusText}`);
     await load();
   };
 
@@ -155,7 +168,7 @@ export default function CharacterProfilesSection({
         })}
       </div>
       {msg && <p style={{ color: "#ff6b6b", fontSize: 13 }}>{msg}</p>}
-      <ImageGenModal
+      <AiGenFlow
         open={genTarget !== null}
         title={`프로필 AI 생성 (${EMOTIONS.find((e) => e.key === genTarget)?.label ?? ""})`}
         initialDescription={genTarget ? buildDesc(genTarget) : ""}
@@ -163,8 +176,11 @@ export default function CharacterProfilesSection({
         titleImageUrl={genTarget === "default" ? titleImageUrl : (defaultUrl ?? titleImageUrl)}
         refLabel={genTarget === "default" || !defaultUrl ? "타이틀 이미지를 참조로 사용" : "기본 프로필을 참조로 사용"}
         submitSuffix={genCost != null ? ` (-${genCost.toLocaleString()}코인)` : ""}
+        aspect={1}
+        circle
+        generate={generate}
+        save={saveGenerated}
         onClose={() => setGenTarget(null)}
-        onGenerate={generate}
       />
       <ImageCropModal
         open={target !== null}

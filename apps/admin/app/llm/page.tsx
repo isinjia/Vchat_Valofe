@@ -48,7 +48,7 @@ const EMPTY = {
 };
 
 export default function LlmPage() {
-  const [tab, setTab] = useState<"chat" | "image">("chat");
+  const [tab, setTab] = useState<"chat" | "image" | "video">("chat");
   return (
     <>
       <h2>LLM 관리</h2>
@@ -60,9 +60,13 @@ export default function LlmPage() {
         <button type="button" className={`tab ${tab === "image" ? "active" : ""}`} onClick={() => setTab("image")}>
           이미지 생성 AI
         </button>
+        <button type="button" className={`tab ${tab === "video" ? "active" : ""}`} onClick={() => setTab("video")}>
+          영상 생성 AI
+        </button>
       </div>
       <div style={{ display: tab === "chat" ? "block" : "none" }}><ChatLlmTab /></div>
       <div style={{ display: tab === "image" ? "block" : "none" }}><ImageProviderTab /></div>
+      <div style={{ display: tab === "video" ? "block" : "none" }}><VideoProviderTab /></div>
     </>
   );
 }
@@ -650,6 +654,245 @@ function ImageProviderTab() {
             {list.length === 0 && (
               <tr>
                 <td colSpan={9} className="muted">등록된 이미지 생성 AI 가 없습니다.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+interface VideoProv {
+  id: number;
+  name: string;
+  provider: "openai" | "gemini" | "openai_compatible";
+  model: string;
+  api_key: string | null; // 마스킹됨
+  base_url: string | null;
+  size: string;
+  duration_seconds: number;
+  cost_per_video: number;
+  cost_currency: string;
+  is_default: number;
+  is_active: number;
+}
+
+const DEFAULT_VIDEO_MODEL: Record<string, string> = {
+  openai: "sora-2",
+  gemini: "veo-3.1-generate-preview",
+  openai_compatible: "",
+};
+
+const EMPTY_VIDEO = {
+  name: "",
+  provider: "openai" as VideoProv["provider"],
+  model: "sora-2",
+  api_key: "",
+  base_url: "",
+  size: "720x1280",
+  duration_seconds: 8,
+  cost_per_video: 0,
+  cost_currency: "USD",
+};
+
+function VideoProviderTab() {
+  const [list, setList] = useState<VideoProv[]>([]);
+  const [form, setForm] = useState(EMPTY_VIDEO);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [error, setError] = useState("");
+
+  const load = async () => {
+    const r = await fetch("/api/video-providers");
+    setList(r.ok ? await r.json() : []);
+  };
+  useEffect(() => {
+    load();
+  }, []);
+
+  const put = async (id: number, body: Record<string, unknown>) => {
+    const r = await fetch(`/api/video-providers/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: "__KEEP__", ...body }),
+    });
+    if (!r.ok) setError((await r.json()).error ?? "저장 실패");
+    load();
+    return r.ok;
+  };
+
+  const submit = async () => {
+    setError("");
+    if (editId != null) {
+      // 키를 비워두면 기존 키 유지
+      const ok = await put(editId, { ...form, api_key: form.api_key || "__KEEP__" });
+      if (ok) {
+        setEditId(null);
+        setForm(EMPTY_VIDEO);
+      }
+      return;
+    }
+    const r = await fetch("/api/video-providers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    if (!r.ok) {
+      setError((await r.json()).error ?? "생성 실패");
+      return;
+    }
+    setForm(EMPTY_VIDEO);
+    load();
+  };
+
+  const startEdit = (p: VideoProv) => {
+    setEditId(p.id);
+    setError("");
+    setForm({
+      name: p.name,
+      provider: p.provider,
+      model: p.model,
+      api_key: "",
+      base_url: p.base_url ?? "",
+      size: p.size,
+      duration_seconds: p.duration_seconds,
+      cost_per_video: Number(p.cost_per_video),
+      cost_currency: p.cost_currency,
+    });
+  };
+
+  const remove = async (p: VideoProv) => {
+    if (!confirm(`"${p.name}" 을(를) 삭제할까요?`)) return;
+    await fetch(`/api/video-providers/${p.id}`, { method: "DELETE" });
+    if (editId === p.id) {
+      setEditId(null);
+      setForm(EMPTY_VIDEO);
+    }
+    load();
+  };
+
+  return (
+    <>
+      <p className="muted">기본 프로바이더 1개가 영상 생성(일러스트 영상)에 사용됩니다.</p>
+      <h3>{editId != null ? "영상 생성 AI 수정" : "영상 생성 AI 추가"}</h3>
+      <div className="panel">
+        <div className="row">
+          <div>
+            <label>이름</label>
+            <input type="text" value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div>
+            <label>종류</label>
+            <select value={form.provider}
+              onChange={(e) => {
+                const provider = e.target.value as VideoProv["provider"];
+                setForm({ ...form, provider, model: DEFAULT_VIDEO_MODEL[provider] ?? form.model });
+              }}>
+              <option value="openai">OpenAI (Sora)</option>
+              <option value="gemini">Gemini (Veo)</option>
+              <option value="openai_compatible">OpenAI 호환</option>
+            </select>
+          </div>
+          <div>
+            <label>모델</label>
+            <input type="text" value={form.model}
+              onChange={(e) => setForm({ ...form, model: e.target.value })} />
+          </div>
+        </div>
+        <div className="row">
+          <div>
+            <label>API Key</label>
+            <input type="password" value={form.api_key}
+              placeholder={editId != null ? "비우면 기존 키 유지" : ""}
+              onChange={(e) => setForm({ ...form, api_key: e.target.value })} />
+          </div>
+          {form.provider === "openai_compatible" && (
+            <div>
+              <label>Base URL</label>
+              <input type="text" value={form.base_url} placeholder="https://example.com/v1"
+                onChange={(e) => setForm({ ...form, base_url: e.target.value })} />
+            </div>
+          )}
+          <div>
+            <label>크기</label>
+            <input type="text" value={form.size} placeholder="720x1280"
+              onChange={(e) => setForm({ ...form, size: e.target.value })} />
+            <p className="muted">OpenAI 계열은 가로x세로(예: 720x1280), Gemini 는 16:9/9:16 비율로 자동 변환됩니다.</p>
+          </div>
+          <div>
+            <label>길이(초)</label>
+            <input type="number" min={1} max={60} value={form.duration_seconds}
+              onChange={(e) => setForm({ ...form, duration_seconds: Number(e.target.value) })} />
+            <p className="muted">Sora 는 4/8/12초, Veo 는 4~8초를 지원합니다.</p>
+          </div>
+        </div>
+        <div className="row">
+          <div>
+            <label>건당 비용</label>
+            <input type="number" min={0} step="any" value={form.cost_per_video}
+              onChange={(e) => setForm({ ...form, cost_per_video: Number(e.target.value) })} />
+          </div>
+          <div>
+            <label>통화</label>
+            <input type="text" value={form.cost_currency} placeholder="USD"
+              onChange={(e) => setForm({ ...form, cost_currency: e.target.value })} />
+          </div>
+        </div>
+        {error && <p style={{ color: "var(--danger)", marginTop: 8 }}>{error}</p>}
+        <div style={{ marginTop: 12 }}>
+          <button onClick={submit}>{editId != null ? "저장" : "추가"}</button>{" "}
+          {editId != null && (
+            <button className="small" onClick={() => { setEditId(null); setForm(EMPTY_VIDEO); setError(""); }}>
+              취소
+            </button>
+          )}
+        </div>
+      </div>
+
+      <h3>등록된 영상 생성 AI</h3>
+      <div className="panel">
+        <table>
+          <thead>
+            <tr>
+              <th>기본</th><th>이름</th><th>종류</th><th>모델</th><th>API Key</th><th>크기</th><th>길이</th><th>건당 비용</th><th>상태</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((p) => (
+              <tr key={p.id}>
+                <td>
+                  {p.is_default ? (
+                    <b>기본</b>
+                  ) : (
+                    <button className="small" onClick={() => put(p.id, { is_default: 1 })}>기본으로</button>
+                  )}
+                </td>
+                <td>{p.name}</td>
+                <td>{p.provider}</td>
+                <td>
+                  {p.model}
+                  {p.base_url && <div className="muted">{p.base_url}</div>}
+                </td>
+                <td className="muted">{p.api_key ?? "-"}</td>
+                <td>{p.size}</td>
+                <td>{p.duration_seconds}초</td>
+                <td>{Number(p.cost_per_video)} {p.cost_currency}</td>
+                <td>
+                  <button className={`small${p.is_active ? "" : " danger"}`}
+                    onClick={() => put(p.id, { is_active: p.is_active ? 0 : 1 })}>
+                    {p.is_active ? "ON" : "OFF"}
+                  </button>
+                </td>
+                <td>
+                  <button className="small" onClick={() => startEdit(p)}>수정</button>{" "}
+                  <button className="small danger" onClick={() => remove(p)}>삭제</button>
+                </td>
+              </tr>
+            ))}
+            {list.length === 0 && (
+              <tr>
+                <td colSpan={10} className="muted">등록된 영상 생성 AI 가 없습니다.</td>
               </tr>
             )}
           </tbody>

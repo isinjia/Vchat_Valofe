@@ -19,8 +19,11 @@ export const jsonInit = (method: string, body: unknown): RequestInit => ({
 export interface PricingInfo {
   aiAssistCost: number;
   illustGenCost: number;
+  videoGenCost: number;
   aiAssist: Record<string, { coinsPer1k: number; minCost: number }>;
   byok: { enabled: boolean; cost: number; hasKey: boolean };
+  /** 업로드 용량 제한 (MB) — 전역 쿼터 + 크리에이터 등급별 차등 적용 후 */
+  limits?: { videoMaxMb: number; effectMaxMb: number };
 }
 
 /** AI 생성 버튼의 kind별 비용 라벨 (BYOK 정액 / 토큰 비례 "N~" / 정액) */

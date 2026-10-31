@@ -34,7 +34,6 @@ const mmdd = (m: number, d: number) => `${String(m).padStart(2, "0")}-${String(d
 export default function AnniversarySection({ worldId }: { worldId: string }) {
   const [list, setList] = useState<Anniv[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
-  const [presetId, setPresetId] = useState("");
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState("");
 
@@ -66,9 +65,45 @@ export default function AnniversarySection({ worldId }: { worldId: string }) {
     return true;
   };
 
-  const importPreset = async () => {
-    if (!presetId) return;
-    if (await post({ preset_id: Number(presetId) })) setPresetId("");
+  // 프리셋 다중 선택 불러오기 다이얼로그
+  const [presetOpen, setPresetOpen] = useState(false);
+  const [checked, setChecked] = useState<Set<number>>(new Set());
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState("");
+
+  const toggleChecked = (id: number) =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const importChecked = async () => {
+    if (checked.size === 0 || importing) return;
+    setImporting(true);
+    setImportError("");
+    const failed: string[] = [];
+    for (const pid of checked) {
+      const r = await studioFetch(base, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preset_id: pid }),
+      });
+      if (!r.ok) {
+        const name = presets.find((p) => p.id === pid)?.name ?? `#${pid}`;
+        failed.push(name);
+      }
+    }
+    setImporting(false);
+    await load();
+    if (failed.length > 0) {
+      setImportError(`불러오지 못한 프리셋: ${failed.join(", ")}`);
+      setChecked(new Set());
+      return;
+    }
+    setChecked(new Set());
+    setPresetOpen(false);
   };
 
   const addCustom = async () => {
@@ -141,19 +176,17 @@ export default function AnniversarySection({ worldId }: { worldId: string }) {
         <div className="notice">기념일 당일과 각 기념일의 "언급 시작" 일수 전부터 캐릭터가 대화에서 자연스럽게 언급합니다.</div>
 
         <label>프리셋에서 불러오기</label>
-        <div className="row">
-          <select value={presetId} onChange={(e) => setPresetId(e.target.value)}>
-            <option value="">프리셋 선택</option>
-            {presets.map((p) => (
-              <option key={p.id} value={p.id} disabled={loaded.has(p.id)}>
-                {mmdd(p.month, p.day)}{durLabel(p.duration_days)} {p.name}
-                {loaded.has(p.id) ? " (불러옴)" : ""}
-              </option>
-            ))}
-          </select>
-          <div>
-            <button onClick={importPreset} disabled={!presetId}>불러오기</button>
-          </div>
+        <div>
+          <button
+            type="button"
+            onClick={() => {
+              setChecked(new Set());
+              setImportError("");
+              setPresetOpen(true);
+            }}
+          >
+            프리셋 골라서 불러오기{presets.length > 0 ? ` (${presets.length}개)` : ""}
+          </button>
         </div>
 
         <label style={{ marginTop: 12 }}>커스텀 기념일 추가</label>
@@ -240,6 +273,81 @@ export default function AnniversarySection({ worldId }: { worldId: string }) {
           </tbody>
         </table>
       </div>
+
+      {presetOpen && (
+        <div
+          className="modal-backdrop"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !importing) setPresetOpen(false);
+          }}
+        >
+          <div className="modal" role="dialog" aria-modal="true" style={{ maxWidth: 560 }}>
+            <h3>기념일 프리셋 불러오기</h3>
+            <p className="muted" style={{ fontSize: 13, margin: "4px 0 10px" }}>
+              체크한 프리셋을 한 번에 불러옵니다. 이미 불러온 프리셋은 선택할 수 없습니다.
+            </p>
+            <div style={{ maxHeight: 360, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 10, padding: "4px 10px" }}>
+              {presets.map((p) => {
+                const done = loaded.has(p.id);
+                return (
+                  <label
+                    key={p.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 10,
+                      padding: "8px 2px",
+                      borderBottom: "1px solid var(--border)",
+                      opacity: done ? 0.5 : 1,
+                      cursor: done ? "default" : "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      style={{ width: "auto", margin: "3px 0 0" }}
+                      checked={done || checked.has(p.id)}
+                      disabled={done || importing}
+                      onChange={() => toggleChecked(p.id)}
+                    />
+                    <span style={{ flex: 1 }}>
+                      <b>{p.name}</b>{" "}
+                      <span className="muted" style={{ fontSize: 12 }}>
+                        {mmdd(p.month, p.day)}{durLabel(p.duration_days)} · {noticeLabel(p.notice_days)}
+                        {done ? " · 불러옴" : ""}
+                      </span>
+                      <span className="muted" style={{ display: "block", fontSize: 12, lineHeight: 1.5 }}>
+                        {p.description}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+              {presets.length === 0 && <p className="muted">등록된 프리셋이 없습니다.</p>}
+            </div>
+            {importError && <p style={{ color: "var(--danger)", marginTop: 8 }}>{importError}</p>}
+            <div className="crop-actions">
+              <button
+                type="button"
+                className="btn-secondary small"
+                disabled={importing}
+                onClick={() => {
+                  const all = new Set(presets.filter((p) => !loaded.has(p.id)).map((p) => p.id));
+                  setChecked(checked.size === all.size ? new Set() : all);
+                }}
+              >
+                전체 선택/해제
+              </button>
+              <span style={{ flex: 1 }} />
+              <button type="button" className="btn-secondary" onClick={() => setPresetOpen(false)} disabled={importing}>
+                닫기
+              </button>
+              <button type="button" onClick={importChecked} disabled={importing || checked.size === 0}>
+                {importing ? "불러오는 중..." : `선택 ${checked.size}개 불러오기`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

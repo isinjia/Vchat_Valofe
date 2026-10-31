@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const [profiles, illustrations, places, worldIllustrations] = await Promise.all([
     query("SELECT id, emotion, url FROM character_profiles WHERE character_id = ? ORDER BY FIELD(emotion,'default') DESC, emotion", [cid]),
-    query("SELECT id, url, description, kind FROM illustrations WHERE character_id = ? ORDER BY kind, sort_order, id", [cid]),
+    query("SELECT id, url, description, kind, media_type FROM illustrations WHERE character_id = ? ORDER BY kind, sort_order, id", [cid]),
     query(
       "SELECT id, title, content FROM world_dictionary WHERE world_id = ? AND category = 'location' AND character_id IS NULL ORDER BY sort_order, id",
       [worldId]

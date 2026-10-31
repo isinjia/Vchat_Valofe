@@ -43,6 +43,7 @@ const TYPE_LABEL: Record<string, string> = {
   chat_spend: "채팅 사용",
   ai_assist_spend: "AI 보조",
   illust_gen_spend: "일러스트 생성",
+  video_gen_spend: "영상 생성",
   chat_fee_income: "채팅 수수료 수입",
   world_fee_income: "세계관 수수료 수입",
 };

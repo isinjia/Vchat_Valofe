@@ -1,7 +1,7 @@
 import { buildIllustTrigger, validateTriggerPlace } from "@/lib/illust-trigger";
 import { NextRequest, NextResponse } from "next/server";
-import { query, execute, getStorage, invalidateChatContext, generateImage, getImageGenSettings } from "@vchatbot/core";
-import { parseRefImages, fetchRefImage, collectAssetRefs, MAX_REFS } from "@/lib/image-refs";
+import { query, generateImage, getImageGenSettings } from "@vchatbot/core";
+import { parseRefImages, fetchRefImage, collectAssetRefs, withRefNotes, MAX_REFS } from "@/lib/image-refs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +13,8 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
 /**
  * POST /api/characters/:id/illustrations/generate
  *   { prompt, kind: 'basic'|'conditional', keywords?, description?, asTitle? }
- * 운영자 도구: 로그인/과금 없이 AI 일러스트(또는 타이틀 이미지) 생성.
+ * 운영자 도구: 로그인/과금 없이 AI 이미지를 생성해 base64 로 반환한다 (저장 안 함 —
+ * 클라이언트에서 프리뷰/크롭 후 기존 업로드 라우트로 저장). 조건 입력은 사전 검증만.
  */
 export async function POST(req: NextRequest, { params }: Params) {
   const { id } = await params;
@@ -26,15 +27,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt) return bad("prompt 가 필요합니다.");
   const kind = body.kind === "conditional" ? "conditional" : "basic";
-  const description = typeof body.description === "string" && body.description.trim() ? body.description.trim() : null;
   const asTitle = body.asTitle === true;
 
-  let triggerCondition: string | null = null;
   if (!asTitle && kind === "conditional") {
     const t = buildIllustTrigger(body);
     if ("error" in t) return bad(t.error);
-    triggerCondition = t.value;
-    const placeErr = await validateTriggerPlace(triggerCondition, Number(exists[0].world_id));
+    const placeErr = await validateTriggerPlace(t.value, Number(exists[0].world_id));
     if (placeErr) return bad(placeErr);
   }
 
@@ -44,13 +42,6 @@ export async function POST(req: NextRequest, { params }: Params) {
     return bad("이미지 생성이 설정되지 않았습니다. 관리자 설정에서 이미지 생성 API 를 등록하세요.");
   }
 
-  let storage;
-  try {
-    storage = await getStorage();
-  } catch (e) {
-    return bad((e as Error).message);
-  }
-
   // 참조 이미지: 업로드(base64) + (선택) 캐릭터 타이틀 이미지
   const parsed = parseRefImages(body.refImages);
   if ("error" in parsed) return bad(parsed.error);
@@ -58,14 +49,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   refs.push(...(await collectAssetRefs(body, { characterId, worldId: Number(exists[0].world_id) }, req.nextUrl.origin)));
   if (body.refTitleImage === true) {
     const t = await query<{ title_image_url: string | null }>("SELECT title_image_url FROM characters WHERE id = ?", [characterId]);
-    const tr = await fetchRefImage(t[0]?.title_image_url, req.nextUrl.origin);
+    const tr = await fetchRefImage(t[0]?.title_image_url, req.nextUrl.origin, "이 캐릭터의 대표(타이틀) 이미지 — 외형 기준");
     if (tr) refs.unshift(tr);
   }
   if (refs.length > MAX_REFS) return bad(`참조 이미지는 합산 최대 ${MAX_REFS}장입니다.`);
 
   let buffer: Buffer;
   try {
-    buffer = await generateImage(prompt, refs);
+    buffer = await generateImage(withRefNotes(prompt, refs), refs);
   } catch (e) {
     const msg = (e as Error).message;
     console.error("admin illust generate error:", e);
@@ -73,39 +64,5 @@ export async function POST(req: NextRequest, { params }: Params) {
     return bad(msg, msg.startsWith("이미지 생성이 설정되지") ? 400 : 502);
   }
 
-  const ts = Date.now();
-  let url: string;
-  let illustId: number | undefined;
-  if (asTitle) {
-    const rows = await query<{ title_image_key: string | null }>(
-      "SELECT title_image_key FROM characters WHERE id = ?",
-      [characterId]
-    );
-    const oldKey = rows[0]?.title_image_key;
-    const key = `characters/${characterId}/title-ai-${ts}.png`;
-    url = await storage.upload(key, buffer, "image/png");
-    await execute("UPDATE characters SET title_image_key = ?, title_image_url = ? WHERE id = ?", [
-      key,
-      url,
-      characterId,
-    ]);
-    if (oldKey) {
-      try {
-        await storage.remove(oldKey);
-      } catch {
-        // 무시
-      }
-    }
-  } else {
-    const key = `illustrations/${characterId}/ai-${ts}.png`;
-    url = await storage.upload(key, buffer, "image/png");
-    const result = await execute(
-      `INSERT INTO illustrations (character_id, kind, storage_key, url, description, trigger_condition, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [characterId, kind, key, url, description, triggerCondition, 0]
-    );
-    illustId = result.insertId;
-  }
-  await invalidateChatContext(characterId);
-  return NextResponse.json({ url, id: illustId }, { status: 201 });
+  return NextResponse.json({ image: buffer.toString("base64"), mime: "image/png" }, { status: 201 });
 }

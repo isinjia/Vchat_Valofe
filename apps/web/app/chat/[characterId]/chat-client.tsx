@@ -28,6 +28,55 @@ const dateLabel = (d: string | Date) =>
 const timeLabel = (d?: string | Date) =>
   d ? new Date(d).toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" }) : "";
 
+/** 프로필 아바타 구성: 원 안 레이어(배경→얼굴) + 원 밖까지 덮는 효과 오버레이 */
+interface ProfileVisual {
+  layers: string[];
+  effect?: { url: string; scale: number; x: number; y: number } | null;
+}
+
+/** 레이어/효과를 겹쳐 그리는 원형 아바타. 레이어가 없으면 fallbackUrl 1장을 쓴다 */
+function AvatarStack({
+  visual,
+  fallbackUrl,
+  title,
+  className,
+}: {
+  visual: ProfileVisual;
+  fallbackUrl?: string | null;
+  title?: string;
+  className: string;
+}) {
+  const layers = visual.layers.length > 0 ? visual.layers : fallbackUrl ? [fallbackUrl] : [];
+  if (layers.length === 0 && !visual.effect) return null;
+  if (layers.length === 1 && !visual.effect) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={layers[0]} alt="" className={className} title={title} />;
+  }
+  return (
+    <span className={`${className} avatar-stack`} title={title}>
+      <span className="avatar-clip">
+        {layers.map((u, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={i} src={u} alt="" />
+        ))}
+      </span>
+      {visual.effect && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={visual.effect.url}
+          alt=""
+          className="avatar-effect"
+          style={{
+            width: `${visual.effect.scale * 100}%`,
+            left: `${50 + visual.effect.x * 100}%`,
+            top: `${50 + visual.effect.y * 100}%`,
+          }}
+        />
+      )}
+    </span>
+  );
+}
+
 interface LevelInfo {
   id: number;
   level: number;
@@ -35,6 +84,105 @@ interface LevelInfo {
   description: string | null;
   kind: "browser" | "server";
   cost: number;
+}
+
+/** AI 레벨 선택 드롭다운 — 닫힌 상태는 Lv 배지(+데스크탑은 이름), 펼치면 이름·비용·설명 카드 목록 */
+function LevelPicker({
+  levels,
+  disabled,
+  onChange,
+}: {
+  levels: LevelsPayload;
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  // 바깥 클릭/Esc 로 닫기
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const selected = levels.levels.find((l) => l.id === levels.selectedId) ?? null;
+  const effective = levels.levels.find((l) => l.id === levels.effectiveId) ?? null;
+  const shown = selected ?? effective;
+
+  const pick = (value: string) => {
+    setOpen(false);
+    onChange(value);
+  };
+
+  return (
+    <div className="level-picker" ref={wrapRef}>
+      <button
+        type="button"
+        className="level-btn"
+        onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
+        title="채팅에 사용할 AI 레벨"
+      >
+        <span className="lv-badge">{shown ? `Lv.${shown.level}` : "AI"}</span>
+        <span className="lv-btn-name">{shown ? shown.name : "기본 레벨"}</span>
+        <span className="lv-caret" aria-hidden>▴</span>
+      </button>
+      {open && (
+        <div className="level-menu" role="listbox">
+          <div className="level-menu-head">AI 레벨 — 매 응답마다 코인이 차감됩니다</div>
+          <button
+            type="button"
+            className={`level-item${levels.selectedId == null ? " on" : ""}`}
+            onClick={() => pick("")}
+            role="option"
+            aria-selected={levels.selectedId == null}
+          >
+            <span className="lv-badge">자동</span>
+            <span className="lv-body">
+              <span className="lv-row">
+                <b>기본 레벨</b>
+                {effective && <span className="lv-cost">🪙 {effective.cost.toLocaleString()}</span>}
+              </span>
+              <span className="lv-desc">{effective ? `지금은 Lv.${effective.level} ${effective.name} 가 적용됩니다` : "운영 기본 설정을 따릅니다"}</span>
+            </span>
+            {levels.selectedId == null && <span className="lv-check">✓</span>}
+          </button>
+          {levels.levels.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              className={`level-item${levels.selectedId === l.id ? " on" : ""}`}
+              onClick={() => pick(String(l.id))}
+              role="option"
+              aria-selected={levels.selectedId === l.id}
+            >
+              <span className="lv-badge">Lv.{l.level}</span>
+              <span className="lv-body">
+                <span className="lv-row">
+                  <b>{l.name}</b>
+                  {l.kind === "browser" && <span className="lv-tag">내 PC</span>}
+                  <span className="lv-cost">🪙 {l.cost.toLocaleString()}</span>
+                </span>
+                {l.description && <span className="lv-desc">{l.description}</span>}
+              </span>
+              {levels.selectedId === l.id && <span className="lv-check">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 interface LevelsPayload {
   levels: LevelInfo[];
@@ -53,8 +201,8 @@ interface Props {
   illustMap: Record<number, string>;
   /** 캐릭터 좋아요 수 초기값 */
   likeCount: number;
-  /** 프로필 이미지: emotion 키('default', joy, sad, ...) -> url. 없으면 빈 객체 */
-  profileMap: Record<string, string>;
+  /** 프로필 이미지: emotion 키('default', joy, sad, ...) -> 아바타 구성. 없으면 빈 객체 */
+  profileMap: Record<string, ProfileVisual>;
 }
 
 export default function ChatClient({
@@ -457,14 +605,16 @@ export default function ChatClient({
     }
   };
 
-  const effectiveLevel = levels?.levels.find((l) => l.id === levels.effectiveId) ?? null;
   const browserUnavailable = browserMode && browserAvail === "unavailable";
 
   return (
     <div className="chat-page">
       <header className="chat-header">
         <Link href="/" className="back">←</Link>
-        {avatarUrl ? (
+        {/* 헤더 아바타: 고급 프로필(기본 감정 기준) → 기본 프로필 → 기본 일러스트 */}
+        {profileMap["default"] ? (
+          <AvatarStack visual={profileMap["default"]} fallbackUrl={avatarUrl} title={characterName} className="header-avatar" />
+        ) : avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={avatarUrl} alt={characterName} />
         ) : null}
@@ -537,9 +687,9 @@ export default function ChatClient({
           const showDate = !!m.createdAt && dateKey(m.createdAt) !== dateKey(prev?.createdAt);
           const time = timeLabel(m.createdAt);
           // 감정별 프로필 → 기본 프로필 → 기본 일러스트 순으로 원형 아바타 결정 (게스트 발화는 제외)
-          const profileUrl =
+          const visual =
             m.role === "assistant" && !m.guestName
-              ? (m.emotion && profileMap[m.emotion]) || profileMap["default"] || avatarUrl
+              ? ((m.emotion && profileMap[m.emotion]) || profileMap["default"] || (avatarUrl ? { layers: [avatarUrl] } : null))
               : null;
           return (
             <div key={idx}>
@@ -547,17 +697,17 @@ export default function ChatClient({
               {m.guestName && <div className="guest-name">{m.guestName}</div>}
               <div className={`msg ${m.role === "user" ? "user" : "ai"}`}>
                 {m.role === "user" && time && <span className="msg-time">{time}</span>}
-                {profileUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profileUrl} alt="" className="msg-avatar" title={characterName} />
-                )}
+                {visual && <AvatarStack visual={visual} fallbackUrl={avatarUrl} title={characterName} className="msg-avatar" />}
                 <div className={`bubble${m.guestName ? " guest" : ""}`}>{m.content || (streaming && idx === messages.length - 1 ? "…" : "")}</div>
                 {m.role !== "user" && time && <span className="msg-time">{time}</span>}
               </div>
-              {m.illustrationUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={m.illustrationUrl} alt="" className="msg-illust" />
-              )}
+              {m.illustrationUrl &&
+                (/\.(mp4|webm)(\?|#|$)/i.test(m.illustrationUrl) ? (
+                  <video src={m.illustrationUrl} className="msg-illust" autoPlay loop muted playsInline controls />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={m.illustrationUrl} alt="" className="msg-illust" />
+                ))}
             </div>
           );
         })}
@@ -566,22 +716,7 @@ export default function ChatClient({
       {streaming && <div className="typing">{characterName} 입력 중...</div>}
 
       <div className="chat-input">
-        {levels && (
-          <select
-            className="level-select"
-            value={levels.selectedId ?? ""}
-            onChange={(e) => changeLevel(e.target.value)}
-            title={effectiveLevel ? `${effectiveLevel.name} — ${effectiveLevel.description ?? ""} (1회 ${effectiveLevel.cost.toLocaleString()}코인)` : "채팅에 사용할 AI 레벨"}
-            disabled={streaming}
-          >
-            <option value="">기본 레벨</option>
-            {levels.levels.map((l) => (
-              <option key={l.id} value={l.id}>
-                Lv.{l.level} {l.name} · {l.cost.toLocaleString()}🪙
-              </option>
-            ))}
-          </select>
-        )}
+        {levels && <LevelPicker levels={levels} disabled={streaming} onChange={changeLevel} />}
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}

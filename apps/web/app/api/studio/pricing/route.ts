@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { query, getPricingSettings, resolveAiAssistPricing, AI_ASSIST_KINDS } from "@vchatbot/core";
+import { query, getPricingSettings, resolveAiAssistPricing, AI_ASSIST_KINDS, getUploadLimitsForUser } from "@vchatbot/core";
 import { requireUser } from "@/lib/studio";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,9 @@ export async function GET() {
   return NextResponse.json({
     aiAssistCost: p.aiAssistCost,
     illustGenCost: p.illustGenCost,
+    videoGenCost: p.videoGenCost,
     aiAssist,
     byok: { enabled: !!p.byok?.enabled, cost: p.byok?.cost ?? 0, hasKey: !!rows[0]?.claude_api_key },
+    limits: await getUploadLimitsForUser(auth.userId),
   });
 }

@@ -12,6 +12,7 @@ export type CoinTxType =
   | "chat_spend"
   | "ai_assist_spend"
   | "illust_gen_spend"
+  | "video_gen_spend"
   | "chat_fee_income"
   | "world_fee_income";
 

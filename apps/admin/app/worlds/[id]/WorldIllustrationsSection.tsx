@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import ImageGenModal, { type ImageGenPayload, type GenPlace } from "../../components/ImageGenModal";
+import { type ImageGenPayload, type GenPlace } from "../../components/ImageGenModal";
+import AiGenFlow from "../../components/AiGenFlow";
 
 /** 세계관 일러스트: 지역사전 항목별 배경 이미지 (업로드 + AI 생성, web 과 동일 구조 — 관리툴은 과금 없음) */
 
@@ -30,6 +31,7 @@ export default function WorldIllustrationsSection({
   const base = `/api/worlds/${worldId}/illustrations`;
   const [items, setItems] = useState<WorldIllust[]>([]);
   const [places, setPlaces] = useState<GenPlace[]>([]);
+  const [charTitles, setCharTitles] = useState<{ id: number; name: string; url: string }[]>([]);
   const [placeId, setPlaceId] = useState(""); // 업로드 저장 지역
   const [desc, setDesc] = useState("");
   const [msg, setMsg] = useState("");
@@ -54,6 +56,11 @@ export default function WorldIllustrationsSection({
         )
       )
       .catch(() => {});
+    // 세계관 소속 캐릭터 타이틀 — AI 생성 참조용
+    fetch(`/api/worlds/${worldId}/characters`)
+      .then((r) => r.json())
+      .then((l) => setCharTitles(Array.isArray(l) ? l : []))
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldId]);
 
@@ -73,21 +80,34 @@ export default function WorldIllustrationsSection({
     load();
   };
 
-  /** 생성 모달 확인 — 모달에서 고른 지역이 프롬프트 [지역 정보]와 저장 지역 둘 다에 쓰인다 */
-  const generate = async (p: ImageGenPayload) => {
+  /** AI 생성 호출 (저장 안 함) — dataURL 반환. 저장은 saveGenerated 에서 업로드 라우트로 */
+  const generate = async (p: ImageGenPayload): Promise<string> => {
     const res = await fetch(
       `${base}/generate`,
       jsonInit("POST", {
         prompt: p.prompt,
         dictEntryId: p.placeId,
-        description: desc.trim() || undefined,
         refTitleImage: p.refTitleImage,
         refImages: p.refImages,
         refWorldIllustIds: p.refWorldIllustIds,
+        refCharacterTitleIds: p.refCharacterTitleIds,
       })
     );
     const r = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`생성 실패: ${r.error ?? res.statusText}`);
+    return `data:${r.mime ?? "image/png"};base64,${r.image}`;
+  };
+
+  /** 선택한 생성 결과 업로드 — 모달에서 고른 지역(payload.placeId)이 저장 지역이 된다 */
+  const saveGenerated = async (blob: Blob, filename: string, p: ImageGenPayload) => {
+    const form = new FormData();
+    form.append("file", blob, filename);
+    if (p.placeId) form.append("dict_entry_id", String(p.placeId));
+    if (desc.trim()) form.append("description", desc.trim());
+    const res = await fetch(base, { method: "POST", body: form });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`업로드 실패: ${r.error ?? res.statusText}`);
+    setDesc("");
     await load();
   };
 
@@ -183,16 +203,18 @@ export default function WorldIllustrationsSection({
         </table>
       </div>
 
-      <ImageGenModal
+      <AiGenFlow
         open={genOpen}
         title="지역 배경 AI 생성"
         initialDescription="가로형 배경 일러스트. 인물 없이 장소의 풍경·분위기를 묘사."
         places={places}
-        assets={{ worldIllustrations: items }}
+        assets={{ worldIllustrations: items, characterTitles: charTitles }}
         titleImageUrl={titleImageUrl}
         refLabel="세계관 타이틀 이미지를 참조로 사용"
+        aspect="free"
+        generate={generate}
+        save={saveGenerated}
         onClose={() => setGenOpen(false)}
-        onGenerate={generate}
       />
     </>
   );

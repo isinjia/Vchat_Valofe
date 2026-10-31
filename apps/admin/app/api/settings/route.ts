@@ -75,6 +75,7 @@ export async function PUT(req: NextRequest) {
     await setSetting("pricing", {
       aiAssistCost: nn(body.pricing.aiAssistCost),
       illustGenCost: nn(body.pricing.illustGenCost),
+      videoGenCost: nn(body.pricing.videoGenCost),
       aiAssist,
       byok: { enabled: !!body.pricing.byok?.enabled, cost: nn(body.pricing.byok?.cost) },
     });

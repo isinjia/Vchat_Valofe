@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query, execute, getStorage, generateImage, getImageGenSettings } from "@vchatbot/core";
-import { parseRefImages, collectAssetRefs, MAX_REFS } from "@/lib/image-refs";
+import { query, generateImage, getImageGenSettings } from "@vchatbot/core";
+import { parseRefImages, collectAssetRefs, withRefNotes, MAX_REFS } from "@/lib/image-refs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,13 +12,14 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
 /**
  * POST /api/worlds/:id/title-image/generate
  *   { prompt, refImages?: [{ data(base64), mimeType }] }
- * 운영자 도구: 과금 없이 AI 로 세계관 타이틀 이미지 생성·교체.
+ * 운영자 도구: 과금 없이 AI 로 세계관 타이틀 이미지를 생성해 base64 로 반환 (저장 안 함 —
+ * 클라이언트에서 프리뷰/크롭 후 기존 타이틀 업로드 라우트로 저장).
  */
 export async function POST(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const worldId = Number(id);
   if (!Number.isInteger(worldId) || worldId <= 0) return bad("id 가 올바르지 않습니다.");
-  const rows = await query<{ title_image_key: string | null }>("SELECT title_image_key FROM worlds WHERE id = ?", [worldId]);
+  const rows = await query("SELECT id FROM worlds WHERE id = ?", [worldId]);
   if (rows.length === 0) return bad("찾을 수 없습니다.", 404);
 
   const body = await req.json().catch(() => ({}));
@@ -35,32 +36,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     return bad("이미지 생성이 설정되지 않았습니다. 관리자 설정에서 이미지 생성 API 를 등록하세요.");
   }
 
-  let storage;
-  try {
-    storage = await getStorage();
-  } catch (e) {
-    return bad((e as Error).message);
-  }
-
   let buffer: Buffer;
   try {
-    buffer = await generateImage(prompt, parsed.refs);
+    buffer = await generateImage(withRefNotes(prompt, parsed.refs), parsed.refs);
   } catch (e) {
     const msg = (e as Error).message;
     console.error("admin world title generate error:", e);
     return bad(msg, msg.startsWith("이미지 생성이 설정되지") ? 400 : 502);
   }
 
-  const oldKey = rows[0].title_image_key;
-  const key = `worlds/${worldId}/title-ai-${Date.now()}.png`;
-  const url = await storage.upload(key, buffer, "image/png");
-  await execute("UPDATE worlds SET title_image_key = ?, title_image_url = ? WHERE id = ?", [key, url, worldId]);
-  if (oldKey) {
-    try {
-      await storage.remove(oldKey);
-    } catch {
-      // 무시
-    }
-  }
-  return NextResponse.json({ url }, { status: 201 });
+  return NextResponse.json({ image: buffer.toString("base64"), mime: "image/png" }, { status: 201 });
 }

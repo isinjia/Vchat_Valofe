@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, use } from "react";
+import { useEffect, useRef, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import DictionaryBrowser from "../../components/DictionaryBrowser";
 import ImageCropModal from "../../components/ImageCropModal";
 import CharacterProfilesSection from "./CharacterProfilesSection";
+import ProfileSetsSection from "./ProfileSetsSection";
 import CharacterAnniversarySection from "./CharacterAnniversarySection";
 import CharacterEventsSection from "./CharacterEventsSection";
 import { studioFetch, jsonInit, aiCostLabel, type PricingInfo } from "../../studio-api";
 import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
+import AiGenFlow, { GenVideoPreview } from "../../components/AiGenFlow";
 import { buildImageDescription, buildProfileText } from "../../components/imagePrompt";
 import { WorldMini, type PickedWorld } from "../../components/WorldPickerModal";
 
@@ -59,6 +61,7 @@ const REL_REQ_LABEL = { lover: "연인 이상", engaged: "약혼 이상", marrie
 interface Illust {
   id: number;
   kind: "basic" | "conditional";
+  media_type?: "image" | "video";
   url: string;
   description: string | null;
   trigger_condition: IllustTrigger | string | null;
@@ -155,8 +158,12 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
   const [titleCropOpen, setTitleCropOpen] = useState(false); // 타이틀 이미지 크롭 팝업
   const [illustCropOpen, setIllustCropOpen] = useState(false); // 일러스트 크롭 팝업
   const [panel, setPanel] = useState(EMPTY_PANEL); // 일러스트 패널 공용 입력 (업로드/AI 생성)
+  const videoFileRef = useRef<HTMLInputElement>(null); // 영상 업로드 파일 선택
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoPreview, setVideoPreview] = useState<{ url: string; id: number } | null>(null); // 영상 생성 결과
   const [illustCost, setIllustCost] = useState<number | null>(null);
-  const [genModal, setGenModal] = useState<null | "illust" | "title">(null); // AI 이미지 생성 모달
+  const [videoCost, setVideoCost] = useState<number | null>(null);
+  const [genModal, setGenModal] = useState<null | "illust" | "title" | "video">(null); // AI 이미지/영상 생성 모달
   // AI 생성 모달용 참조 자산 (타이틀/프로필/일러스트/지역/세계관 배경)
   const [genRefs, setGenRefs] = useState<{
     titleImageUrl: string | null;
@@ -204,7 +211,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
     });
     studioFetch("/api/studio/worlds").then((r) => r.json()).then(setMine).catch(() => {});
     studioFetch("/api/studio/open-worlds").then((r) => r.json()).then(setOpen).catch(() => {});
-    studioFetch("/api/studio/pricing").then((r) => r.json()).then((p) => { setPricing(p); setIllustCost(p.illustGenCost ?? null); }).catch(() => {});
+    studioFetch("/api/studio/pricing").then((r) => r.json()).then((p) => { setPricing(p); setIllustCost(p.illustGenCost ?? null); setVideoCost(p.videoGenCost ?? null); }).catch(() => {});
     loadIllusts();
     loadRels();
     studioFetch("/api/studio/tiers").then((r) => r.json()).then((d) => setTiers(Array.isArray(d) ? d : [])).catch(() => {});
@@ -387,6 +394,14 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
     if (validatePanel()) setGenModal("illust");
   };
 
+  const openVideoUpload = () => {
+    if (validatePanel()) videoFileRef.current?.click();
+  };
+
+  const openAiVideo = () => {
+    if (validatePanel()) setGenModal("video");
+  };
+
   /** 크롭 팝업 확인 → 현재 패널 값과 함께 일러스트 업로드 (실패 시 throw → 팝업 안에 에러 표시) */
   const doUpload = async (blob: Blob, filename: string) => {
     const form = new FormData();
@@ -404,9 +419,31 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
     loadIllusts();
   };
 
-  /** 생성 모달 확인 → AI 일러스트/타이틀 생성 (실패 시 throw → 모달 안에 에러 표시) */
-  const doAiGenerate = async (p: ImageGenPayload, asTitle: boolean) => {
-    const res = await studioFetch(`/api/studio/characters/${id}/illustrations/generate`, {
+  /** 영상 파일 선택 → 크롭 없이 바로 업로드 (mp4/webm, 쿼터 설정 용량 이하) */
+  const doUploadVideo = async (file: File | null) => {
+    if (!file) return;
+    if (!/^video\/(mp4|webm)$/.test(file.type)) {
+      alert("mp4 또는 webm 영상만 업로드할 수 있습니다.");
+      return;
+    }
+    const maxMb = pricing?.limits?.videoMaxMb ?? 100;
+    if (file.size > maxMb * 1024 * 1024) {
+      alert(`영상은 ${maxMb}MB 이하여야 합니다.`);
+      return;
+    }
+    setVideoUploading(true);
+    try {
+      await doUpload(file, file.name);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setVideoUploading(false);
+    }
+  };
+
+  /** 생성 모달 확인 → AI 영상 생성 (영상은 즉시 등록 — 성공 시 프리뷰 모달에서 다운로드/등록취소) */
+  const doAiGenerateVideo = async (p: ImageGenPayload) => {
+    const res = await studioFetch(`/api/studio/characters/${id}/illustrations/generate-video`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -415,6 +452,30 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
         keywords: panel.kind === "conditional" ? panel.keywords : "",
         ...gateFields(),
         description: panel.description,
+        refTitleImage: p.refTitleImage,
+        refImages: p.refImages,
+        refProfileIds: p.refProfileIds,
+        refIllustIds: p.refIllustIds,
+        refWorldIllustIds: p.refWorldIllustIds,
+      }),
+    });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`생성 실패: ${r.error ?? res.statusText}`);
+    loadIllusts();
+    setPanel(EMPTY_PANEL);
+    setVideoPreview({ url: r.url, id: r.id });
+  };
+
+  /** AI 생성 호출 (저장 안 함) — base64 결과를 dataURL 로 반환. 저장은 AiGenFlow 의 save 에서 */
+  const generateImageCall = async (p: ImageGenPayload, asTitle: boolean): Promise<string> => {
+    const res = await studioFetch(`/api/studio/characters/${id}/illustrations/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: p.prompt,
+        kind: panel.kind,
+        keywords: panel.kind === "conditional" ? panel.keywords : "",
+        ...gateFields(),
         asTitle,
         refTitleImage: p.refTitleImage,
         refImages: p.refImages,
@@ -425,11 +486,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
     });
     const r = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`생성 실패: ${r.error ?? res.statusText}`);
-    if (asTitle) setChar((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
-    else {
-      loadIllusts();
-      setPanel(EMPTY_PANEL);
-    }
+    return `data:${r.mime ?? "image/png"};base64,${r.image}`;
   };
 
   const removeIllust = async (illustId: number) => {
@@ -495,6 +552,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
       {/* 탭 바: 비활성 탭도 언마운트하지 않고 display:none 으로만 숨겨 입력값/fetch 상태 보존 */}
       <div className="tabs">
         <button type="button" className={`tab ${tab === "basic" ? "active" : ""}`} onClick={() => setTab("basic")}>기본 설정</button>
+        <button type="button" className={`tab ${tab === "prof" ? "active" : ""}`} onClick={() => setTab("prof")}>프로필</button>
         <button type="button" className={`tab ${tab === "rel" ? "active" : ""}`} onClick={() => setTab("rel")}>관계·기억·기념일</button>
         <button type="button" className={`tab ${tab === "dict" ? "active" : ""}`} onClick={() => setTab("dict")}>전용 사전</button>
         <button type="button" className={`tab ${tab === "event" ? "active" : ""}`} onClick={() => setTab("event")}>이벤트</button>
@@ -518,8 +576,6 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
             </button>
           </div>
         </div>
-        <CharacterProfilesSection characterId={char.id} characterName={char.name} characterProfile={char.profile} titleImageUrl={char.title_image_url} genCost={illustCost} />
-
         <div className="row">
           <div>
             <label>이름</label>
@@ -591,6 +647,21 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
 
         <button onClick={save}>{saved ? "저장됨 ✓" : "저장"}</button>
       </div>
+      </div>
+
+      <div style={{ display: tab === "prof" ? undefined : "none" }}>
+        <h3>프로필 이미지</h3>
+        <div className="panel">
+          <CharacterProfilesSection characterId={char.id} characterName={char.name} characterProfile={char.profile} titleImageUrl={char.title_image_url} genCost={illustCost} />
+        </div>
+        <ProfileSetsSection
+          characterId={id}
+          characterName={char.name}
+          characterProfile={char.profile}
+          titleImageUrl={char.title_image_url}
+          genCost={illustCost}
+          effectMaxMb={pricing?.limits?.effectMaxMb ?? null}
+        />
       </div>
 
       <div style={{ display: tab === "rel" ? undefined : "none" }}>
@@ -776,7 +847,23 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
         <button type="button" onClick={openUpload}>업로드 (무료)</button>{" "}
         <button type="button" onClick={openAiGenerate}>
           {`AI 생성${illustCost != null ? ` (-${illustCost.toLocaleString()}코인)` : ""}`}
+        </button>{" "}
+        <button type="button" onClick={openVideoUpload} disabled={videoUploading}>
+          {videoUploading ? "영상 업로드 중..." : "영상 업로드 (무료)"}
+        </button>{" "}
+        <button type="button" onClick={openAiVideo}>
+          {`AI 영상 생성${videoCost != null ? ` (-${videoCost.toLocaleString()}코인)` : ""}`}
         </button>
+        <input
+          ref={videoFileRef}
+          type="file"
+          accept="video/mp4,video/webm"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            doUploadVideo(e.target.files?.[0] ?? null);
+            e.target.value = "";
+          }}
+        />
       </div>
 
       <div className="panel">
@@ -787,9 +874,18 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
           <tbody>
             {illusts.map((i) => (
               <tr key={i.id}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <td><img src={i.url} alt={i.description ?? ""} className="thumb" /></td>
-                <td><span className={`badge ${i.kind === "conditional" ? "cond" : ""}`}>{i.kind === "conditional" ? "조건부" : "기본"}</span></td>
+                <td>
+                  {i.media_type === "video" ? (
+                    <video src={i.url} className="thumb" muted loop playsInline autoPlay />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={i.url} alt={i.description ?? ""} className="thumb" />
+                  )}
+                </td>
+                <td>
+                  <span className={`badge ${i.kind === "conditional" ? "cond" : ""}`}>{i.kind === "conditional" ? "조건부" : "기본"}</span>
+                  {i.media_type === "video" && <div><span className="badge">영상</span></div>}
+                </td>
                 <td>{i.description}</td>
                 <td className="muted">
                   {(parseTrigger(i).keywords ?? []).join(", ")}
@@ -821,8 +917,9 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
         onCancel={() => setIllustCropOpen(false)}
         onConfirm={doUpload}
       />
-      <ImageGenModal
-        open={genModal !== null}
+      {/* 이미지 생성: 생성 → 후보 선택/재생성 → 크롭/업로드 플로우 */}
+      <AiGenFlow
+        open={genModal === "illust" || genModal === "title"}
         title={genModal === "title" ? "AI 타이틀 이미지 생성" : "AI 일러스트 생성"}
         initialDescription={
           genModal === "title"
@@ -834,8 +931,38 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
         assets={genRefs ?? undefined}
         titleImageUrl={char.title_image_url}
         submitSuffix={illustCost != null ? ` (-${illustCost.toLocaleString()}코인)` : ""}
+        aspect={genModal === "title" ? 3 / 4 : "free"}
+        generate={(p) => generateImageCall(p, genModal === "title")}
+        save={async (blob, filename) => {
+          if (genModal === "title") await uploadTitleImage(blob, filename);
+          else await doUpload(blob, filename);
+        }}
         onClose={() => setGenModal(null)}
-        onGenerate={(p) => doAiGenerate(p, genModal === "title")}
+      />
+      {/* 영상 생성: 입력 모달 + 결과 프리뷰(다운로드/등록취소) */}
+      <ImageGenModal
+        open={genModal === "video"}
+        title="AI 영상 일러스트 생성"
+        initialDescription={buildImageDescription(panel.description, panel.kind === "conditional" ? panel.keywords : "")}
+        initialProfile={buildProfileText(char)}
+        places={genRefs?.places}
+        assets={genRefs ?? undefined}
+        titleImageUrl={char.title_image_url}
+        video
+        submitSuffix={videoCost != null ? ` (-${videoCost.toLocaleString()}코인)` : ""}
+        onClose={() => setGenModal(null)}
+        onGenerate={doAiGenerateVideo}
+      />
+      <GenVideoPreview
+        open={videoPreview !== null}
+        url={videoPreview?.url ?? null}
+        onDiscard={async () => {
+          if (!videoPreview) return;
+          const res = await studioFetch(`/api/studio/illustrations/${videoPreview.id}`, { method: "DELETE" });
+          if (!res.ok) throw new Error("등록 취소에 실패했습니다.");
+          loadIllusts();
+        }}
+        onClose={() => setVideoPreview(null)}
       />
 
       {!char.delete_scheduled_at && <button className="danger" onClick={removeChar}>캐릭터 삭제</button>}

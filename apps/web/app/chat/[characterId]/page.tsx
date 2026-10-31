@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { loadChatContext, loadRecentMessages, isCharacterHidden, query } from "@vchatbot/core";
+import { loadChatContext, loadRecentMessages, isCharacterHidden, query, resolveProfileVisuals } from "@vchatbot/core";
 import { getUserId } from "@/lib/user";
 import ChatClient from "./chat-client";
 
@@ -55,12 +55,9 @@ export default async function ChatPage({
   const lc = await query<{ like_count: number }>("SELECT like_count FROM characters WHERE id = ?", [ctx.character.id]);
   const likeCount = Number(lc[0]?.like_count ?? 0);
 
-  // 프로필 이미지 (기본 + 감정별) — 채팅 말풍선 앞 원형 표시용
-  const profiles = await query<{ emotion: string; url: string }>(
-    "SELECT emotion, url FROM character_profiles WHERE character_id = ?",
-    [ctx.character.id]
-  );
-  const profileMap = Object.fromEntries(profiles.map((p) => [p.emotion, p.url]));
+  // 프로필 이미지 (기본 + 감정별) — 채팅 말풍선 앞/헤더 원형 표시용.
+  // 고급 프로필이 켜져 있으면 조건(계절/기념일/호감도/감정)에 맞는 세트를 배경→얼굴→효과로 겹친다.
+  const profileMap = await resolveProfileVisuals(ctx.character.id, userId);
 
   const basic = ctx.illustrations.find((i) => i.kind === "basic");
   const illustMap = Object.fromEntries(ctx.illustrations.map((i) => [i.id, i.url]));

@@ -26,4 +26,6 @@ export * from "./relationship";
 export * from "./scoring";
 export * from "./guest";
 export * from "./image-gen";
+export * from "./video-gen";
+export * from "./profile-sets";
 export * from "./transfer";

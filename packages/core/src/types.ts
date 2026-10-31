@@ -110,6 +110,7 @@ export interface Illustration {
   id: number;
   character_id: number;
   kind: IllustrationKind;
+  media_type: "image" | "video";
   storage_key: string;
   url: string;
   description: string | null;
@@ -242,6 +243,25 @@ export interface ImageProviderRow {
   /** openai: WxH (예: 1024x1536). gemini 는 가로:세로 비율로 자동 변환 */
   size: string;
   cost_per_image: number;
+  cost_currency: string;
+  is_default: number;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VideoProviderRow {
+  id: number;
+  name: string;
+  provider: "openai" | "gemini" | "openai_compatible";
+  model: string;
+  api_key: string | null;
+  base_url: string | null;
+  /** openai: WxH (예: 720x1280). gemini 는 가로:세로 비율로 자동 변환 */
+  size: string;
+  /** 생성 영상 길이(초) */
+  duration_seconds: number;
+  cost_per_video: number;
   cost_currency: string;
   is_default: number;
   is_active: number;

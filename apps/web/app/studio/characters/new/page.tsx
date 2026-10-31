@@ -15,6 +15,19 @@ export default function NewCharacterPage() {
   // 이름 중복 확인 결과: null = 미확인/확인 중
   const [available, setAvailable] = useState<boolean | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
+  // 인명사전 한정 공유 세계관: 아직 캐릭터가 연결되지 않은 인물 목록 (만들 수 있는 이름)
+  const [freePersons, setFreePersons] = useState<{ id: number; title: string }[] | null>(null);
+
+  useEffect(() => {
+    setFreePersons(null);
+    if (!world || world.mine || world.open_scope !== "dict_person") return;
+    let alive = true;
+    studioFetch(`/api/studio/open-worlds/${world.id}/persons`)
+      .then((r) => r.json())
+      .then((l) => alive && setFreePersons(Array.isArray(l) ? l : []))
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [world]);
 
   // 쿼리 프리필: 인명사전의 '캐릭터 만들기' 등에서 ?worldId=&name= 으로 진입
   useEffect(() => {
@@ -97,9 +110,32 @@ export default function NewCharacterPage() {
         <label>캐릭터 이름</label>
         <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} />
         {world && !world.mine && world.open_scope === "dict_person" && (
-          <div className="notice">
-            이 세계관은 인명사전에 있는 인물 이름으로만 만들 수 있습니다. 세계관 편집 &gt; 인명사전에서 &apos;캐릭터 만들기&apos;로 시작하면 이름이 자동 입력됩니다.
-          </div>
+          <>
+            <div className="notice">
+              이 세계관은 인명사전에 있는 인물 이름으로만 만들 수 있습니다. 아래에서 아직 캐릭터가 없는 인물을
+              골라 시작하세요.
+            </div>
+            {freePersons && freePersons.length > 0 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
+                {freePersons.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`small${name.trim() === p.title ? "" : " btn-secondary"}`}
+                    style={{ margin: 0 }}
+                    onClick={() => setName(p.title)}
+                  >
+                    {p.title}
+                  </button>
+                ))}
+              </div>
+            )}
+            {freePersons && freePersons.length === 0 && (
+              <div className="muted" style={{ margin: "8px 0" }}>
+                캐릭터로 만들 수 있는(아직 연결되지 않은) 인물이 없습니다.
+              </div>
+            )}
+          </>
         )}
         {available === true && <div className="muted" style={{ color: "#7fd8a4" }}>✓ 사용 가능</div>}
         {available === false && <div className="muted" style={{ color: "#e06c75" }}>✗ 이미 사용 중인 이름입니다</div>}

@@ -45,6 +45,26 @@ CREATE TABLE IF NOT EXISTS image_providers (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------
+-- 영상 생성 AI 프로바이더 (OpenAI Sora / Gemini Veo / OpenAI 호환)
+-- ---------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS video_providers (
+  id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name       VARCHAR(128) NOT NULL,
+  provider   ENUM('openai','gemini','openai_compatible') NOT NULL DEFAULT 'openai',
+  model      VARCHAR(128) NOT NULL,
+  api_key    VARCHAR(512) NULL,
+  base_url   VARCHAR(512) NULL,                         -- openai_compatible 용. 비우면 공식 엔드포인트
+  size       VARCHAR(32) NOT NULL DEFAULT '720x1280',   -- openai: WxH, gemini: 가로:세로 비율로 자동 변환
+  duration_seconds INT NOT NULL DEFAULT 8,              -- 생성 영상 길이(초)
+  cost_per_video DECIMAL(12,4) NOT NULL DEFAULT 0,      -- 건당 비용 (예상 비용 표시용)
+  cost_currency  VARCHAR(8) NOT NULL DEFAULT 'USD',
+  is_default TINYINT(1) NOT NULL DEFAULT 0,
+  is_active  TINYINT(1) NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------
 -- 등급 (track='user': 채팅 활동 등급(할인 혜택) / track='creator': 창작 등급(수수료 가산 혜택))
 --   conditions(JSON) 충족 시 자동 승급. 채팅 LLM 선택은 ai_levels 가 담당.
 --   기본 유저 등급은 최초 1회 수동 INSERT:
@@ -63,6 +83,8 @@ CREATE TABLE IF NOT EXISTS chat_tiers (
   discount_rate DECIMAL(5,2) NOT NULL DEFAULT 0,       -- user 트랙: 할인율(%) — AI 레벨 비용에 적용
   conditions    JSON NULL,                             -- 자동 승급 조건 (모두 충족 시). NULL = 자동 승급 없음
   fee_bonus     DECIMAL(5,2) NOT NULL DEFAULT 0,       -- creator 트랙: 수수료율 가산(%p)
+  video_max_mb  INT NULL,                               -- creator 트랙: 영상 업로드 최대 MB (NULL=전역 기본)
+  effect_max_mb INT NULL,                               -- creator 트랙: 효과 이미지 최대 MB (NULL=전역 기본)
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -280,6 +302,7 @@ CREATE TABLE IF NOT EXISTS worlds (
   title_image_key VARCHAR(512)  NULL,             -- 타이틀 이미지(3:4 세로형) 스토리지 키
   title_image_url VARCHAR(1024) NULL,
   title_color VARCHAR(7) NULL,                    -- 타이틀 컬러(#rrggbb) — 캐릭터 카드 테두리/배경 톤
+  like_count  INT NOT NULL DEFAULT 0,             -- 좋아요 수 (world_likes 비정규화 집계)
   is_active   TINYINT(1)   NOT NULL DEFAULT 1,
   owner_user_id BIGINT UNSIGNED NULL,             -- 제작 유저 (NULL = 운영 소유)
   visibility  ENUM('private','open') NOT NULL DEFAULT 'private',  -- UI 용어: 공유
@@ -289,6 +312,17 @@ CREATE TABLE IF NOT EXISTS worlds (
   created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_worlds_owner FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- 세계관 좋아요 (토글, worlds.like_count 로 집계)
+CREATE TABLE IF NOT EXISTS world_likes (
+  user_id    BIGINT UNSIGNED NOT NULL,
+  world_id   BIGINT UNSIGNED NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id, world_id),
+  KEY idx_wlikes_world (world_id),
+  CONSTRAINT fk_wlikes_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_wlikes_world FOREIGN KEY (world_id) REFERENCES worlds(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------
@@ -334,6 +368,7 @@ CREATE TABLE IF NOT EXISTS characters (
   owner_user_id  BIGINT UNSIGNED NULL,             -- 제작 유저 (NULL = 운영 소유)
   visibility  ENUM('private','open') NOT NULL DEFAULT 'private',
   share_key   VARCHAR(32) NULL,                     -- 비공개 링크 공유용 랜덤 키 (?k= 로 입장, 지연 생성)
+  advanced_profile TINYINT(1) NOT NULL DEFAULT 0,   -- 고급 프로필(세트) 사용 여부 — OFF 면 기본 프로필만
   status      ENUM('active','suspended') NOT NULL DEFAULT 'active',
   delete_scheduled_at DATETIME NULL,                 -- 삭제 대기 (3일 후 실제 삭제, 그 전 취소 가능)
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -367,6 +402,7 @@ CREATE TABLE IF NOT EXISTS illustrations (
   id                BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   character_id      BIGINT UNSIGNED NOT NULL,
   kind              ENUM('basic', 'conditional') NOT NULL DEFAULT 'basic',
+  media_type        ENUM('image','video') NOT NULL DEFAULT 'image',
   storage_key       VARCHAR(512) NOT NULL,        -- 스토리지 내 경로
   url               VARCHAR(1024) NOT NULL,       -- 공개 접근 URL
   description       VARCHAR(255) NULL,
@@ -375,6 +411,46 @@ CREATE TABLE IF NOT EXISTS illustrations (
   created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_illust_char FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
   INDEX idx_illust_char (character_id, kind, sort_order)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------
+-- 프로필 세트: 조건(계절/기념일 전후 기간/호감도)에 따라 채팅 아바타를 꾸미는 세트.
+--   category 3종(배경/얼굴/효과)을 따로 지정하고, 충족 세트를 배경→얼굴(감정별)→효과 순으로 겹쳐 표시
+-- ---------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS character_profile_sets (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  character_id BIGINT UNSIGNED NOT NULL,
+  category ENUM('background','face','effect') NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  season ENUM('spring','summer','autumn','winter') NULL,
+  anniversary_id BIGINT UNSIGNED NULL,
+  days_before SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  days_after SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  min_affinity INT NULL,
+  emotion VARCHAR(16) NULL,                     -- 감정 조건 (effect 전용): 채점 감정이 일치할 때만
+  bg_rule JSON NULL,                            -- face 전용: 배경 호환 규칙 {mode:'allow'|'deny', ids:[배경세트id]} (NULL=전부 허용)
+  storage_key VARCHAR(512) NULL,                -- background/effect 의 단일 이미지
+  url VARCHAR(1024) NULL,
+  effect_scale DECIMAL(6,3) NOT NULL DEFAULT 1, -- effect 배치: 원 지름=1 기준 가로 크기
+  effect_x DECIMAL(6,3) NOT NULL DEFAULT 0,     -- effect 중심의 원 중심 대비 오프셋 (지름 단위)
+  effect_y DECIMAL(6,3) NOT NULL DEFAULT 0,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_cps_char FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+  -- anniversary_id FK 는 world_anniversaries 생성 이후 하단 후행 ALTER 에서 추가
+  INDEX idx_cps_char (character_id, category, sort_order)
+) ENGINE=InnoDB;
+
+-- 얼굴세트의 감정별 이미지 (투명배경 권장)
+CREATE TABLE IF NOT EXISTS character_profile_items (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  set_id BIGINT UNSIGNED NOT NULL,
+  emotion VARCHAR(16) NOT NULL DEFAULT 'default',
+  storage_key VARCHAR(512) NOT NULL,
+  url VARCHAR(1024) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_cpi (set_id, emotion),
+  CONSTRAINT fk_cpi_set FOREIGN KEY (set_id) REFERENCES character_profile_sets(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------
@@ -403,7 +479,7 @@ CREATE TABLE IF NOT EXISTS coin_transactions (
   user_id BIGINT UNSIGNED NOT NULL,
   amount BIGINT NOT NULL,
   balance_after BIGINT NOT NULL,
-  type ENUM('auto_topup','chat_spend','ai_assist_spend','illust_gen_spend','chat_fee_income','world_fee_income') NOT NULL,
+  type ENUM('auto_topup','chat_spend','ai_assist_spend','illust_gen_spend','video_gen_spend','chat_fee_income','world_fee_income') NOT NULL,
   ref_type VARCHAR(32) NULL, ref_id BIGINT UNSIGNED NULL,
   memo VARCHAR(255) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -439,6 +515,7 @@ CREATE TABLE IF NOT EXISTS anniversary_presets (
   month TINYINT UNSIGNED NOT NULL,   -- 1~12
   day TINYINT UNSIGNED NOT NULL,     -- 1~31
   notice_days TINYINT UNSIGNED NOT NULL DEFAULT 7, -- 기념일 N일 전부터 언급 (0 = 당일만)
+  duration_days SMALLINT NOT NULL DEFAULT 1,       -- 시작일부터 며칠간 이어지는지 (축제/행사형)
   description TEXT NOT NULL,          -- 어떤 날인지 설명
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -452,6 +529,7 @@ CREATE TABLE IF NOT EXISTS world_anniversaries (
   month TINYINT UNSIGNED NOT NULL,
   day TINYINT UNSIGNED NOT NULL,
   notice_days TINYINT UNSIGNED NOT NULL DEFAULT 7, -- 기념일 N일 전부터 언급 (0 = 당일만)
+  duration_days SMALLINT NOT NULL DEFAULT 1,       -- 시작일부터 며칠간 이어지는지 (축제/행사형)
   description TEXT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_wa_world FOREIGN KEY (world_id) REFERENCES worlds(id) ON DELETE CASCADE,
@@ -471,3 +549,5 @@ ALTER TABLE character_relationships
   ADD CONSTRAINT fk_rel_entry FOREIGN KEY (target_entry_id) REFERENCES world_dictionary(id) ON DELETE CASCADE;
 ALTER TABLE world_anniversaries
   ADD CONSTRAINT fk_wa_char FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE;
+ALTER TABLE character_profile_sets
+  ADD CONSTRAINT fk_cps_anniv FOREIGN KEY (anniversary_id) REFERENCES world_anniversaries(id) ON DELETE SET NULL;

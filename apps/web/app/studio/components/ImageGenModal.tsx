@@ -22,7 +22,7 @@ export interface GenPlace {
 
 export interface GenAssets {
   profiles?: { id: number; emotion: string; url: string }[];
-  illustrations?: { id: number; url: string; description: string | null }[];
+  illustrations?: { id: number; url: string; description: string | null; media_type?: "image" | "video" }[];
   worldIllustrations?: {
     id: number;
     dict_entry_id: number | null;
@@ -30,6 +30,8 @@ export interface GenAssets {
     description: string | null;
     place_title?: string | null;
   }[];
+  /** 세계관 소속 캐릭터 타이틀 이미지 (세계관 이미지 생성 시 인물 참조) */
+  characterTitles?: { id: number; name: string; url: string }[];
 }
 
 export interface ImageGenPayload {
@@ -39,6 +41,7 @@ export interface ImageGenPayload {
   refProfileIds: number[];
   refIllustIds: number[];
   refWorldIllustIds: number[];
+  refCharacterTitleIds: number[];
   /** 선택한 지역 (세계관 일러스트 생성 시 저장 지역으로도 사용) */
   placeId: number | null;
 }
@@ -60,6 +63,10 @@ interface Props {
   refLabel?: string;
   /** 생성 버튼 라벨 보조(예: 비용 표시) */
   submitSuffix?: string;
+  /** 영상 생성 모드: 참조 이미지 1장 제한 + 대기 안내 문구 변경 */
+  video?: boolean;
+  /** true 면 다시 열릴 때 입력값을 초기화하지 않는다 (재생성 — 직전 프롬프트 유지) */
+  keepState?: boolean;
   onClose: () => void;
   onGenerate: (p: ImageGenPayload) => Promise<void>;
 }
@@ -200,9 +207,13 @@ export default function ImageGenModal({
   titleImageUrl,
   refLabel,
   submitSuffix,
+  video,
+  keepState,
   onClose,
   onGenerate,
 }: Props) {
+  // 영상 생성은 참조 이미지(첫 프레임) 1장만 지원
+  const maxRefs = video ? 1 : MAX_REFS;
   const [desc, setDesc] = useState(initialDescription);
   const [profile, setProfile] = useState(initialProfile ?? "");
   const [placeId, setPlaceId] = useState("");
@@ -211,23 +222,27 @@ export default function ImageGenModal({
   const [selProfiles, setSelProfiles] = useState<Set<number>>(new Set());
   const [selIllusts, setSelIllusts] = useState<Set<number>>(new Set());
   const [selWorld, setSelWorld] = useState<Set<number>>(new Set());
+  const [selChars, setSelChars] = useState<Set<number>>(new Set());
   const [uploads, setUploads] = useState<UploadRef[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // 열릴 때마다 초기값으로 리셋
+  // 열릴 때마다 초기값으로 리셋 (재생성으로 돌아온 경우는 입력 유지)
   useEffect(() => {
     if (open) {
-      setDesc(initialDescription);
-      setProfile(initialProfile ?? "");
-      setPlaceId("");
-      setPlaceInfo("");
-      setUseTitle(true);
-      setSelProfiles(new Set());
-      setSelIllusts(new Set());
-      setSelWorld(new Set());
-      setUploads([]);
+      if (!keepState) {
+        setDesc(initialDescription);
+        setProfile(initialProfile ?? "");
+        setPlaceId("");
+        setPlaceInfo("");
+        setUseTitle(true);
+        setSelProfiles(new Set());
+        setSelIllusts(new Set());
+        setSelWorld(new Set());
+        setSelChars(new Set());
+        setUploads([]);
+      }
       setBusy(false);
       setError("");
     }
@@ -246,8 +261,8 @@ export default function ImageGenModal({
   if (!open) return null;
 
   const refCount =
-    (titleImageUrl && useTitle ? 1 : 0) + selProfiles.size + selIllusts.size + selWorld.size + uploads.length;
-  const blocked = refCount >= MAX_REFS;
+    (titleImageUrl && useTitle ? 1 : 0) + selProfiles.size + selIllusts.size + selWorld.size + selChars.size + uploads.length;
+  const blocked = refCount >= maxRefs;
 
   const pickPlace = (v: string) => {
     setPlaceId(v);
@@ -269,8 +284,8 @@ export default function ImageGenModal({
     setError("");
     const next = [...uploads];
     for (const f of Array.from(list)) {
-      if (refCount - uploads.length + next.length >= MAX_REFS) {
-        setError(`참조 이미지는 선택·업로드 합산 최대 ${MAX_REFS}장입니다.`);
+      if (refCount - uploads.length + next.length >= maxRefs) {
+        setError(`참조 이미지는 선택·업로드 합산 최대 ${maxRefs}장입니다.`);
         break;
       }
       if (!f.type.startsWith("image/")) {
@@ -310,6 +325,7 @@ export default function ImageGenModal({
         refProfileIds: [...selProfiles],
         refIllustIds: [...selIllusts],
         refWorldIllustIds: [...selWorld],
+        refCharacterTitleIds: [...selChars],
         placeId: placeId ? Number(placeId) : null,
       });
       setBusy(false);
@@ -324,6 +340,8 @@ export default function ImageGenModal({
   const worldThumbs = (assets?.worldIllustrations ?? []).filter(
     (w) => w.dict_entry_id == null || String(w.dict_entry_id) === placeId
   );
+  // 영상 일러스트는 이미지 참조로 쓸 수 없다
+  const imageIllusts = (assets?.illustrations ?? []).filter((i) => i.media_type !== "video");
 
   return (
     <div
@@ -358,120 +376,146 @@ export default function ImageGenModal({
           <SectionField label="캐릭터 프로필" value={profile} rows={5} disabled={busy} onChange={setProfile} />
         )}
 
-        <label style={{ margin: "12px 0 4px" }}>
-          참조 이미지 (선택 · 합산 최대 {MAX_REFS}장 — {refCount}/{MAX_REFS})
-        </label>
-        {titleImageUrl && (
-          <label style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 0 8px" }}>
-            <input
-              type="checkbox"
-              checked={useTitle}
-              style={{ width: "auto", margin: 0 }}
-              onChange={(e) => setUseTitle(e.target.checked)}
-              disabled={busy || (blocked && !useTitle)}
-            />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={titleImageUrl} alt="" style={{ width: 36, height: 48, objectFit: "cover", borderRadius: 4 }} />
-            {refLabel ?? "타이틀 이미지를 참조로 사용"}
-          </label>
-        )}
+        <div className="ref-box">
+          <div className="ref-box-head">
+            <b>참조 이미지</b>
+            <span className="muted">썸네일을 눌러 선택 — 선택한 이미지의 설명이 생성 AI 에 함께 전달됩니다</span>
+            <span className={`ref-count${blocked ? " full" : ""}`}>{refCount}/{maxRefs}</span>
+          </div>
 
-        {(assets?.profiles?.length ?? 0) > 0 && (
-          <>
-            <div className="muted" style={{ fontSize: 12, margin: "6px 0 2px" }}>프로필 이미지</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {assets!.profiles!.map((p) => (
+          {titleImageUrl && (
+            <div className="ref-group">
+              <div className="ref-group-title">{refLabel ?? "타이틀 이미지"}</div>
+              <div className="ref-grid">
                 <AssetThumb
-                  key={p.id}
-                  url={p.url}
-                  label={EMOTION_LABELS[p.emotion] ?? p.emotion}
-                  selected={selProfiles.has(p.id)}
+                  url={titleImageUrl}
+                  label="타이틀"
+                  selected={useTitle}
                   blocked={blocked}
                   disabled={busy}
-                  onToggle={() => setSelProfiles(toggleSet(selProfiles, p.id))}
+                  onToggle={() => setUseTitle(!useTitle)}
                 />
-              ))}
+              </div>
             </div>
-          </>
-        )}
+          )}
 
-        {(assets?.illustrations?.length ?? 0) > 0 && (
-          <>
-            <div className="muted" style={{ fontSize: 12, margin: "6px 0 2px" }}>등록된 일러스트</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {assets!.illustrations!.map((i) => (
-                <AssetThumb
-                  key={i.id}
-                  url={i.url}
-                  label={i.description || `#${i.id}`}
-                  selected={selIllusts.has(i.id)}
-                  blocked={blocked}
-                  disabled={busy}
-                  onToggle={() => setSelIllusts(toggleSet(selIllusts, i.id))}
-                />
-              ))}
+          {(assets?.profiles?.length ?? 0) > 0 && (
+            <div className="ref-group">
+              <div className="ref-group-title">감정 프로필</div>
+              <div className="ref-grid">
+                {assets!.profiles!.map((p) => (
+                  <AssetThumb
+                    key={p.id}
+                    url={p.url}
+                    label={EMOTION_LABELS[p.emotion] ?? p.emotion}
+                    selected={selProfiles.has(p.id)}
+                    blocked={blocked}
+                    disabled={busy}
+                    onToggle={() => setSelProfiles(toggleSet(selProfiles, p.id))}
+                  />
+                ))}
+              </div>
             </div>
-          </>
-        )}
+          )}
 
-        {worldThumbs.length > 0 && (
-          <>
-            <div className="muted" style={{ fontSize: 12, margin: "6px 0 2px" }}>
-              세계관 배경{placeId ? " (공통 + 선택 지역)" : " (공통)"}
+          {imageIllusts.length > 0 && (
+            <div className="ref-group">
+              <div className="ref-group-title">등록된 일러스트</div>
+              <div className="ref-grid">
+                {imageIllusts.map((i) => (
+                  <AssetThumb
+                    key={i.id}
+                    url={i.url}
+                    label={i.description || `#${i.id}`}
+                    selected={selIllusts.has(i.id)}
+                    blocked={blocked}
+                    disabled={busy}
+                    onToggle={() => setSelIllusts(toggleSet(selIllusts, i.id))}
+                  />
+                ))}
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {worldThumbs.map((w) => (
-                <AssetThumb
-                  key={w.id}
-                  url={w.url}
-                  label={w.place_title ? `${w.place_title}${w.description ? ` · ${w.description}` : ""}` : (w.description || "공통")}
-                  selected={selWorld.has(w.id)}
-                  blocked={blocked}
-                  disabled={busy}
-                  onToggle={() => setSelWorld(toggleSet(selWorld, w.id))}
-                />
-              ))}
-            </div>
-          </>
-        )}
+          )}
 
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: "none" }}
-          onChange={(e) => {
-            addFiles(e.target.files);
-            e.target.value = "";
-          }}
-        />
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end", marginTop: 8 }}>
-          {uploads.map((r, i) => (
-            <div key={i} style={{ position: "relative" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={r.preview} alt={r.name} style={{ width: 72, height: 96, objectFit: "cover", borderRadius: 6, display: "block" }} />
+          {(assets?.characterTitles?.length ?? 0) > 0 && (
+            <div className="ref-group">
+              <div className="ref-group-title">세계관 캐릭터</div>
+              <div className="ref-grid">
+                {assets!.characterTitles!.map((c) => (
+                  <AssetThumb
+                    key={c.id}
+                    url={c.url}
+                    label={c.name}
+                    selected={selChars.has(c.id)}
+                    blocked={blocked}
+                    disabled={busy}
+                    onToggle={() => setSelChars(toggleSet(selChars, c.id))}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {worldThumbs.length > 0 && (
+            <div className="ref-group">
+              <div className="ref-group-title">세계관 배경{placeId ? " (공통 + 선택 지역)" : " (공통)"}</div>
+              <div className="ref-grid">
+                {worldThumbs.map((w) => (
+                  <AssetThumb
+                    key={w.id}
+                    url={w.url}
+                    label={w.place_title ? `${w.place_title}${w.description ? ` · ${w.description}` : ""}` : (w.description || "공통")}
+                    selected={selWorld.has(w.id)}
+                    blocked={blocked}
+                    disabled={busy}
+                    onToggle={() => setSelWorld(toggleSet(selWorld, w.id))}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: "none" }}
+            onChange={(e) => {
+              addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <div className="ref-group">
+            <div className="ref-group-title">직접 업로드</div>
+            <div className="ref-grid">
+              {uploads.map((r, i) => (
+                <div key={i} style={{ position: "relative" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={r.preview} alt={r.name} style={{ width: 72, height: 96, objectFit: "cover", borderRadius: 6, display: "block" }} />
+                  <button
+                    type="button"
+                    className="danger small"
+                    style={{ position: "absolute", top: 2, right: 2, margin: 0, padding: "0 6px" }}
+                    onClick={() => setUploads(uploads.filter((_, j) => j !== i))}
+                    disabled={busy}
+                    aria-label="참조 이미지 제거"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
               <button
                 type="button"
-                className="danger small"
-                style={{ position: "absolute", top: 2, right: 2, margin: 0, padding: "0 6px" }}
-                onClick={() => setUploads(uploads.filter((_, j) => j !== i))}
-                disabled={busy}
-                aria-label="참조 이미지 제거"
+                className="small btn-secondary"
+                style={{ margin: 0, alignSelf: "center" }}
+                onClick={() => fileRef.current?.click()}
+                disabled={busy || blocked}
               >
-                ×
+                + 업로드 (각 8MB 이하)
               </button>
             </div>
-          ))}
-          <button
-            type="button"
-            className="small btn-secondary"
-            style={{ margin: 0 }}
-            onClick={() => fileRef.current?.click()}
-            disabled={busy || blocked}
-          >
-            + 이미지 업로드 (각 8MB 이하)
-          </button>
+          </div>
         </div>
 
         {error && <p className="crop-err">{error}</p>}
@@ -480,7 +524,7 @@ export default function ImageGenModal({
           <span style={{ flex: 1 }} />
           <button type="button" className="btn-secondary" onClick={onClose} disabled={busy}>취소</button>
           <button type="button" onClick={submit} disabled={busy}>
-            {busy ? "⏳ 생성 중... (최대 2분)" : `생성${submitSuffix ?? ""}`}
+            {busy ? `⏳ 생성 중... (최대 ${video ? "10분" : "2분"})` : `생성${submitSuffix ?? ""}`}
           </button>
         </div>
       </div>

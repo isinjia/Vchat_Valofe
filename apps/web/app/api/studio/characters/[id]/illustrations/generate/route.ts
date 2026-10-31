@@ -2,15 +2,12 @@ import { buildIllustTrigger, validateTriggerPlace } from "@/lib/illust-trigger";
 import { NextRequest, NextResponse } from "next/server";
 import {
   query,
-  execute,
-  getStorage,
-  invalidateChatContext,
   generateImage,
   getImageGenSettings,
   chargeCoins,
   getPricingSettings,
 } from "@vchatbot/core";
-import { parseRefImages, fetchRefImage, collectAssetRefs, MAX_REFS } from "@/lib/image-refs";
+import { parseRefImages, fetchRefImage, collectAssetRefs, withRefNotes, MAX_REFS } from "@/lib/image-refs";
 import { requireUser, ownedCharacter, bad } from "@/lib/studio";
 
 export const runtime = "nodejs";
@@ -20,8 +17,9 @@ type Params = { params: Promise<{ id: string }> };
 
 /**
  * POST /api/studio/characters/:id/illustrations/generate
- *   { prompt, kind: 'basic'|'conditional', keywords?, description?, asTitle? }
- * AI 로 이미지를 생성해 일러스트(또는 타이틀 이미지)로 저장. 생성·저장 성공 후에만 코인 차감.
+ *   { prompt, kind: 'basic'|'conditional', keywords?, ref* }
+ * AI 로 이미지를 생성해 base64 로 반환한다 (저장 안 함 — 클라이언트에서 프리뷰/크롭 후
+ * 기존 업로드 라우트로 저장). 조건 입력은 결제 전에 미리 검증만 한다. 생성 성공 시 회당 차감.
  */
 export async function POST(req: NextRequest, { params }: Params) {
   const auth = await requireUser();
@@ -35,47 +33,37 @@ export async function POST(req: NextRequest, { params }: Params) {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt) return bad("prompt 가 필요합니다.");
   const kind = body.kind === "conditional" ? "conditional" : "basic";
-  const description = typeof body.description === "string" && body.description.trim() ? body.description.trim() : null;
-  const asTitle = body.asTitle === true;
 
-  let triggerCondition: string | null = null;
-  if (!asTitle && kind === "conditional") {
+  // 조건 입력 사전 검증 (실제 저장 시 업로드 라우트가 다시 검증)
+  if (body.asTitle !== true && kind === "conditional") {
     const t = buildIllustTrigger(body);
     if ("error" in t) return bad(t.error);
-    triggerCondition = t.value;
-    const placeErr = await validateTriggerPlace(triggerCondition, Number(own.row.world_id));
+    const placeErr = await validateTriggerPlace(t.value, Number(own.row.world_id));
     if (placeErr) return bad(placeErr);
   }
 
-  // 스토리지 접근/외부 호출 전에 설정 여부부터 확인
+  // 외부 호출 전에 설정 여부부터 확인
   const ig = await getImageGenSettings();
   if (!ig.enabled || !ig.apiKey) {
     return bad("이미지 생성이 설정되지 않았습니다. 관리자 설정에서 이미지 생성 API 를 등록하세요.");
-  }
-
-  let storage;
-  try {
-    storage = await getStorage();
-  } catch (e) {
-    return bad((e as Error).message);
   }
 
   // 참조 이미지: 업로드(base64) + 등록 자산(프로필/일러스트/세계관 배경) + (선택) 캐릭터 타이틀 이미지
   const parsed = parseRefImages(body.refImages);
   if ("error" in parsed) return bad(parsed.error);
   const refs = parsed.refs;
-  const assetRefs = await collectAssetRefs(body, { characterId, worldId: Number(own.row.world_id) }, req.nextUrl.origin);
+  const assetRefs = await collectAssetRefs(body, { characterId, worldId: Number(own.row.world_id), userId: auth.userId }, req.nextUrl.origin);
   refs.push(...assetRefs);
   if (body.refTitleImage === true) {
     const t = await query<{ title_image_url: string | null }>("SELECT title_image_url FROM characters WHERE id = ?", [characterId]);
-    const tr = await fetchRefImage(t[0]?.title_image_url, req.nextUrl.origin);
+    const tr = await fetchRefImage(t[0]?.title_image_url, req.nextUrl.origin, "이 캐릭터의 대표(타이틀) 이미지 — 외형 기준");
     if (tr) refs.unshift(tr);
   }
   if (refs.length > MAX_REFS) return bad(`참조 이미지는 합산 최대 ${MAX_REFS}장입니다.`);
 
   let buffer: Buffer;
   try {
-    buffer = await generateImage(prompt, refs);
+    buffer = await generateImage(withRefNotes(prompt, refs), refs);
   } catch (e) {
     const msg = (e as Error).message;
     console.error("studio illust generate error:", e);
@@ -83,46 +71,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     return bad(msg, msg.startsWith("이미지 생성이 설정되지") ? 400 : 502);
   }
 
-  const ts = Date.now();
-  let url: string;
-  let illustId: number | undefined;
-  if (asTitle) {
-    const rows = await query<{ title_image_key: string | null }>(
-      "SELECT title_image_key FROM characters WHERE id = ?",
-      [characterId]
-    );
-    const oldKey = rows[0]?.title_image_key;
-    const key = `characters/${characterId}/title-ai-${ts}.png`;
-    url = await storage.upload(key, buffer, "image/png");
-    await execute("UPDATE characters SET title_image_key = ?, title_image_url = ? WHERE id = ?", [
-      key,
-      url,
-      characterId,
-    ]);
-    if (oldKey) {
-      try {
-        await storage.remove(oldKey);
-      } catch {
-        // 무시
-      }
-    }
-  } else {
-    const key = `illustrations/${characterId}/ai-${ts}.png`;
-    url = await storage.upload(key, buffer, "image/png");
-    const result = await execute(
-      `INSERT INTO illustrations (character_id, kind, storage_key, url, description, trigger_condition, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [characterId, kind, key, url, description, triggerCondition, 0]
-    );
-    illustId = result.insertId;
-  }
-  await invalidateChatContext(characterId);
-
-  // 생성 성공 후 차감
+  // 생성 성공 후 차감 — 결과는 저장하지 않고 반환 (재생성할 때마다 다시 차감)
   const cost = (await getPricingSettings()).illustGenCost;
   const balance = await chargeCoins(auth.userId, cost, "illust_gen_spend", {
     refType: "character",
     refId: characterId,
   });
-  return NextResponse.json({ url, id: illustId, cost, balance }, { status: 201 });
+  return NextResponse.json(
+    { image: buffer.toString("base64"), mime: "image/png", cost, balance },
+    { status: 201 }
+  );
 }

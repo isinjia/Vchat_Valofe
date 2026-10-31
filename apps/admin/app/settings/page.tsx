@@ -24,6 +24,7 @@ interface Settings {
   pricing: {
     aiAssistCost: number;
     illustGenCost: number;
+    videoGenCost: number;
     aiAssist: Record<string, { coinsPer1k: number; minCost: number }>;
     byok: { enabled: boolean; cost: number };
   };
@@ -51,7 +52,7 @@ const EMPTY: Settings = {
   llm: { model: "claude-opus-5-5", maxTokens: 4096, historyLimit: 30, assistProviderId: null, fallbackProviderId: null },
   scoring: { scoringProviderId: null, timeoutMs: 10000 },
   fees: { creatorRate: 30, worldRate: 20 },
-  pricing: { aiAssistCost: 50, illustGenCost: 500, aiAssist: {}, byok: { enabled: true, cost: 10 } },
+  pricing: { aiAssistCost: 50, illustGenCost: 500, videoGenCost: 2000, aiAssist: {}, byok: { enabled: true, cost: 10 } },
   image_gen: { enabled: false, baseUrl: "https://api.openai.com/v1", apiKey: "", model: "gpt-image-1", size: "1024x1536" },
 };
 
@@ -338,6 +339,11 @@ export default function SettingsPage() {
             <input type="number" min={0} value={s.pricing.illustGenCost}
               onChange={(e) => setS({ ...s, pricing: { ...s.pricing, illustGenCost: Number(e.target.value) } })} />
           </div>
+          <div>
+            <label>영상 생성 1회 비용(코인)</label>
+            <input type="number" min={0} value={s.pricing.videoGenCost}
+              onChange={(e) => setS({ ...s, pricing: { ...s.pricing, videoGenCost: Number(e.target.value) } })} />
+          </div>
         </div>
 
         <label style={{ marginTop: 12 }}>AI 보조 기능별 과금</label>
@@ -391,7 +397,96 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      <QuotaSection />
+
       <button onClick={save}>{saved ? "저장됨 ✓" : "전체 저장"}</button>
+    </>
+  );
+}
+
+interface QuotaTier {
+  id: number;
+  name: string;
+  tier_rank: number;
+  video_max_mb: number | null;
+  effect_max_mb: number | null;
+}
+
+/** 업로드 쿼터: 전역 기본값 + 크리에이터 등급별 용량 제한 (별도 저장 버튼, /api/quotas) */
+function QuotaSection() {
+  const [uploads, setUploads] = useState({ videoMaxMb: 100, effectMaxMb: 2 });
+  const [tiers, setTiers] = useState<QuotaTier[]>([]);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/quotas")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.uploads) setUploads(d.uploads);
+        setTiers(Array.isArray(d.tiers) ? d.tiers : []);
+      })
+      .catch(() => {});
+  }, []);
+
+  const save = async () => {
+    await fetch("/api/quotas", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uploads, tiers }),
+    });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  };
+
+  const setTier = (id: number, patch: Partial<QuotaTier>) =>
+    setTiers((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+
+  return (
+    <>
+      <h3>업로드 쿼터</h3>
+      <div className="panel">
+        <div className="row">
+          <div>
+            <label>영상 업로드 기본 최대 (MB)</label>
+            <input type="number" min={1} value={uploads.videoMaxMb}
+              onChange={(e) => setUploads({ ...uploads, videoMaxMb: Number(e.target.value) })} />
+          </div>
+          <div>
+            <label>프로필 효과 이미지 기본 최대 (MB)</label>
+            <input type="number" min={1} value={uploads.effectMaxMb}
+              onChange={(e) => setUploads({ ...uploads, effectMaxMb: Number(e.target.value) })} />
+          </div>
+        </div>
+        <label style={{ marginTop: 12 }}>크리에이터 등급별 제한 (비우면 기본값 사용)</label>
+        <table>
+          <thead>
+            <tr><th>등급</th><th>영상 최대 (MB)</th><th>효과 최대 (MB)</th></tr>
+          </thead>
+          <tbody>
+            {tiers.map((t) => (
+              <tr key={t.id}>
+                <td>{t.name} <span className="muted">(순위 {t.tier_rank})</span></td>
+                <td>
+                  <input type="number" min={1} placeholder={`기본 ${uploads.videoMaxMb}`}
+                    value={t.video_max_mb ?? ""}
+                    onChange={(e) => setTier(t.id, { video_max_mb: e.target.value === "" ? null : Number(e.target.value) })} />
+                </td>
+                <td>
+                  <input type="number" min={1} placeholder={`기본 ${uploads.effectMaxMb}`}
+                    value={t.effect_max_mb ?? ""}
+                    onChange={(e) => setTier(t.id, { effect_max_mb: e.target.value === "" ? null : Number(e.target.value) })} />
+                </td>
+              </tr>
+            ))}
+            {tiers.length === 0 && (
+              <tr><td colSpan={3} className="muted">크리에이터 트랙 등급이 없습니다.</td></tr>
+            )}
+          </tbody>
+        </table>
+        <div style={{ marginTop: 12 }}>
+          <button onClick={save}>{saved ? "저장됨 ✓" : "쿼터 저장"}</button>
+        </div>
+      </div>
     </>
   );
 }

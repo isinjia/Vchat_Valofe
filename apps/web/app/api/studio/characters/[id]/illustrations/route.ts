@@ -1,6 +1,14 @@
 import { buildIllustTrigger, validateTriggerPlace } from "@/lib/illust-trigger";
 import { NextRequest, NextResponse } from "next/server";
-import { query, execute, getStorage, invalidateChatContext, imageExtFromMime } from "@vchatbot/core";
+import {
+  query,
+  execute,
+  getStorage,
+  invalidateChatContext,
+  imageExtFromMime,
+  videoExtFromMime,
+  getUploadLimitsForUser,
+} from "@vchatbot/core";
 import { requireUser, ownedCharacter, bad } from "@/lib/studio";
 
 export const runtime = "nodejs";
@@ -21,7 +29,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 /**
- * multipart/form-data 직접 업로드 (과금 없음)
+ * multipart/form-data 직접 업로드 (과금 없음) — 이미지 또는 영상(mp4/webm)
  *   file, kind('basic'|'conditional'), description, keywords(쉼표 구분), sort_order
  */
 export async function POST(req: NextRequest, { params }: Params) {
@@ -34,7 +42,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   const form = await req.formData();
   const file = form.get("file");
   if (!(file instanceof File)) return bad("file 이 필요합니다.");
-  if (!file.type.startsWith("image/")) return bad("이미지 파일만 업로드할 수 있습니다.");
+  const isVideo = file.type.startsWith("video/");
+  if (!file.type.startsWith("image/") && !isVideo) return bad("이미지 또는 영상 파일만 업로드할 수 있습니다.");
+  if (isVideo) {
+    const { videoMaxMb } = await getUploadLimitsForUser(auth.userId);
+    if (file.size > videoMaxMb * 1024 * 1024) return bad(`영상은 ${videoMaxMb}MB 이하여야 합니다.`);
+  }
   const kind = form.get("kind") === "conditional" ? "conditional" : "basic";
   const description = (form.get("description") as string) || null;
   const sortOrder = Number(form.get("sort_order") || 0) || 0;
@@ -62,17 +75,20 @@ export async function POST(req: NextRequest, { params }: Params) {
     return bad((e as Error).message);
   }
 
-  const ext = imageExtFromMime(file.type);
+  const ext = isVideo ? videoExtFromMime(file.type) : imageExtFromMime(file.type);
   if (!ext) {
-    return NextResponse.json({ error: "지원하지 않는 이미지 형식입니다 (jpg/png/webp/gif/avif)." }, { status: 400 });
+    return NextResponse.json(
+      { error: isVideo ? "지원하지 않는 영상 형식입니다 (mp4/webm)." : "지원하지 않는 이미지 형식입니다 (jpg/png/webp/gif/avif)." },
+      { status: 400 }
+    );
   }
   const key = `illustrations/${Number(id)}/${Date.now()}.${ext}`;
   const url = await storage.upload(key, Buffer.from(await file.arrayBuffer()), file.type || "image/png");
 
   const result = await execute(
-    `INSERT INTO illustrations (character_id, kind, storage_key, url, description, trigger_condition, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [Number(id), kind, key, url, description, triggerCondition, sortOrder]
+    `INSERT INTO illustrations (character_id, kind, media_type, storage_key, url, description, trigger_condition, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [Number(id), kind, isVideo ? "video" : "image", key, url, description, triggerCondition, sortOrder]
   );
   await invalidateChatContext(Number(id));
   return NextResponse.json({ id: result.insertId, url }, { status: 201 });

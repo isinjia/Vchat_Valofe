@@ -113,6 +113,43 @@ export async function getImageGenSettings(): Promise<ImageGenSettings> {
   return { ...DEFAULT_IMAGE_GEN_SETTINGS, ...(v ?? {}) };
 }
 
+/** 업로드 용량 제한 (MB) — 관리자 설정에서 변경 */
+export interface UploadLimitSettings {
+  /** 일러스트 영상 업로드 최대 (MB) */
+  videoMaxMb: number;
+  /** 프로필 효과 이미지(GIF/APNG) 최대 (MB) — 말풍선마다 반복 렌더되므로 작게 유지 권장 */
+  effectMaxMb: number;
+}
+export const DEFAULT_UPLOAD_LIMITS: UploadLimitSettings = { videoMaxMb: 100, effectMaxMb: 2 };
+
+export async function getUploadLimitSettings(): Promise<UploadLimitSettings> {
+  const v = await getSetting<Partial<UploadLimitSettings>>("uploads");
+  const num = (x: unknown, d: number) => {
+    const n = Number(x);
+    return Number.isFinite(n) && n > 0 ? n : d;
+  };
+  return {
+    videoMaxMb: num(v?.videoMaxMb, DEFAULT_UPLOAD_LIMITS.videoMaxMb),
+    effectMaxMb: num(v?.effectMaxMb, DEFAULT_UPLOAD_LIMITS.effectMaxMb),
+  };
+}
+
+/** 유저의 업로드 제한: 크리에이터 등급의 쿼터(있으면)가 전역 기본값을 덮는다 */
+export async function getUploadLimitsForUser(userId: number): Promise<UploadLimitSettings> {
+  const base = await getUploadLimitSettings();
+  const rows = await query<{ video_max_mb: number | null; effect_max_mb: number | null }>(
+    `SELECT t.video_max_mb, t.effect_max_mb
+     FROM users u JOIN chat_tiers t ON t.id = u.creator_tier_id
+     WHERE u.id = ?`,
+    [userId]
+  );
+  const t = rows[0];
+  return {
+    videoMaxMb: t?.video_max_mb != null && Number(t.video_max_mb) > 0 ? Number(t.video_max_mb) : base.videoMaxMb,
+    effectMaxMb: t?.effect_max_mb != null && Number(t.effect_max_mb) > 0 ? Number(t.effect_max_mb) : base.effectMaxMb,
+  };
+}
+
 /** 스튜디오 AI 보조 기능별 과금: 1K토큰(입력+출력)당 코인 + 최소(정액) 코인 */
 export interface AiAssistPricing {
   /** 1,000토큰당 코인. 0 이면 minCost 정액만 차감 */
@@ -147,6 +184,8 @@ export interface PricingSettings {
   /** 기능별 미설정 시 기본 정액(코인) */
   aiAssistCost: number;
   illustGenCost: number;
+  /** AI 영상 생성 1회 비용(코인) */
+  videoGenCost: number;
   /** AI 보조 기능(kind)별 과금 설정 */
   aiAssist?: Partial<Record<string, AiAssistPricing>>;
   /** 유저 본인 Claude 키(BYOK) 사용 시: 허용 여부 + 1회 정액 코인 */
@@ -155,6 +194,7 @@ export interface PricingSettings {
 export const DEFAULT_PRICING_SETTINGS: PricingSettings = {
   aiAssistCost: 50,
   illustGenCost: 500,
+  videoGenCost: 2000,
   aiAssist: {},
   byok: { enabled: true, cost: 10 },
 };

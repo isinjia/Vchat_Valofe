@@ -18,6 +18,8 @@ interface Props {
   aspect: number | "free";
   /** true 면 크롭 프레임을 원형 마스크로 표시 (저장 이미지는 사각형) */
   circle?: boolean;
+  /** 열릴 때 바로 불러올 이미지 (AI 생성 결과 편집 등 — 파일 선택 단계 생략) */
+  initialFile?: File | null;
   onCancel: () => void;
   onConfirm: (blob: Blob, filename: string) => Promise<void>;
 }
@@ -45,7 +47,7 @@ interface Src {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
-export default function ImageCropModal({ open, title, aspect, circle, onCancel, onConfirm }: Props) {
+export default function ImageCropModal({ open, title, aspect, circle, initialFile, onCancel, onConfirm }: Props) {
   const [src, setSrc] = useState<Src | null>(null);
   const [freeMode, setFreeMode] = useState<FreeMode>("orig");
   const [zoom, setZoom] = useState(1);
@@ -139,6 +141,12 @@ export default function ImageCropModal({ open, title, aspect, circle, onCancel, 
     };
     im.src = url;
   };
+
+  // AI 생성 결과 등 초기 이미지가 주어지면 파일 선택 단계를 건너뛰고 바로 로드
+  useEffect(() => {
+    if (open && initialFile) loadFile(initialFile);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialFile]);
 
   // 휠 확대/축소 (passive:false 로 페이지 스크롤 방지). 프레임 중심 기준.
   useEffect(() => {

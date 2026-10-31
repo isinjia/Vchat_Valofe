@@ -10,6 +10,7 @@ interface WorldItem {
   name: string;
   title_image_url: string | null;
   title_color: string | null;
+  like_count?: number;
   /** 제작 유저 닉네임 (운영 제작이면 null — 표시하지 않음) */
   owner_name: string | null;
 }
@@ -99,7 +100,31 @@ export default function HomeClient() {
   // 내가 좋아요한 캐릭터 id 와 낙관적 갱신된 좋아요 수 (목록 캐시는 유저 무관하므로 분리 관리)
   const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
   const [likeCounts, setLikeCounts] = useState<Record<number, number>>({});
+  // 세계관 좋아요 (같은 방식의 분리 관리)
+  const [likedWorldIds, setLikedWorldIds] = useState<Set<number>>(new Set());
+  const [worldLikeCounts, setWorldLikeCounts] = useState<Record<number, number>>({});
   const router = useRouter();
+
+  const toggleWorldLike = async (w: WorldItem) => {
+    try {
+      const r = await fetch(`/api/worlds/${w.id}/like`, { method: "POST" });
+      if (r.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (!r.ok) return;
+      const d = await r.json();
+      setLikedWorldIds((prev) => {
+        const next = new Set(prev);
+        if (d.liked) next.add(w.id);
+        else next.delete(w.id);
+        return next;
+      });
+      setWorldLikeCounts((prev) => ({ ...prev, [w.id]: d.likeCount }));
+    } catch {
+      // 무시
+    }
+  };
 
   const toggleLike = async (c: CharItem) => {
     try {
@@ -151,6 +176,10 @@ export default function HomeClient() {
     fetch("/api/characters/liked")
       .then((r) => r.json())
       .then((d) => setLikedIds(new Set(Array.isArray(d) ? d : [])))
+      .catch(() => {});
+    fetch("/api/worlds/liked")
+      .then((r) => r.json())
+      .then((d) => setLikedWorldIds(new Set(Array.isArray(d) ? d : [])))
       .catch(() => {});
   }, []);
 
@@ -243,6 +272,25 @@ export default function HomeClient() {
             )}
             <span>{w.name}</span>
             {w.owner_name && <span className="world-card-owner">by {w.owner_name}</span>}
+            <span
+              className={`world-like${likedWorldIds.has(w.id) ? " liked" : ""}`}
+              role="button"
+              tabIndex={0}
+              title={likedWorldIds.has(w.id) ? "좋아요 취소" : "좋아요"}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleWorldLike(w);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleWorldLike(w);
+                }
+              }}
+            >
+              {likedWorldIds.has(w.id) ? "❤️" : "🤍"} {(worldLikeCounts[w.id] ?? w.like_count ?? 0).toLocaleString()}
+            </span>
           </button>
         ))}
       </div>

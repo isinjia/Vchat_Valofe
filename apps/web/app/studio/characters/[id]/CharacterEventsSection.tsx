@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
+import { type ImageGenPayload } from "../../components/ImageGenModal";
+import AiGenFlow from "../../components/AiGenFlow";
 import { buildImageDescription, buildProfileText } from "../../components/imagePrompt";
 import { studioFetch } from "../../studio-api";
 
@@ -142,8 +143,8 @@ export default function CharacterEventsSection({
     onChanged?.();
   };
 
-  /** 이벤트 달성 이미지 AI 생성: 기존 일러스트 생성 라우트를 requireEventId=이 이벤트 로 호출 */
-  const generateSuccessImage = async (p: ImageGenPayload) => {
+  /** 이벤트 달성 이미지 AI 생성 (저장 안 함) — dataURL 반환. 저장은 아래 saveSuccessImage 에서 */
+  const generateSuccessImage = async (p: ImageGenPayload): Promise<string> => {
     if (editId == null) throw new Error("먼저 이벤트를 저장하세요.");
     const res = await studioFetch(`/api/studio/characters/${characterId}/illustrations/generate`, {
       method: "POST",
@@ -153,7 +154,6 @@ export default function CharacterEventsSection({
         kind: "conditional",
         keywords: "",
         requireEventId: editId,
-        description: `${form.name || "이벤트"} 달성 이미지`,
         refTitleImage: p.refTitleImage,
         refImages: p.refImages,
         refProfileIds: p.refProfileIds,
@@ -163,6 +163,21 @@ export default function CharacterEventsSection({
     });
     const r = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`생성 실패: ${r.error ?? res.statusText}`);
+    return `data:${r.mime ?? "image/png"};base64,${r.image}`;
+  };
+
+  /** 선택한 생성 결과를 달성 일러스트(조건부·이벤트 게이트)로 업로드 + 이벤트에 연결 */
+  const saveSuccessImage = async (blob: Blob, filename: string) => {
+    if (editId == null) throw new Error("먼저 이벤트를 저장하세요.");
+    const fd = new FormData();
+    fd.append("file", blob, filename);
+    fd.append("kind", "conditional");
+    fd.append("keywords", "");
+    fd.append("requireEventId", String(editId));
+    fd.append("description", `${form.name || "이벤트"} 달성 이미지`);
+    const res = await studioFetch(`/api/studio/characters/${characterId}/illustrations`, { method: "POST", body: fd });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`업로드 실패: ${r.error ?? res.statusText}`);
     onIllustsChanged?.();
     setForm((prev) => ({ ...prev, success_illustration_id: String(r.id) }));
   };
@@ -299,15 +314,17 @@ export default function CharacterEventsSection({
           </button>
           {editId == null && <span className="muted">먼저 저장하세요 (저장된 이벤트 수정 중에만 생성 가능)</span>}
         </div>
-        <ImageGenModal
+        <AiGenFlow
           open={genOpen}
           title="이벤트 달성 이미지 AI 생성"
           initialDescription={eventImageDesc()}
           initialProfile={buildProfileText(character)}
           titleImageUrl={titleImageUrl}
           submitSuffix={genCost != null ? ` (-${genCost.toLocaleString()}코인)` : ""}
+          aspect="free"
+          generate={generateSuccessImage}
+          save={saveSuccessImage}
           onClose={() => setGenOpen(false)}
-          onGenerate={generateSuccessImage}
         />
         {error && <p style={{ color: "var(--danger)", marginTop: 8 }}>{error}</p>}
         <button onClick={save}>{editId == null ? "이벤트 추가" : "수정 저장"}</button>{" "}

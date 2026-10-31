@@ -6,7 +6,8 @@ import AnniversarySection from "./AnniversarySection";
 import WorldIllustrationsSection from "./WorldIllustrationsSection";
 import DictionaryBrowser from "../../components/DictionaryBrowser";
 import ImageCropModal from "../../components/ImageCropModal";
-import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
+import { type ImageGenPayload } from "../../components/ImageGenModal";
+import AiGenFlow from "../../components/AiGenFlow";
 
 interface World {
   id: number;
@@ -76,6 +77,11 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
   const [warnings, setWarnings] = useState<string[]>([]);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [titleCropOpen, setTitleCropOpen] = useState(false); // 타이틀 이미지 크롭 팝업
+  // AI 타이틀 생성 참조용: 세계관 배경 + 소속 캐릭터 타이틀 (모달 열 때 1회 로드)
+  const [genAssets, setGenAssets] = useState<{
+    worldIllustrations: { id: number; dict_entry_id: number | null; url: string; description: string | null; place_title?: string | null }[];
+    characterTitles: { id: number; name: string; url: string }[];
+  } | null>(null);
   const [genOpen, setGenOpen] = useState(false); // AI 타이틀 생성 모달
 
   // 인물 항목 ↔ 캐릭터 연결 변경
@@ -96,6 +102,20 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  useEffect(() => {
+    if (!genOpen || genAssets) return;
+    Promise.all([
+      fetch(`/api/worlds/${id}/illustrations`).then((r) => r.json()).catch(() => []),
+      fetch(`/api/worlds/${id}/characters`).then((r) => r.json()).catch(() => []),
+    ]).then(([wi, ct]) =>
+      setGenAssets({
+        worldIllustrations: Array.isArray(wi) ? wi : [],
+        characterTitles: Array.isArray(ct) ? ct : [],
+      })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [genOpen]);
+
   if (!world) return <p>로딩 중...</p>;
 
   /** 크롭 팝업 확인 → 타이틀 이미지 업로드 (실패 시 throw → 팝업 안에 에러 표시) */
@@ -108,16 +128,21 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
     setWorld((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
   };
 
-  /** 생성 모달 확인 → AI 타이틀 이미지 생성 (실패 시 throw → 모달 안에 에러 표시) */
-  const generateTitleImage = async (p: ImageGenPayload) => {
+  /** AI 타이틀 생성 호출 (저장 안 함) — dataURL 반환. 저장은 AiGenFlow 의 save(업로드 라우트)에서 */
+  const generateTitleImage = async (p: ImageGenPayload): Promise<string> => {
     const res = await fetch(`/api/worlds/${id}/title-image/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: p.prompt, refImages: p.refImages, refWorldIllustIds: p.refWorldIllustIds }),
+      body: JSON.stringify({
+        prompt: p.prompt,
+        refImages: p.refImages,
+        refWorldIllustIds: p.refWorldIllustIds,
+        refCharacterTitleIds: p.refCharacterTitleIds,
+      }),
     });
     const r = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`생성 실패: ${r.error ?? res.statusText}`);
-    setWorld((prev) => (prev ? { ...prev, title_image_url: r.url } : prev));
+    return `data:${r.mime ?? "image/png"};base64,${r.image}`;
   };
 
   const saveWorld = async () => {
@@ -317,12 +342,15 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
           onCancel={() => setTitleCropOpen(false)}
           onConfirm={uploadTitleImage}
         />
-        <ImageGenModal
+        <AiGenFlow
           open={genOpen}
           title="AI 타이틀 이미지 생성"
           initialDescription={`세계관 타이틀 일러스트를 생성한다. 세로형 3:4.\n세계관: ${world.name}\n설정: ${(world.description ?? "").slice(0, 800)}`}
+          assets={genAssets ?? undefined}
+          aspect={3 / 4}
+          generate={generateTitleImage}
+          save={uploadTitleImage}
           onClose={() => setGenOpen(false)}
-          onGenerate={generateTitleImage}
         />
         <label>타이틀 컬러</label>
         <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>

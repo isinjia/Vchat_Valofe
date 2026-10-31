@@ -1,6 +1,6 @@
 import { buildIllustTrigger, validateTriggerPlace } from "@/lib/illust-trigger";
 import { NextRequest, NextResponse } from "next/server";
-import { query, execute, getStorage, invalidateChatContext, imageExtFromMime } from "@vchatbot/core";
+import { query, execute, getStorage, invalidateChatContext, imageExtFromMime, videoExtFromMime } from "@vchatbot/core";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
 /**
  * multipart/form-data 업로드
- *   file: 이미지 파일
+ *   file: 이미지 또는 영상(mp4/webm) 파일
  *   kind: 'basic' | 'conditional'
  *   description: 설명 (선택)
  *   keywords: conditional 일 때 쉼표 구분 트리거 키워드
@@ -27,6 +27,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   const file = form.get("file");
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "file 이 필요합니다." }, { status: 400 });
+  }
+  const isVideo = file.type.startsWith("video/");
+  if (!file.type.startsWith("image/") && !isVideo) {
+    return NextResponse.json({ error: "이미지 또는 영상 파일만 업로드할 수 있습니다." }, { status: 400 });
   }
   const kind = form.get("kind") === "conditional" ? "conditional" : "basic";
   const description = (form.get("description") as string) || null;
@@ -56,18 +60,21 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
 
-  const ext = imageExtFromMime(file.type);
+  const ext = isVideo ? videoExtFromMime(file.type) : imageExtFromMime(file.type);
   if (!ext) {
-    return NextResponse.json({ error: "지원하지 않는 이미지 형식입니다 (jpg/png/webp/gif/avif)." }, { status: 400 });
+    return NextResponse.json(
+      { error: isVideo ? "지원하지 않는 영상 형식입니다 (mp4/webm)." : "지원하지 않는 이미지 형식입니다 (jpg/png/webp/gif/avif)." },
+      { status: 400 }
+    );
   }
   const key = `illustrations/${id}/${Date.now()}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
   const url = await storage.upload(key, buffer, file.type || "image/png");
 
   const result = await execute(
-    `INSERT INTO illustrations (character_id, kind, storage_key, url, description, trigger_condition, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [id, kind, key, url, description, triggerCondition, sortOrder]
+    `INSERT INTO illustrations (character_id, kind, media_type, storage_key, url, description, trigger_condition, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, kind, isVideo ? "video" : "image", key, url, description, triggerCondition, sortOrder]
   );
   await invalidateChatContext(Number(id));
   return NextResponse.json({ id: result.insertId, url }, { status: 201 });

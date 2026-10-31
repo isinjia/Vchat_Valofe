@@ -18,17 +18,27 @@ export async function resolveImageProvider(): Promise<ImageProviderRow | null> {
   return rows[0] ?? null;
 }
 
+/** 생성 옵션 */
+export interface ImageGenOptions {
+  /** 투명 배경 요청 — openai 계열은 background=transparent 파라미터, gemini 는 프롬프트 지시(보장 안 됨) */
+  transparent?: boolean;
+}
+
 /**
  * 이미지를 1장 생성해 Buffer 로 반환한다.
  * image_providers 의 기본 프로바이더 사용. 없으면 레거시 설정(app_settings.image_gen) 폴백.
  * refs 가 있으면 참조 이미지와 함께 생성한다 (openai: images/edits, gemini: 멀티모달 입력).
  */
-export async function generateImage(prompt: string, refs: ReferenceImage[] = []): Promise<Buffer> {
+export async function generateImage(
+  prompt: string,
+  refs: ReferenceImage[] = [],
+  opts: ImageGenOptions = {}
+): Promise<Buffer> {
   const p = await resolveImageProvider();
   if (p) {
     if (!p.api_key) throw new Error(`이미지 생성 AI "${p.name}" 에 API 키가 등록되지 않았습니다.`);
-    if (p.provider === "gemini") return generateGemini(p, prompt, refs);
-    return generateOpenAi(p, prompt, refs);
+    if (p.provider === "gemini") return generateGemini(p, prompt, refs, opts);
+    return generateOpenAi(p, prompt, refs, opts);
   }
 
   // 레거시: 관리자 설정(image_gen) — 참조 이미지 미지원
@@ -53,7 +63,8 @@ export async function generateImage(prompt: string, refs: ReferenceImage[] = [])
       updated_at: "",
     },
     prompt,
-    refs
+    refs,
+    opts
   );
 }
 
@@ -61,7 +72,8 @@ export async function generateImage(prompt: string, refs: ReferenceImage[] = [])
 async function generateOpenAi(
   p: ImageProviderRow,
   prompt: string,
-  refs: ReferenceImage[]
+  refs: ReferenceImage[],
+  opts: ImageGenOptions = {}
 ): Promise<Buffer> {
   const base = (p.base_url || "https://api.openai.com/v1").replace(/\/+$/, "");
   let res: Response;
@@ -70,6 +82,7 @@ async function generateOpenAi(
     form.append("model", p.model);
     form.append("prompt", prompt);
     if (/^\d+x\d+$/.test(p.size.trim())) form.append("size", p.size.trim());
+    if (opts.transparent) form.append("background", "transparent");
     form.append("n", "1");
     for (let i = 0; i < refs.length; i++) {
       form.append("image[]", new Blob([new Uint8Array(refs[i].data)], { type: refs[i].mimeType }), `ref-${i}.png`);
@@ -83,6 +96,7 @@ async function generateOpenAi(
   } else {
     const body: Record<string, unknown> = { model: p.model, prompt, n: 1 };
     if (/^\d+x\d+$/.test(p.size.trim())) body.size = p.size.trim();
+    if (opts.transparent) body.background = "transparent";
     res = await fetch(`${base}/images/generations`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${p.api_key}` },
@@ -109,10 +123,15 @@ async function generateOpenAi(
 async function generateGemini(
   p: ImageProviderRow,
   prompt: string,
-  refs: ReferenceImage[]
+  refs: ReferenceImage[],
+  opts: ImageGenOptions = {}
 ): Promise<Buffer> {
   const base = (p.base_url || "https://generativelanguage.googleapis.com").replace(/\/+$/, "");
-  const parts: Record<string, unknown>[] = [{ text: prompt }];
+  // gemini 는 알파 채널 출력을 보장하지 않으므로, 크로마키로 지우기 쉬운 순수 단색 배경을 요구한다
+  const finalPrompt = opts.transparent
+    ? `${prompt}\n\n(출력 요구: 배경은 아무 무늬 없는 순수한 단색 마젠타 #FF00FF 로만 채울 것. 인물에는 마젠타 색을 쓰지 말고, 배경 요소를 그리지 말 것.)`
+    : prompt;
+  const parts: Record<string, unknown>[] = [{ text: finalPrompt }];
   for (const r of refs) {
     parts.push({ inline_data: { mime_type: r.mimeType, data: r.data.toString("base64") } });
   }
