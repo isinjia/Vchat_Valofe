@@ -6,9 +6,13 @@
 # env 가 레포 밖(Jenkins 구성)이면 ENV_FILE 로 지정 — deploy-stage.sh 가 자동으로 넘겨준다:
 #   ENV_FILE=/etc/vchatbot/.env.stage docker compose --env-file "$ENV_FILE" -f ... up -d
 #
-# 포트 변경: .env.stage 의 WEB_PORT/ADMIN_PORT 만 바꾸고 up -d 재실행
+# 포트 변경: .env.stage 의 WEB_TLS_PORT/ADMIN_TLS_PORT 만 바꾸고 up -d 재실행
+# (VMessage 사용 포트 4000/4002/4100/8443/8444/8080/9443 은 피할 것)
 name: vchatbot-stage
 
+# TLS 는 nginx 컨테이너가 포트별로 종료한다 (호스트 nginx 설치 금지 — 이 VM 은 dnf 설치 최소화 정책).
+# web/admin 의 원본 HTTP 포트(web 5000 / admin 5001)는 호스트에 공개하지 않는다 — compose 내부 네트워크 전용.
+# web 내부 포트는 3000 이 아니라 5000 (서버 머신의 다른 3000 프로세스와 혼동 방지).
 services:
   web:
     build:
@@ -17,8 +21,6 @@ services:
     image: vchatbot-web:stage
     restart: unless-stopped
     env_file: ${ENV_FILE:-../../.env.stage}
-    ports:
-      - "${WEB_PORT:-3000}:3000"
 
   admin:
     build:
@@ -27,5 +29,17 @@ services:
     image: vchatbot-admin:stage
     restart: unless-stopped
     env_file: ${ENV_FILE:-../../.env.stage}
+
+  nginx:
+    image: nginx:1.27-alpine        # 버전 고정
+    restart: unless-stopped
+    depends_on:
+      - web
+      - admin
     ports:
-      - "${ADMIN_PORT:-5001}:5001"
+      - "${WEB_TLS_PORT:-5000}:5000"
+      - "${ADMIN_TLS_PORT:-5001}:5001"
+    volumes:
+      - ../nginx/stage-tls.conf:/etc/nginx/conf.d/default.conf:ro
+      # VMessage 와 공용 *.valofe.com 인증서 (cert.pem/key.pem) — 읽기 전용, 권한/소유자 변경 금지
+      - /opt/vmsg/certs:/etc/nginx/certs:ro

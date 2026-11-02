@@ -65,20 +65,30 @@ docker compose --env-file .env.stage -f deploy/docker/docker-compose.stage.yml u
 
 ```bash
 docker compose -f deploy/docker/docker-compose.stage.yml ps
-curl -I http://localhost:${WEB_PORT}/        # 채팅 서버
-curl -I http://localhost:${ADMIN_PORT}/      # 관리툴
+curl -kI https://localhost:${WEB_TLS_PORT}/    # 채팅 서버 (nginx TLS)
+curl -kI https://localhost:${ADMIN_TLS_PORT}/  # 관리툴 (nginx TLS)
 docker compose -f deploy/docker/docker-compose.stage.yml logs -f web
 ```
 
-## 포트 변경 (채팅 서버 포트는 올리기 직전 확정)
+## HTTPS 구성 (nginx 컨테이너 — 호스트 설치 금지)
 
-`.env.stage` 의 `WEB_PORT` / `ADMIN_PORT` 만 바꾸고:
+이 VM 은 OS 패키지 업데이트를 잠가둔 머신이라(dnf excludepkgs) **호스트에 nginx 를 설치하지 않는다.**
+compose 의 `nginx` 서비스(이미지 버전 고정)가 포트별로 TLS 만 종료한다:
 
-```bash
-docker compose --env-file .env.stage -f deploy/docker/docker-compose.stage.yml up -d
-```
+- 도메인은 vmsg-center-stage.valofe.com 하나를 그대로 쓰고 **포트로 나눈다** (80/443, vhost 없음):
+  `https://<도메인>:5000` → web, `https://<도메인>:5001` → admin (`.env.stage` 의 `WEB_TLS_PORT`/`ADMIN_TLS_PORT` —
+  기존 HTTP 시절 포트를 TLS 로 승계해 주소 유지)
+- 원본 HTTP 포트는 호스트에 공개되지 않는다 — compose 내부 네트워크 전용. 평문 진입로 없음.
+  web 의 내부 포트는 3000 이 아니라 **5000** (서버 머신 호스트의 다른 3000 프로세스와 혼동 방지).
+- 인증서: VMessage 와 공용 `*.valofe.com` — `/opt/vmsg/certs` (cert.pem/key.pem) 를 **읽기 전용** 마운트.
+  이 파일들의 소유자/권한(uid 1000, 600)은 절대 바꾸지 말 것 (VMessage 가 그 설정으로 읽는다).
+- 새 TLS 포트의 방화벽 개방은 수동 (관리자가 직접).
+- nginx 뒤에서는 앱이 보는 접속 IP 가 컨테이너 주소다 — 허용 IP 류(VMsg 콜백 등)는 X-Forwarded-For 기준으로 동작하며
+  nginx 가 그 헤더를 채워준다. 같은 머신의 VMessage 컨테이너가 보내는 콜백은 출발 IP 가 도커 브리지로 보일 수 있으니
+  IP 허용은 보조로만 쓰고 서명 검증(HMAC)을 기본으로 한다 (콜백 구현이 이미 그렇게 되어 있음).
 
-컨테이너 내부 포트(3000/5001)는 고정이고 호스트 매핑만 바뀌므로 재빌드 불필요.
+포트 변경은 `.env.stage` 의 `WEB_TLS_PORT` / `ADMIN_TLS_PORT` 만 바꾸고 `up -d` 재실행 (재빌드 불필요).
+VMessage 사용 포트 4000/4002/4100/8443/8444/8080/9443 은 피할 것.
 
 ## 코드 업데이트 재배포
 
@@ -144,13 +154,17 @@ ENV_FILE=/etc/vchatbot/.env.stage bash deploy/jenkins/migrate.sh apply      # �
   docker compose --env-file .env.stage -f deploy/docker/docker-compose.stage.yml up -d
   ```
 
-충돌 포인트: VMessage 가 4000 포트를 쓰므로 `WEB_PORT`/`ADMIN_PORT` 는 피해서 지정.
-Redis 는 키가 섞이지 않게 DB 인덱스 분리 권장 — `.env.stage` 의 `REDIS_URL` 을 `redis://host:6379/1` 처럼.
-MySQL 은 스키마가 분리되어 있어 계정만 각자 쓰면 됨 (restore 스크립트는 vchatbot DB 만 만지고 VMessage 쪽은 건드리지 않는다).
+충돌 포인트 (VMessage 쪽과 2026-11-02 상호 확인 완료):
+
+- **포트**: VMessage 사용 포트 = 8443/8444(TLS 소켓), 4000/4002(웹 API), 4100(관리자), 8080(Jenkins), 9443(예약). `WEB_TLS_PORT`/`ADMIN_TLS_PORT` 는 이들만 피하면 됨 (5000/5001 무충돌 확인). 호스트 3000 은 다른 프로세스가 사용 중 — 우리는 안 씀.
+- **TLS**: VMessage 는 자체 TLS(노드가 /opt/vmsg/certs 로 직접 처리), 우리는 compose 내 nginx 컨테이너 — 위 "HTTPS 구성" 절. VMessage 포트를 nginx 뒤로 넣지 말 것 (8443/8444 는 HTTP 아님, 4000/4100 프록시 시 그쪽 IP 제한이 깨짐).
+- **Redis**: VMessage 는 DB 0 + "VMSG:" 접두 키만 사용. 우리는 DB 1 (`redis://host:6379/1`). Pub/Sub 채널은 DB 번호와 무관하게 전역 공유라 "VMSG:" 로 시작하는 채널명은 금지 (현재 Pub/Sub 미사용이라 해당 없음).
+- **MySQL**: VMessage 스키마는 vfun_launcher_center 뿐 — vchatbot 무충돌. 계정(vmsg) 재사용 여부는 운영 판단 (공유하면 비밀번호 유출 시 양쪽이 같이 열림).
+- **Jenkins/docker (같은 인스턴스 공유)**: 전역 파급 명령 금지 — `docker system prune -a`, `docker container prune`, `-p` 없는 `docker compose down` 은 VMessage 컨테이너/롤백 이미지를 지울 수 있다. 우리 파이프라인은 `docker image prune -f`(dangling 만)까지만 사용. VMessage 빌드(vmsg-stage 잡)와 동시 빌드는 피할 것 — Jenkins 실행기(executor) 수를 1로 두면 자동으로 직렬화된다.
 
 ## 주의
 
 - `SESSION_SECRET` 은 반드시 개발값(dev-secret-change-me)이 아닌 랜덤값으로. 바꾸면 기존 세션 쿠키는 전부 무효화된다(재로그인).
 - `APP_ENV=stage` — vfun 인증이 스테이지 인증서버를 쓰도록 하는 값.
 - MySQL 데이터의 DATETIME 은 타임존 변환 없이 그대로 복원된다. 개발 컨테이너와 같은 UTC 로 두는 것을 권장.
-- 관리툴(5001)은 외부망에 그대로 열지 말고 사내 IP 제한 또는 리버스프록시 뒤에 둘 것.
+- 관리툴 TLS 포트(`ADMIN_TLS_PORT`, 기본 5001)는 방화벽에서 사내 IP 만 열 것 (유저용 `WEB_TLS_PORT` 와 달리 외부 개방 금지).

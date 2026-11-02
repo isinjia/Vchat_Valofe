@@ -37,10 +37,11 @@ port_of() {
   echo "${v:-$2}"
 }
 
-health_one() { # health_one <이름> <포트>
+health_one() { # health_one <이름> <TLS포트>
   local name="$1" port="$2" code i
   for i in $(seq 1 30); do
-    code=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:${port}/" || true)
+    # nginx 컨테이너가 TLS 종료 — 인증서 CN 과 localhost 가 달라 -k 로 검증 생략
+    code=$(curl -sk -o /dev/null -w '%{http_code}' "https://localhost:${port}/" || true)
     if [ -n "$code" ] && [ "$code" != "000" ] && [ "$code" -lt 500 ]; then
       echo "[health] $name OK (:$port → $code)"
       return 0
@@ -48,6 +49,7 @@ health_one() { # health_one <이름> <포트>
     sleep 2
   done
   echo "[health] $name 실패 (:$port 응답 없음/5xx) — 로그 확인: compose logs $name" >&2
+  compose logs --tail 50 nginx >&2 || true
   compose logs --tail 50 "$name" >&2 || true
   return 1
 }
@@ -58,16 +60,16 @@ case "$step" in
   build-admin) compose build admin ;;
   up)          compose up -d ;;
   health)
-    health_one web   "$(port_of WEB_PORT 3000)"
-    health_one admin "$(port_of ADMIN_PORT 5001)"
+    health_one web   "$(port_of WEB_TLS_PORT 5000)"
+    health_one admin "$(port_of ADMIN_TLS_PORT 5001)"
     ;;
   prune)       docker image prune -f ;;
   all)
     compose build web
     compose build admin
     compose up -d
-    health_one web   "$(port_of WEB_PORT 3000)"
-    health_one admin "$(port_of ADMIN_PORT 5001)"
+    health_one web   "$(port_of WEB_TLS_PORT 5000)"
+    health_one admin "$(port_of ADMIN_TLS_PORT 5001)"
     docker image prune -f
     echo "[deploy] 완료"
     ;;

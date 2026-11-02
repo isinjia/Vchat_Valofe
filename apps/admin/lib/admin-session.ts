@@ -56,7 +56,8 @@ export function setAdminSessionCookie(store: CookieStore, uid: number, role: Adm
   store.set(ADMIN_SESSION_COOKIE, createAdminSession(uid, role), {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    // https 가 아닌 스테이지는 INSECURE_COOKIES=1 로 Secure 를 끈다 (Secure 쿠키는 http 에서 브라우저가 버림)
+    secure: process.env.NODE_ENV === "production" && process.env.INSECURE_COOKIES !== "1",
     path: "/",
     maxAge: MAX_AGE_SEC,
   });

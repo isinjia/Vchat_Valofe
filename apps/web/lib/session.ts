@@ -42,7 +42,8 @@ export function setSessionCookie(store: CookieStore, userId: number): void {
   store.set(SESSION_COOKIE, createSession(userId), {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    // https 가 아닌 환경에서만 INSECURE_COOKIES=1 로 Secure 를 끈다 (기본은 Secure)
+    secure: process.env.NODE_ENV === "production" && process.env.INSECURE_COOKIES !== "1",
     path: "/",
     maxAge: MAX_AGE_SEC,
   });

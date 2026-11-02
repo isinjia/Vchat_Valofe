@@ -200,7 +200,8 @@ a { color: inherit; text-decoration: none; }
   word-break: break-word;
 }
 .msg.user .bubble { background: var(--user-bubble); color: #fff; border-bottom-right-radius: 4px; }
-.msg.ai .bubble { background: var(--ai-bubble); border-bottom-left-radius: 4px; }
+/* 캐릭터 말풍선: 캐릭터 타이틀 컬러 블렌딩(--ai-bubble-char, chat-client 가 지정) — 없으면 기본 톤 */
+.msg.ai .bubble { background: var(--ai-bubble-char, var(--ai-bubble)); border-bottom-left-radius: 4px; }
 
 .msg.ai .bubble.guest { background: var(--panel); border: 1px dashed var(--border); }
 .guest-name { font-size: 11px; color: var(--muted); margin: 0 0 3px 4px; }
