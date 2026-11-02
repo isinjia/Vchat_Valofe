@@ -3,8 +3,10 @@
 #
 # 레포 루트에서:
 #   docker compose --env-file .env.stage -f deploy/docker/docker-compose.stage.yml up -d --build
+# env 가 레포 밖(Jenkins 구성)이면 ENV_FILE 로 지정 — deploy-stage.sh 가 자동으로 넘겨준다:
+#   ENV_FILE=/etc/vchatbot/.env.stage docker compose --env-file "$ENV_FILE" -f ... up -d
 #
-# 포트 변경(내일 확정): .env.stage 의 WEB_PORT/ADMIN_PORT 만 바꾸고 up -d 재실행
+# 포트 변경: .env.stage 의 WEB_PORT/ADMIN_PORT 만 바꾸고 up -d 재실행
 name: vchatbot-stage
 
 services:
@@ -14,7 +16,7 @@ services:
       dockerfile: deploy/docker/Dockerfile.web
     image: vchatbot-web:stage
     restart: unless-stopped
-    env_file: ../../.env.stage
+    env_file: ${ENV_FILE:-../../.env.stage}
     ports:
       - "${WEB_PORT:-3000}:3000"
 
@@ -24,6 +26,6 @@ services:
       dockerfile: deploy/docker/Dockerfile.admin
     image: vchatbot-admin:stage
     restart: unless-stopped
-    env_file: ../../.env.stage
+    env_file: ${ENV_FILE:-../../.env.stage}
     ports:
       - "${ADMIN_PORT:-5001}:5001"
