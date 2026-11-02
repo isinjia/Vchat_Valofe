@@ -6,9 +6,13 @@ set -euo pipefail
 
 SQL_FILE=${1:?사용법: restore-mysql.sh <덤프.sql> [데몬머신IP] [앱계정비밀번호]}
 APP_HOST=${2:-%}
-APP_PW=${3:-vchatbot}
+APP_PW=${3:-}
 
 read -rsp "MySQL root 비밀번호: " ROOTPW; echo
+# 앱 계정 비밀번호: MySQL 8 기본 정책(validate_password MEDIUM) 통과 필요 — 8자 이상 + 대/소문자 + 숫자 + 특수문자
+if [ -z "$APP_PW" ]; then
+  read -rsp "앱 계정(vchatbot) 비밀번호 [정책: 8자+ 대/소문자+숫자+특수문자]: " APP_PW; echo
+fi
 
 # 덤프는 --databases 로 떠서 CREATE DATABASE 포함 — 그대로 흘려 넣으면 된다.
 mysql -uroot -p"$ROOTPW" --default-character-set=utf8mb4 < "$SQL_FILE"

@@ -10,7 +10,7 @@
 이미지 업로드는 S3/FTP 외부 스토리지(관리툴 설정)라 파일 이관이 따로 없다.
 옮길 데이터는 MySQL(메타/설정) + MongoDB(채팅 로그) + Redis(컨텍스트 캐시) 3종.
 
-권장 버전: MySQL 8.0+ (개발은 8.4), MongoDB 7.x, Redis 7.x, Docker + compose v2.
+권장 버전: MySQL 8.0+ (개발은 8.4), MongoDB 7.x 또는 8.0 (개발은 7.0 — 구버전 덤프를 신버전에 복원하는 건 지원됨, mongodb-database-tools 별도 설치), Redis 7.x, Docker + compose v2.
 
 ---
 
@@ -86,6 +86,41 @@ docker compose --env-file .env.stage -f deploy/docker/docker-compose.stage.yml u
 git pull
 docker compose --env-file .env.stage -f deploy/docker/docker-compose.stage.yml up -d --build
 ```
+
+## Jenkins 배포 (데몬 머신 로컬 Jenkins — VMessage 와 같은 방식)
+
+구성 파일: `deploy/Jenkinsfile` (파이프라인) + `deploy/jenkins/deploy-stage.sh` (실제 배포 로직, 단독 실행도 가능) + `deploy/jenkins/migrate.sh` (DB 마이그레이션).
+
+1. **사전 준비** (최초 1회):
+
+   ```bash
+   sudo usermod -aG docker jenkins && sudo systemctl restart jenkins   # jenkins 가 docker 사용
+   sudo mkdir -p /etc/vchatbot
+   sudo cp deploy/.env.stage.example /etc/vchatbot/.env.stage && sudo vi /etc/vchatbot/.env.stage
+   sudo chown jenkins /etc/vchatbot/.env.stage && sudo chmod 600 /etc/vchatbot/.env.stage
+   ```
+
+   env 를 레포 밖(`/etc/vchatbot/`)에 두는 이유: Jenkins 워크스페이스는 체크아웃마다 갈리는 영역이라 비밀값을 두지 않는다.
+
+2. **Job 생성**: New Item → Pipeline → "Pipeline script from SCM" → 레포 주소/브랜치(main) → Script Path `deploy/Jenkinsfile`. 빌드 트리거는 수동(지금 빌드) 또는 원하면 SCM 폴링.
+
+3. **파이프라인 단계**: DB 마이그레이션 → web 빌드 → admin 빌드 → 기동 → 헬스체크 → 이미지 정리. (web/admin 을 순차 빌드하는 건 4코어 공유 머신 배려 — 위 "머신 공유" 절 참고)
+
+Jenkins 없이 손으로 돌릴 때도 동일하다:
+
+```bash
+ENV_FILE=/etc/vchatbot/.env.stage bash deploy/jenkins/deploy-stage.sh        # 전체 (빌드→기동→헬스체크→정리)
+ENV_FILE=/etc/vchatbot/.env.stage bash deploy/jenkins/migrate.sh apply      # 마이그레이션만
+```
+
+## DB 마이그레이션 (deploy/jenkins/migrate.sh)
+
+`db/migrations/*.sql` 을 번호 순서로 적용하고, 적용 이력을 대상 DB 의 `schema_migrations` 테이블에 기록한다.
+데몬 머신에서 `.env.stage` 의 MYSQL_* 값으로 DB 머신에 원격 접속한다 (mysql 클라이언트가 없으면 docker mysql 이미지로 대체).
+
+- `migrate.sh status` — 적용/미적용 목록
+- `migrate.sh apply` — 미적용분만 적용 (Jenkins 파이프라인이 매 배포마다 실행; 없으면 그냥 통과)
+- `migrate.sh baseline` — **덤프 복원 직후 최초 1회**: 덤프에는 모든 변경이 이미 들어 있으므로, 전 파일을 실행 없이 "적용됨"으로만 기록해 기준점을 만든다. 이걸 빼먹으면 첫 apply 가 이미 반영된 ALTER 를 다시 실행하다 에러가 난다.
 
 ## VMessage 스테이지와 머신 공유 시 (4코어/16GB VM 기준)
 

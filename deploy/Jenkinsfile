@@ -1,0 +1,43 @@
+// 스테이지 배포 파이프라인 (데몬 머신 로컬 Jenkins)
+// Job 설정: Pipeline script from SCM → Script Path: deploy/Jenkinsfile
+// 전제: jenkins 유저가 docker 그룹, env 파일은 /etc/vchatbot/.env.stage
+pipeline {
+  agent any
+
+  options {
+    disableConcurrentBuilds()
+    timestamps()
+  }
+
+  environment {
+    ENV_FILE = '/etc/vchatbot/.env.stage'
+  }
+
+  stages {
+    stage('DB 마이그레이션') {
+      steps { sh 'bash deploy/jenkins/migrate.sh apply' }
+    }
+    // 4코어 공유 머신(VMessage 동거)이라 web → admin 순차 빌드
+    stage('빌드 web') {
+      steps { sh 'bash deploy/jenkins/deploy-stage.sh build-web' }
+    }
+    stage('빌드 admin') {
+      steps { sh 'bash deploy/jenkins/deploy-stage.sh build-admin' }
+    }
+    stage('기동') {
+      steps { sh 'bash deploy/jenkins/deploy-stage.sh up' }
+    }
+    stage('헬스체크') {
+      steps { sh 'bash deploy/jenkins/deploy-stage.sh health' }
+    }
+    stage('이미지 정리') {
+      steps { sh 'bash deploy/jenkins/deploy-stage.sh prune' }
+    }
+  }
+
+  post {
+    failure {
+      sh 'docker compose --env-file $ENV_FILE -f deploy/docker/docker-compose.stage.yml ps || true'
+    }
+  }
+}
