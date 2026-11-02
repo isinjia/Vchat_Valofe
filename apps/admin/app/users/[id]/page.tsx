@@ -44,7 +44,9 @@ const TYPE_LABEL: Record<string, string> = {
   ai_assist_spend: "AI 보조",
   illust_gen_spend: "일러스트 생성",
   video_gen_spend: "영상 생성",
+  gift_spend: "선물 아이템 사용",
   chat_fee_income: "채팅 수수료 수입",
+  gift_fee_income: "선물 수수료 수입",
   world_fee_income: "세계관 수수료 수입",
 };
 
@@ -57,6 +59,11 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const [tiers, setTiers] = useState<{ id: number; name: string; track: string }[]>([]);
   const [aiLevels, setAiLevels] = useState<{ id: number; level: number; name: string }[]>([]);
   const [err, setErr] = useState("");
+  // 아이템 사용 내역 (선물)
+  const [itemUses, setItemUses] = useState<{
+    recent: { id: number; item_name: string; price: number; affinity_applied: number; created_at: string; character_name: string | null; world_name: string | null }[];
+    summary: { item_name: string; cnt: number; total: number }[];
+  } | null>(null);
 
   const load = () =>
     fetch(`/api/users/${id}`)
@@ -71,6 +78,10 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     load();
     fetch("/api/tiers").then((r) => r.json()).then(setTiers);
     fetch("/api/ai-levels").then((r) => r.json()).then(setAiLevels);
+    fetch(`/api/users/${id}/item-uses`)
+      .then((r) => r.json())
+      .then((d) => setItemUses(d.error ? null : d))
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -204,6 +215,44 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             {recentTransactions.length === 0 && <tr><td colSpan={4} className="muted">거래 내역이 없습니다.</td></tr>}
           </tbody>
         </table>
+      </div>
+
+      <div className="panel">
+        <label>아이템 사용 정보 (선물)</label>
+        <table>
+          <thead><tr><th>아이템</th><th>사용 수</th><th>사용 금액</th></tr></thead>
+          <tbody>
+            {(itemUses?.summary ?? []).map((s) => (
+              <tr key={s.item_name}>
+                <td>{s.item_name}</td>
+                <td>{fmt(Number(s.cnt))}</td>
+                <td>{fmt(Number(s.total))}</td>
+              </tr>
+            ))}
+            {(!itemUses || itemUses.summary.length === 0) && (
+              <tr><td colSpan={3} className="muted">아이템 사용 내역이 없습니다.</td></tr>
+            )}
+          </tbody>
+        </table>
+        {itemUses && itemUses.recent.length > 0 && (
+          <>
+            <label style={{ marginTop: 12 }}>최근 사용 내역 (100건)</label>
+            <table>
+              <thead><tr><th>일시</th><th>아이템</th><th>대상 캐릭터</th><th>가격</th><th>호감도 적용</th></tr></thead>
+              <tbody>
+                {itemUses.recent.map((u) => (
+                  <tr key={u.id}>
+                    <td className="muted">{new Date(u.created_at).toLocaleString()}</td>
+                    <td>{u.item_name}</td>
+                    <td>{u.character_name ?? "-"}{u.world_name ? ` (${u.world_name})` : ""}</td>
+                    <td>{fmt(Number(u.price))}</td>
+                    <td>{signed(Number(u.affinity_applied))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
       </div>
 
       <div className="panel">

@@ -72,6 +72,12 @@ input[type="text"], input[type="number"], input[type="password"], input:not([typ
 }
 textarea { min-height: 90px; resize: vertical; }
 
+/* 설명 박스 (web .studio .notice 미러 — 밝은 테마 톤) */
+.notice {
+  background: #eef1f6; border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 8px;
+}
+
 /* 버튼 높이는 입력창(37px)과 통일 — 페이지마다 위아래 크기가 제각각이 되지 않게.
    nowrap/flex-shrink 로 좁은 행에서 글자가 두 줄이 되거나 찌그러지는 것 방지 */
 button {
@@ -275,3 +281,6 @@ div[style] > button { margin-top: 0; }
   font-size: 13px;
 }
 .login-foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: 18px; }
+
+/* 타이틀 컬러 페이지 틴트 (세계관/캐릭터 편집 상단 그라데이션) */
+.page-tinted { border-radius: 16px; padding: 14px; margin: -14px; }

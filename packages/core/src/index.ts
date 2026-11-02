@@ -28,4 +28,5 @@ export * from "./guest";
 export * from "./image-gen";
 export * from "./video-gen";
 export * from "./profile-sets";
+export * from "./gifts";
 export * from "./transfer";

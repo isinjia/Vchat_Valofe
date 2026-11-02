@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { browserLlmAvailability, streamBrowserLlm, type BrowserLlmAvailability } from "@/lib/browser-llm";
+import { tintBackground } from "@/lib/tint";
+import GiftModal, { type GiftUseResult } from "./GiftModal";
+import CoinIcon from "../../components/CoinIcon";
 
 interface Msg {
   role: "user" | "assistant";
@@ -152,7 +155,7 @@ function LevelPicker({
             <span className="lv-body">
               <span className="lv-row">
                 <b>기본 레벨</b>
-                {effective && <span className="lv-cost">🪙 {effective.cost.toLocaleString()}</span>}
+                {effective && <span className="lv-cost"><CoinIcon size={12} /> {effective.cost.toLocaleString()}</span>}
               </span>
               <span className="lv-desc">{effective ? `지금은 Lv.${effective.level} ${effective.name} 가 적용됩니다` : "운영 기본 설정을 따릅니다"}</span>
             </span>
@@ -172,7 +175,7 @@ function LevelPicker({
                 <span className="lv-row">
                   <b>{l.name}</b>
                   {l.kind === "browser" && <span className="lv-tag">내 PC</span>}
-                  <span className="lv-cost">🪙 {l.cost.toLocaleString()}</span>
+                  <span className="lv-cost"><CoinIcon size={12} /> {l.cost.toLocaleString()}</span>
                 </span>
                 {l.description && <span className="lv-desc">{l.description}</span>}
               </span>
@@ -203,6 +206,14 @@ interface Props {
   likeCount: number;
   /** 프로필 이미지: emotion 키('default', joy, sad, ...) -> 아바타 구성. 없으면 빈 객체 */
   profileMap: Record<string, ProfileVisual>;
+  /** 캐릭터(없으면 세계관) 타이틀 컬러 — 채팅 배경 톤 */
+  titleColor?: string | null;
+  /** 유저에게 보여줄 세계관 설명 */
+  worldDescription?: string | null;
+  /** 유저에게 보여줄 캐릭터 프로필 */
+  characterProfile?: string | null;
+  /** 대화 시작 상황 설정 (있으면 소개에 함께 표시) */
+  scenario?: string | null;
 }
 
 export default function ChatClient({
@@ -213,8 +224,13 @@ export default function ChatClient({
   illustMap,
   likeCount: initialLikeCount,
   profileMap,
+  titleColor,
+  worldDescription,
+  characterProfile,
+  scenario,
 }: Props) {
   const router = useRouter();
+  const [infoOpen, setInfoOpen] = useState(false); // 세계관/캐릭터 소개 모달
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [likeBusy, setLikeBusy] = useState(false);
@@ -258,6 +274,8 @@ export default function ChatClient({
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [coinBalance, setCoinBalance] = useState<number | null>(null);
+  const [chargeUrl, setChargeUrl] = useState<string>(""); // 코인 충전 페이지 (관리자 설정)
+  const [giftOpen, setGiftOpen] = useState(false); // 선물하기 모달
   // 최근 호감도 변화량 (3초간 표시 — 수치는 유저에게 노출하지 않음)
   const [affinityDelta, setAffinityDelta] = useState<number>(0);
   const deltaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -297,6 +315,11 @@ export default function ChatClient({
         router.replace("/login");
         return;
       }
+      // 입장 즉시 헤더에 코인 잔액 표시 (이후에는 채팅/선물 응답이 갱신)
+      me.json().then((d) => {
+        if (typeof d?.coins === "number") setCoinBalance(d.coins);
+        if (typeof d?.chargeUrl === "string") setChargeUrl(d.chargeUrl);
+      }).catch(() => {});
       const levelsPayload = await loadLevels();
       const res = await fetch(`/api/history?characterId=${characterId}`);
       if (res.status === 401) {
@@ -324,13 +347,36 @@ export default function ChatClient({
           emotion: h.emotion ?? null,
         }))
       );
-      if (history.length === 0) await startOpening(levelsPayload);
+      if (history.length === 0) {
+        // 첫 대화: 이 캐릭터/세계관을 모르는 유저를 위해 소개를 자동으로 띄운다 (StrictMode 중복 호출은 openingStarted 가드가 막음)
+        setInfoOpen(true);
+        await startOpening(levelsPayload);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [characterId]);
 
+  // 유저가 위로 스크롤해 읽는 중이면 자동 스크롤을 멈추고 '맨 아래로' 버튼을 띄운다
+  const [showJump, setShowJump] = useState(false);
+  const atBottomRef = useRef(true);
+  const onBodyScroll = () => {
+    const el = bodyRef.current;
+    if (!el) return;
+    const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const atBottom = dist < 80;
+    atBottomRef.current = atBottom;
+    setShowJump(!atBottom);
+  };
+  const jumpToBottom = () => {
+    const el = bodyRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    atBottomRef.current = true;
+    setShowJump(false);
+  };
+
   useEffect(() => {
-    bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
+    if (atBottomRef.current) bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
   }, [messages, streaming]);
 
   /** SSE 응답을 읽어 마지막 assistant 말풍선에 반영 (send / 오프닝 / 브라우저 반납 공용) */
@@ -418,6 +464,15 @@ export default function ChatClient({
           tierTimer.current = setTimeout(() => setTierToast(null), 6000);
         } else if (event.type === "error") {
           setError(event.message);
+          // 스트림이 거의 시작하자마자 끊긴 경우: 서버에 저장되지 않은 짧은 꼬리 말풍선을 지워
+          // 저장 상태와 화면을 일치시킨다 (길게 받다 끊긴 건 읽을 수 있게 남겨둔다)
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last?.role === "assistant" && last.content.trim().length < 10 && !last.illustrationUrl) {
+              return prev.slice(0, -1);
+            }
+            return prev;
+          });
         }
       }
     }
@@ -530,14 +585,14 @@ export default function ChatClient({
     await consumeSse(res.body);
   };
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (preset?: string, presetIllustUrl?: string | null) => {
+    const text = (preset ?? input).trim();
     if (!text || streaming) return;
-    setInput("");
+    if (!preset) setInput("");
     setError(null);
     setMessages((prev) => [
       ...prev,
-      { role: "user", content: text, createdAt: new Date() },
+      { role: "user", content: text, createdAt: new Date(), illustrationUrl: presetIllustUrl ?? null },
       { role: "assistant", content: "", createdAt: new Date() },
     ]);
     setStreaming(true);
@@ -607,13 +662,27 @@ export default function ChatClient({
 
   const browserUnavailable = browserMode && browserAvail === "unavailable";
 
+  /** 선물 사용 완료: 잔액/호감도 반영 + 캐릭터가 반응하도록 선물 메시지 자동 전송 (큰 이미지 연출 포함) */
+  const onGiftUsed = (r: GiftUseResult) => {
+    setCoinBalance(r.balance);
+    if (r.affinityDelta !== 0) {
+      setAffinityDelta(r.affinityDelta);
+      if (deltaTimer.current) clearTimeout(deltaTimer.current);
+      deltaTimer.current = setTimeout(() => setAffinityDelta(0), 4000);
+    }
+    send(`(${r.item.name}을(를) 선물로 건넨다)`, r.item.image_url ?? null);
+  };
+
+  // 타이틀 컬러를 어두운 배경에 블렌딩해 채팅 화면 전체 톤으로
+  const chatTint = tintBackground(titleColor, 0.12);
+
   return (
-    <div className="chat-page">
+    <div className="chat-page" style={chatTint ? { background: `linear-gradient(180deg, ${chatTint} 0, var(--bg) 85%)` } : undefined}>
       <header className="chat-header">
         <Link href="/" className="back">←</Link>
         {/* 헤더 아바타: 고급 프로필(기본 감정 기준) → 기본 프로필 → 기본 일러스트 */}
         {profileMap["default"] ? (
-          <AvatarStack visual={profileMap["default"]} fallbackUrl={avatarUrl} title={characterName} className="header-avatar" />
+          <AvatarStack visual={profileMap["default"]} fallbackUrl={avatarUrl} title={characterName} className="chat-avatar" />
         ) : avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={avatarUrl} alt={characterName} />
@@ -643,18 +712,49 @@ export default function ChatClient({
             >
               {liked ? "❤️" : "🤍"} {likeCount.toLocaleString()}
             </button>
+            <button
+              type="button"
+              className="like-btn"
+              onClick={() => setInfoOpen(true)}
+              title="세계관 · 캐릭터 소개"
+              style={{ marginLeft: 4 }}
+            >
+              ⓘ 소개
+            </button>
           </div>
           <div className="world">{worldName}</div>
         </div>
         {coinBalance !== null && (
-          <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--muted)" }}>
-            🪙 {coinBalance.toLocaleString()}
+          <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+            <CoinIcon /> {coinBalance.toLocaleString()}
+            {chargeUrl && (
+              <a
+                href={chargeUrl}
+                target="_blank"
+                rel="noreferrer"
+                title="코인 충전"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 20,
+                  height: 20,
+                  borderRadius: "50%",
+                  border: "1px solid var(--border)",
+                  color: "var(--accent)",
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                +
+              </a>
+            )}
           </div>
         )}
       </header>
 
       {tierToast && (
-        <div className="error-banner" style={{ background: "#1f3d2a", borderColor: "#2f7d4f", color: "#8fe0ae" }}>
+        <div className="error-banner ok">
           {tierToast}
         </div>
       )}
@@ -665,17 +765,17 @@ export default function ChatClient({
         </div>
       )}
       {browserMode && browserAvail === "downloadable" && (
-        <div className="error-banner" style={{ background: "#3d3a1f", borderColor: "#7d742f", color: "#e0d88f" }}>
+        <div className="error-banner warn">
           첫 사용 시 브라우저 AI 모델 다운로드가 필요합니다. 첫 메시지 전송 시 자동으로 받기 시작합니다.
         </div>
       )}
       {downloadPct !== null && (
-        <div className="error-banner" style={{ background: "#1f2f3d", borderColor: "#2f5a7d", color: "#8fc4e0" }}>
+        <div className="error-banner info">
           브라우저 AI 모델 다운로드 중... {downloadPct}%
         </div>
       )}
 
-      <div className="chat-body" ref={bodyRef}>
+      <div className="chat-body" ref={bodyRef} onScroll={onBodyScroll}>
         {messages.length === 0 &&
           (historyLoaded ? (
             <p className="empty">{characterName}에게 첫 인사를 건네보세요.</p>
@@ -715,8 +815,23 @@ export default function ChatClient({
 
       {streaming && <div className="typing">{characterName} 입력 중...</div>}
 
+      {showJump && (
+        <button type="button" className="jump-bottom" onClick={jumpToBottom} title="맨 아래로">
+          ⬇ 맨 아래로
+        </button>
+      )}
+
       <div className="chat-input">
         {levels && <LevelPicker levels={levels} disabled={streaming} onChange={changeLevel} />}
+        <button
+          type="button"
+          className="gift-btn"
+          title="선물하기"
+          onClick={() => setGiftOpen(true)}
+          disabled={streaming}
+        >
+          🎁
+        </button>
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -724,10 +839,69 @@ export default function ChatClient({
           placeholder="메시지를 입력하세요 (Enter 전송, Shift+Enter 줄바꿈)"
           rows={1}
         />
-        <button onClick={send} disabled={streaming || !input.trim() || browserUnavailable}>
+        <button className="send-btn" onClick={() => send()} disabled={streaming || !input.trim() || browserUnavailable}>
           전송
         </button>
       </div>
+
+      <GiftModal
+        open={giftOpen}
+        characterId={characterId}
+        characterName={characterName}
+        onClose={() => setGiftOpen(false)}
+        onUsed={onGiftUsed}
+      />
+
+      {/* 세계관/캐릭터 소개 — 처음 온 유저가 무슨 대화를 할지 감을 잡을 수 있게 */}
+      {infoOpen && (
+        <div className="modal-backdrop" onClick={() => setInfoOpen(false)}>
+          <div
+            className="modal chat-info-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={
+              titleColor && /^#[0-9a-fA-F]{6}$/.test(titleColor)
+                ? ({ "--world-color": titleColor } as React.CSSProperties)
+                : undefined
+            }
+          >
+            <div className="info-head">
+              {profileMap["default"] ? (
+                <AvatarStack visual={profileMap["default"]} fallbackUrl={avatarUrl} className="chat-avatar info-avatar" />
+              ) : avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt={characterName} className="chat-avatar info-avatar" />
+              ) : null}
+              <h3>{characterName}</h3>
+              <span className="info-world-tag">{worldName}</span>
+            </div>
+            <div className="info-section">
+              <div className="info-label">프로필</div>
+              {characterProfile?.trim() ? (
+                <p className="pre-wrap">{characterProfile}</p>
+              ) : (
+                <p>등록된 프로필이 없습니다.</p>
+              )}
+            </div>
+            {scenario?.trim() && (
+              <div className="info-section">
+                <div className="info-label">지금 상황</div>
+                <p className="pre-wrap">{scenario}</p>
+              </div>
+            )}
+            <div className="info-section">
+              <div className="info-label">세계관</div>
+              {worldDescription?.trim() ? (
+                <p className="pre-wrap">{worldDescription}</p>
+              ) : (
+                <p>등록된 세계관 설명이 없습니다.</p>
+              )}
+            </div>
+            <button type="button" className="info-close" onClick={() => setInfoOpen(false)}>
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

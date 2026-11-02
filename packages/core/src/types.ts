@@ -50,6 +50,12 @@ export interface CharacterPersona {
   scenario: string | null;
   /** 제작자가 쓴 첫 인사말 (없으면 AI 가 자동 생성) */
   greeting: string | null;
+  /** 호감도 구간별 반응 가이드 (JSON, 비면 전역 기본값 사용) — settings.AffinityPrompts */
+  affinity_prompts?: Record<string, string> | string | null;
+  /** 1=실시간 대응: 오래 비우면 장면을 끝내고 새 장면에서 재회. 0=TRPG 식 장면 지속 */
+  realtime_mode?: number;
+  /** 타이틀 컬러(#rrggbb) — 카드 테두리/채팅 배경 톤 (null = 세계관 색 따름) */
+  title_color?: string | null;
   is_active: number;
   owner_user_id: number | null;
   visibility: "private" | "open";

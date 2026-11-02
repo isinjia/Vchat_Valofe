@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { query, getBalance } from "@vchatbot/core";
+import { query, getBalance, getBillingSettings } from "@vchatbot/core";
 import { getUserId } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
@@ -30,5 +30,7 @@ export async function GET() {
     profileImage: rows[0].profile_image,
     tierName: rows[0].tier_name,
     tierIcon: rows[0].tier_icon,
+    /** 코인 충전 페이지 링크 (빈 값이면 충전 버튼 숨김) */
+    chargeUrl: (await getBillingSettings()).chargeUrl,
   });
 }

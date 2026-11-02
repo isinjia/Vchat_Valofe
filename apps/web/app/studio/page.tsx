@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import SiteHeader from "../components/SiteHeader";
 import { studioFetch, jsonInit } from "./studio-api";
 import WorldPickerModal, { type PickedWorld } from "./components/WorldPickerModal";
+import EarningsSection from "./EarningsSection";
 
 interface WorldRow {
   id: number;
@@ -30,8 +30,8 @@ function SanctionBadge({ until, reason }: { until?: string | null; reason?: stri
   const dt = new Date(until).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
   return (
     <span
-      className="badge"
-      style={{ color: "#e0b050", borderColor: "#e0a030", marginLeft: 4 }}
+      className="badge warn"
+      style={{ marginLeft: 4 }}
       title={`운영 제재로 ${dt} 까지 비공개 (신규 대화 시작 불가)${reason ? ` · 사유: ${reason}` : ""}`}
     >
       제재 중 ~{dt}
@@ -42,7 +42,7 @@ function SanctionBadge({ until, reason }: { until?: string | null; reason?: stri
 function DelBadge({ at }: { at?: string | null }) {
   if (!at) return null;
   return (
-    <span className="badge" style={{ color: "#e5484d", borderColor: "#e5484d", marginLeft: 4 }}>
+    <span className="badge danger" style={{ marginLeft: 4 }}>
       삭제 대기
     </span>
   );
@@ -165,7 +165,6 @@ export default function StudioPage() {
 
   return (
     <>
-    <SiteHeader />
     <div className="container studio">
       <div className="studio-top">
         <h2 className="page-title">
@@ -192,8 +191,7 @@ export default function StudioPage() {
               <div className="muted">캐릭터 {w.character_count}명</div>
             </div>
             <div>
-              <a href={`/api/studio/worlds/${w.id}/export`} download style={{ color: "var(--muted)", marginRight: 10 }}>내보내기</a>
-              <Link href={`/studio/worlds/${w.id}`} style={{ color: "var(--accent)" }}>편집</Link>
+              <Link href={`/studio/worlds/${w.id}`}><button type="button" className="small" style={{ marginTop: 0 }}>편집</button></Link>
             </div>
           </div>
         ))}
@@ -218,8 +216,7 @@ export default function StudioPage() {
               <div className="muted">{c.world_name}</div>
             </div>
             <div>
-              <a href={`/api/studio/characters/${c.id}/export`} download style={{ color: "var(--muted)", marginRight: 10 }}>내보내기</a>
-              <Link href={`/studio/characters/${c.id}`} style={{ color: "var(--accent)" }}>편집</Link>
+              <Link href={`/studio/characters/${c.id}`}><button type="button" className="small" style={{ marginTop: 0 }}>편집</button></Link>
             </div>
           </div>
         ))}
@@ -260,6 +257,8 @@ export default function StudioPage() {
           </div>
         </>
       )}
+
+      <EarningsSection />
     </div>
     <WorldPickerModal open={pickerOpen} onClose={() => { setPickerOpen(false); setPendingChar(null); }} onSelect={onPickWorld} />
     </>

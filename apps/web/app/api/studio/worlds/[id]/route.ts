@@ -23,6 +23,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const body = await req.json().catch(() => ({}));
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) return bad("name 은 필수입니다.");
+  const dup = await query("SELECT id FROM worlds WHERE name = ? AND id <> ? LIMIT 1", [name, Number(id)]);
+  if (dup.length > 0) return bad("이미 존재하는 세계관 이름입니다.", 409);
   // 타이틀 컬러: #rrggbb 형식만 허용, 그 외/빈 값은 NULL
   const titleColor =
     typeof body.title_color === "string" && /^#[0-9a-fA-F]{6}$/.test(body.title_color.trim())

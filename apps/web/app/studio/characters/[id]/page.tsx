@@ -14,6 +14,7 @@ import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenMo
 import AiGenFlow, { GenVideoPreview } from "../../components/AiGenFlow";
 import { buildImageDescription, buildProfileText } from "../../components/imagePrompt";
 import { WorldMini, type PickedWorld } from "../../components/WorldPickerModal";
+import { tintGradient } from "@/lib/tint";
 
 interface Character {
   id: number;
@@ -25,8 +26,16 @@ interface Character {
   ai_prompt: string;
   scenario: string | null;
   greeting: string | null;
+  /** 호감도 구간별 반응 가이드 — 비워둔 구간은 운영 기본값 사용 */
+  affinity_prompts?: Record<string, string> | null;
+  /** 전역 기본값 (placeholder 표시용, 서버가 내려줌) */
+  affinity_prompt_defaults?: Record<string, string>;
+  /** 1=실시간 대응 (오래 비우면 새 장면에서 재회), 0=TRPG 식 장면 지속 */
+  realtime_mode?: number;
   visibility: "private" | "open";
   title_image_url?: string | null;
+  /** 타이틀 컬러(#rrggbb) — 카드/채팅 배경 톤. null = 세계관 색 따름 */
+  title_color?: string | null;
   delete_scheduled_at?: string | null;
   /** 활성 제재(기간제 비공개) — 제작자 안내용 */
   sanction_until?: string | null;
@@ -37,6 +46,7 @@ interface WorldOpt {
   id: number;
   name: string;
   title_image_url?: string | null;
+  title_color?: string | null;
   owner_nickname?: string | null;
 }
 
@@ -132,6 +142,15 @@ const EMPTY_PANEL = {
 };
 
 type GenKind ="profile" | "personality" | "speech_style" | "scenario" | "greeting";
+
+/** 호감도 구간 (core/settings.AFFINITY_BANDS 와 일치 — client 컴포넌트라 하드코딩) */
+const AFFINITY_BAND_UI: [string, string][] = [
+  ["hostile", "적대 (-100 ~ -60)"],
+  ["cold", "냉담 (-59 ~ -20)"],
+  ["neutral", "중립 (-19 ~ 19)"],
+  ["friendly", "호감 (20 ~ 59)"],
+  ["devoted", "애정 (60 ~ 100)"],
+];
 
 export default function StudioCharacterEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -527,21 +546,28 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
       ? { id: curOpen.id, name: curOpen.name, title_image_url: curOpen.title_image_url ?? null, owner_nickname: curOpen.owner_nickname, mine: false }
       : { id: char.world_id, name: `현재 세계관 #${char.world_id}`, title_image_url: null, mine: false };
 
+  // 편집 화면 배경 톤: 캐릭터 타이틀 컬러 → 없으면 세계관 타이틀 컬러
+  const worldColor = curMine?.title_color ?? curOpen?.title_color ?? null;
+  const pageTint = tintGradient(char.title_color ?? worldColor);
+
   return (
-    <div className="container studio">
-      <h2 className="page-title">
+    <div className="container studio page-tinted" style={pageTint ? { background: pageTint } : undefined}>
+      <h2 className="page-title" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <Link href="/studio" className="back-link" title="스튜디오로">‹</Link> 캐릭터 편집: {char.name}
+        <a href={`/api/studio/characters/${id}/export`} download>
+          <button type="button" className="small btn-secondary" style={{ marginTop: 0 }}>JSON 내보내기</button>
+        </a>
       </h2>
 
       {char.delete_scheduled_at && (
-        <div className="notice" style={{ borderColor: "#e5484d", color: "#e5484d" }}>
+        <div className="notice danger">
           이 캐릭터는 {new Date(char.delete_scheduled_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 에 삭제됩니다.{" "}
           <button type="button" className="small" onClick={cancelDelete}>삭제 취소</button>
         </div>
       )}
 
       {char.sanction_until && (
-        <div className="notice" style={{ borderColor: "#e0a030", color: "#e0b050" }}>
+        <div className="notice warn">
           ⚠ 운영 제재로{" "}
           {new Date(char.sanction_until).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}{" "}
           까지 비공개 상태입니다 (신규 대화 시작 불가, 기존 대화는 유지).
@@ -589,6 +615,24 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
           </div>
         </div>
 
+        <label>타이틀 컬러</label>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
+          <input
+            type="color"
+            value={char.title_color ?? worldColor ?? "#7c8cf8"}
+            onChange={(e) => set({ title_color: e.target.value })}
+            style={{ width: 44, height: 32, padding: 2, cursor: "pointer" }}
+          />
+          <span className="muted" style={{ fontSize: 12 }}>
+            {char.title_color ?? `세계관 색 따름${worldColor ? ` (${worldColor})` : " (미지정)"}`} — 카드 테두리와 채팅 배경 톤에 쓰입니다.
+          </span>
+          {char.title_color && (
+            <button type="button" className="small ghost" onClick={() => set({ title_color: null })}>
+              세계관 색 따르기
+            </button>
+          )}
+        </div>
+
         <label>캐릭터 설정(프로필) <GenButton kind="profile" /></label>
         <textarea rows={5} value={char.profile} onChange={(e) => set({ profile: e.target.value })} placeholder="출신, 외모, 배경 스토리 등" />
 
@@ -606,6 +650,40 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
 
         <label>첫 인사말 (비우면 AI 가 자동 생성) <GenButton kind="greeting" /></label>
         <textarea rows={3} value={char.greeting ?? ""} onChange={(e) => set({ greeting: e.target.value })} placeholder="캐릭터가 대화 시작 시 먼저 건네는 말" />
+
+        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <input
+            type="checkbox"
+            checked={!!char.realtime_mode}
+            style={{ width: "auto", margin: 0 }}
+            onChange={(e) => set({ realtime_mode: e.target.checked ? 1 : 0 })}
+          />
+          실시간 대응
+        </label>
+        <div className="notice">
+          켜면 현실 시간 기준으로 간간이 만나 대화하는 느낌이 됩니다 — 마지막 대화에서 6시간 이상 지나면
+          이전 장면은 끝나고, 그 시각에 어울리는 새로운 장면에서 다시 만납니다. 끄면 TRPG처럼 현실 시간과
+          무관하게 같은 장면을 계속 이어가고, 장소 이동은 캐릭터가 제안해 유저가 응했을 때만 합니다.
+        </div>
+
+        <h3>호감도 반응 설정</h3>
+        <div className="notice">
+          유저와의 호감도 구간별로 이 캐릭터가 상대를 대하는 태도입니다. 비워둔 구간은 운영 기본값(회색으로
+          표시된 내용)이 그대로 적용됩니다.
+        </div>
+        {AFFINITY_BAND_UI.map(([key, label]) => (
+          <div key={key}>
+            <label>{label}</label>
+            <textarea
+              rows={2}
+              value={char.affinity_prompts?.[key] ?? ""}
+              placeholder={char.affinity_prompt_defaults?.[key] ?? ""}
+              onChange={(e) =>
+                set({ affinity_prompts: { ...(char.affinity_prompts ?? {}), [key]: e.target.value } })
+              }
+            />
+          </div>
+        ))}
 
         <label>공개 여부</label>
         <select value={char.visibility} onChange={(e) => set({ visibility: e.target.value as "private" | "open" })}>

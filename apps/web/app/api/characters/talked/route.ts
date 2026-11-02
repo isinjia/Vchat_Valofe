@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   }
 
   const rows = await query<{ id: number } & Record<string, unknown>>(
-    `SELECT c.id, c.name, c.world_id, w.name AS world_name, w.title_color, c.title_image_url, c.like_count,
+    `SELECT c.id, c.name, c.world_id, w.name AS world_name, COALESCE(c.title_color, w.title_color) AS title_color, c.title_image_url, c.like_count,
             uo.nickname AS owner_name,
             (SELECT url FROM illustrations i
              WHERE i.character_id = c.id AND i.kind = 'basic'

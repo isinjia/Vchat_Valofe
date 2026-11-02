@@ -3,6 +3,7 @@ node_modules/
 dist/
 .env
 .env.local
+.env.stage
 *.log
 .DS_Store
 uploads/
@@ -18,3 +19,5 @@ tsconfig.tsbuildinfo
 apps/*/tsconfig.tsbuildinfo
 # 로컬 LLM 워커 토큰 (큐-워커 공유 비밀)
 services/.worker-token
+# 스테이지 백업 산출물
+deploy/backup/out/

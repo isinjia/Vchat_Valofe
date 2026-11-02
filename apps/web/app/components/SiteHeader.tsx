@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import CoinIcon from "./CoinIcon";
 
 interface Me {
   nickname: string;
@@ -10,6 +11,8 @@ interface Me {
   profileImage: string | null;
   tierName: string | null;
   tierIcon: string | null;
+  /** 코인 충전 페이지 링크 (관리자 설정, 빈 값이면 준비 중 모달) */
+  chargeUrl: string;
 }
 
 interface Notice {
@@ -28,6 +31,26 @@ export default function SiteHeader() {
   const [chargeOpen, setChargeOpen] = useState(false);
   const [notices, setNotices] = useState<Notice[]>([]);
   const menuRef = useRef<HTMLDivElement>(null);
+  // 낮/밤 스킨 (localStorage 저장, layout 의 초기 스크립트가 첫 페인트 전에 적용)
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("vc-theme") === "light") setTheme("light");
+    } catch {
+      // 무시
+    }
+  }, []);
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    try {
+      localStorage.setItem("vc-theme", next);
+    } catch {
+      // 무시
+    }
+    if (next === "light") document.documentElement.setAttribute("data-theme", "light");
+    else document.documentElement.removeAttribute("data-theme");
+  };
 
   // 로그인 상태 조회 (401 → 비로그인)
   useEffect(() => {
@@ -41,6 +64,7 @@ export default function SiteHeader() {
           profileImage: d.profileImage ?? null,
           tierName: d.tierName ?? null,
           tierIcon: d.tierIcon ?? null,
+          chargeUrl: typeof d.chargeUrl === "string" ? d.chargeUrl : "",
         });
         // 안 읽은 알림(등급 승급 등) → 토스트로 보여주고 읽음 처리
         try {
@@ -96,6 +120,11 @@ export default function SiteHeader() {
 
   function openCharge() {
     setMenuOpen(false);
+    // 관리자 설정에 충전 링크가 있으면 그 페이지로, 없으면 안내 모달
+    if (me?.chargeUrl) {
+      window.open(me.chargeUrl, "_blank", "noopener");
+      return;
+    }
     setChargeOpen(true);
   }
 
@@ -106,6 +135,14 @@ export default function SiteHeader() {
           VChatBot
         </Link>
         <div className="header-right">
+          <button
+            className="header-btn"
+            onClick={toggleTheme}
+            title={theme === "light" ? "밤 스킨으로" : "낮 스킨으로"}
+            aria-label="낮/밤 스킨 전환"
+          >
+            {theme === "light" ? "🌙" : "☀"}
+          </button>
           {ready && me && (
             <>
               {me.tierName && (
@@ -123,7 +160,7 @@ export default function SiteHeader() {
                   {me.tierName}
                 </span>
               )}
-              <span className="header-coins">🪙 {me.coins.toLocaleString()}</span>
+              <span className="header-coins"><CoinIcon /> {me.coins.toLocaleString()}</span>
               <button className="header-btn" onClick={openCharge}>
                 충전
               </button>

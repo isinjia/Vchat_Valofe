@@ -172,7 +172,7 @@ export default function WorldIllustrationsSection({
             AI 생성{genCost != null ? ` (-${genCost.toLocaleString()}코인)` : ""}
           </button>
         </div>
-        {msg && <p style={{ color: "#ff6b6b", fontSize: 13 }}>{msg}</p>}
+        {msg && <p className="err-text" style={{ fontSize: 13 }}>{msg}</p>}
 
         <table style={{ marginTop: 14 }}>
           <thead>

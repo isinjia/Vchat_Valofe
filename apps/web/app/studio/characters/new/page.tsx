@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { studioFetch, jsonInit } from "../../studio-api";
 import WorldPickerModal, { WorldMini, type PickedWorld } from "../../components/WorldPickerModal";
@@ -17,9 +17,11 @@ export default function NewCharacterPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   // 인명사전 한정 공유 세계관: 아직 캐릭터가 연결되지 않은 인물 목록 (만들 수 있는 이름)
   const [freePersons, setFreePersons] = useState<{ id: number; title: string }[] | null>(null);
+  const [personQ, setPersonQ] = useState("");
 
   useEffect(() => {
     setFreePersons(null);
+    setPersonQ("");
     if (!world || world.mine || world.open_scope !== "dict_person") return;
     let alive = true;
     studioFetch(`/api/studio/open-worlds/${world.id}/persons`)
@@ -51,6 +53,7 @@ export default function NewCharacterPage() {
           id: hit.id,
           name: hit.name,
           title_image_url: hit.title_image_url ?? null,
+          title_color: hit.title_color ?? null,
           owner_nickname: hit.owner_nickname ?? null,
           open_scope: m ? "all" : hit.open_scope ?? "all",
           mine: !!m,
@@ -109,25 +112,51 @@ export default function NewCharacterPage() {
 
         <label>캐릭터 이름</label>
         <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} />
+        {available === true && <div className="muted ok-text">✓ 사용 가능</div>}
+        {available === false && <div className="muted err-text">✗ 이미 사용 중인 이름입니다</div>}
+        {createError && <div className="muted err-text">{createError}</div>}
+        <button onClick={create} disabled={busy || !world || !name.trim() || available === false}>{busy ? "생성 중..." : "만들기"}</button>
+
         {world && !world.mine && world.open_scope === "dict_person" && (
           <>
+            <h3>인명사전</h3>
             <div className="notice">
               이 세계관은 인명사전에 있는 인물 이름으로만 만들 수 있습니다. 아래에서 아직 캐릭터가 없는 인물을
               골라 시작하세요.
             </div>
             {freePersons && freePersons.length > 0 && (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
-                {freePersons.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    className={`small${name.trim() === p.title ? "" : " btn-secondary"}`}
-                    style={{ margin: 0 }}
-                    onClick={() => setName(p.title)}
-                  >
-                    {p.title}
-                  </button>
-                ))}
+              <div
+                className="dict-person-box"
+                style={
+                  // 월드픽커 카드와 동일하게 세계관 타이틀 컬러를 CSS 변수로 — 칩 호버/선택 색에 쓴다
+                  world.title_color && /^#[0-9a-fA-F]{6}$/.test(world.title_color)
+                    ? ({ "--world-color": world.title_color } as CSSProperties)
+                    : undefined
+                }
+              >
+                <input
+                  value={personQ}
+                  onChange={(e) => setPersonQ(e.target.value)}
+                  placeholder="인물 이름 검색"
+                />
+                <div className="dict-person-list">
+                  {freePersons
+                    .filter((p) => !personQ.trim() || p.title.toLowerCase().includes(personQ.trim().toLowerCase()))
+                    .map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`dict-person-chip${name.trim() === p.title ? " sel" : ""}`}
+                        onClick={() => setName(p.title)}
+                      >
+                        {p.title}
+                      </button>
+                    ))}
+                  {personQ.trim() &&
+                    !freePersons.some((p) => p.title.toLowerCase().includes(personQ.trim().toLowerCase())) && (
+                      <div className="muted">검색 결과가 없습니다.</div>
+                    )}
+                </div>
               </div>
             )}
             {freePersons && freePersons.length === 0 && (
@@ -137,10 +166,6 @@ export default function NewCharacterPage() {
             )}
           </>
         )}
-        {available === true && <div className="muted" style={{ color: "#7fd8a4" }}>✓ 사용 가능</div>}
-        {available === false && <div className="muted" style={{ color: "#e06c75" }}>✗ 이미 사용 중인 이름입니다</div>}
-        {createError && <div className="muted" style={{ color: "#e06c75" }}>{createError}</div>}
-        <button onClick={create} disabled={busy || !world || !name.trim() || available === false}>{busy ? "생성 중..." : "만들기"}</button>
       </div>
     </div>
   );

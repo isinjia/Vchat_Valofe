@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query, execute, invalidateChatContext, scheduleDeletion, cancelDeletion } from "@vchatbot/core";
+import {
+  query,
+  execute,
+  invalidateChatContext,
+  scheduleDeletion,
+  cancelDeletion,
+  getAffinityPromptDefaults,
+  parseAffinityPrompts,
+} from "@vchatbot/core";
 import { requireUser, ownedCharacter, bad, visibilityOf } from "@/lib/studio";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +29,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
   );
   return NextResponse.json({
     ...own.row,
+    affinity_prompts: parseAffinityPrompts(own.row.affinity_prompts),
+    // 비어 있는 구간의 placeholder 로 보여줄 전역 기본값 (관리자 설정 반영)
+    affinity_prompt_defaults: await getAffinityPromptDefaults(),
     sanction_until: sanction[0]?.ends_at ?? null,
     sanction_reason: sanction[0]?.reason ?? null,
   });
@@ -47,11 +58,16 @@ export async function PUT(req: NextRequest, { params }: Params) {
     if (dup.length > 0) return bad("이 세계관에 같은 이름의 캐릭터가 이미 있습니다.");
   }
   const s = (v: unknown) => String(v ?? "");
+  // 타이틀 컬러: #rrggbb 또는 null (null = 세계관 색 따름)
+  const titleColor =
+    typeof b.title_color === "string" && /^#[0-9a-fA-F]{6}$/.test(b.title_color) ? b.title_color : null;
+  // 호감도 구간별 반응: 알려진 구간 키의 비어있지 않은 텍스트만 저장, 전부 비면 NULL (기본값 사용)
+  const affinityPrompts = parseAffinityPrompts(b.affinity_prompts);
   try {
   await execute(
     `UPDATE characters
      SET name = ?, profile = ?, personality = ?, speech_style = ?, ai_prompt = ?,
-         scenario = ?, greeting = ?, visibility = ?
+         scenario = ?, greeting = ?, affinity_prompts = ?, realtime_mode = ?, visibility = ?, title_color = ?
      WHERE id = ? AND owner_user_id = ?`,
     [
       name,
@@ -61,7 +77,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
       s(b.ai_prompt),
       s(b.scenario).trim() ? s(b.scenario) : null,
       s(b.greeting).trim() ? s(b.greeting) : null,
+      affinityPrompts ? JSON.stringify(affinityPrompts) : null,
+      b.realtime_mode ? 1 : 0,
       visibilityOf(b.visibility),
+      titleColor,
       Number(id),
       auth.userId,
     ]

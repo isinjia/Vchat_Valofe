@@ -329,12 +329,17 @@ export default function AnniversarySection({ worldId }: { worldId: string }) {
                 type="button"
                 className="btn-secondary small"
                 disabled={importing}
-                onClick={() => {
-                  const all = new Set(presets.filter((p) => !loaded.has(p.id)).map((p) => p.id));
-                  setChecked(checked.size === all.size ? new Set() : all);
-                }}
+                onClick={() => setChecked(new Set(presets.filter((p) => !loaded.has(p.id)).map((p) => p.id)))}
               >
-                전체 선택/해제
+                전체 선택
+              </button>
+              <button
+                type="button"
+                className="btn-secondary small"
+                disabled={importing || checked.size === 0}
+                onClick={() => setChecked(new Set())}
+              >
+                전체 해제
               </button>
               <span style={{ flex: 1 }} />
               <button type="button" className="btn-secondary" onClick={() => setPresetOpen(false)} disabled={importing}>

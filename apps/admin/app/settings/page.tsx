@@ -20,7 +20,8 @@ interface Settings {
   };
   scoring: { scoringProviderId: number | null; timeoutMs: number };
   /** 비율은 화면에서 % (0~100) 로 편집, 저장 시 0~1 */
-  fees: { creatorRate: number; worldRate: number };
+  fees: { creatorRate: number; worldRate: number; giftRate: number };
+  billing: { chargeUrl: string };
   pricing: {
     aiAssistCost: number;
     illustGenCost: number;
@@ -30,7 +31,26 @@ interface Settings {
   };
   /** apiKey 는 서버가 마스킹해서 내려주며, 수정하지 않으면 그대로 전송(서버가 기존 값 유지) */
   image_gen: { enabled: boolean; baseUrl: string; apiKey: string; model: string; size: string };
+  /** 호감도 구간별 반응 가이드 기본값 (캐릭터별 설정이 없을 때 사용) */
+  affinity_prompts: Record<string, string>;
+  /** VMsgCenter(VMessage 런처 메신저) 챗봇 연동. secret 은 마스킹 표시 — 그대로 두면 유지 */
+  vmsg: {
+    enabled: boolean;
+    apiBase: string;
+    /** 화면에서는 텍스트로 편집, 저장 시 서버가 쉼표/줄바꿈으로 분할 */
+    allowedIpsText: string;
+    bots: { botClientId: string; clientSecret: string; characterId: number; enabled: boolean }[];
+  };
 }
+
+/** 호감도 구간 목록 (client 컴포넌트라 core 에서 import 하지 않고 하드코딩 — core/settings.AFFINITY_BANDS 와 일치) */
+const AFFINITY_BAND_UI: [string, string][] = [
+  ["hostile", "적대 (-100 ~ -60)"],
+  ["cold", "냉담 (-59 ~ -20)"],
+  ["neutral", "중립 (-19 ~ 19)"],
+  ["friendly", "호감 (20 ~ 59)"],
+  ["devoted", "애정 (60 ~ 100)"],
+];
 
 /** AI 보조 기능(kind) 목록 + 라벨 (client 컴포넌트라 core 에서 import 하지 않고 하드코딩) */
 const AI_KINDS: [string, string][] = [
@@ -51,9 +71,12 @@ const EMPTY: Settings = {
   },
   llm: { model: "claude-opus-5-5", maxTokens: 4096, historyLimit: 30, assistProviderId: null, fallbackProviderId: null },
   scoring: { scoringProviderId: null, timeoutMs: 10000 },
-  fees: { creatorRate: 30, worldRate: 20 },
+  fees: { creatorRate: 30, worldRate: 20, giftRate: 30 },
+  billing: { chargeUrl: "" },
   pricing: { aiAssistCost: 50, illustGenCost: 500, videoGenCost: 2000, aiAssist: {}, byok: { enabled: true, cost: 10 } },
   image_gen: { enabled: false, baseUrl: "https://api.openai.com/v1", apiKey: "", model: "gpt-image-1", size: "1024x1536" },
+  affinity_prompts: {},
+  vmsg: { enabled: false, apiBase: "", allowedIpsText: "", bots: [] },
 };
 
 export default function SettingsPage() {
@@ -61,11 +84,17 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [providers, setProviders] = useState<{ id: number; name: string; model: string; is_active: number | boolean }[]>([]);
 
+  const [chars, setChars] = useState<{ id: number; name: string; world_name: string }[]>([]);
+
   useEffect(() => {
     fetch("/api/llm")
       .then((r) => r.json())
       .then((d) => setProviders(Array.isArray(d) ? d : []))
       .catch(() => setProviders([]));
+    fetch("/api/characters")
+      .then((r) => r.json())
+      .then((d) => setChars(Array.isArray(d) ? d : []))
+      .catch(() => setChars([]));
   }, []);
 
   useEffect(() => {
@@ -86,7 +115,9 @@ export default function SettingsPage() {
           fees: {
             creatorRate: Math.round((data.fees?.creatorRate ?? 0.3) * 1000) / 10,
             worldRate: Math.round((data.fees?.worldRate ?? 0.2) * 1000) / 10,
+            giftRate: Math.round((data.fees?.giftRate ?? 0.3) * 1000) / 10,
           },
+          billing: { chargeUrl: data.billing?.chargeUrl ?? "" },
           pricing: (() => {
             const p = { ...EMPTY.pricing, ...(data.pricing ?? {}) };
             const aiAssist: Settings["pricing"]["aiAssist"] = {};
@@ -96,6 +127,13 @@ export default function SettingsPage() {
             return { ...p, aiAssist, byok: { ...EMPTY.pricing.byok, ...(data.pricing?.byok ?? {}) } };
           })(),
           image_gen: { ...EMPTY.image_gen, ...(data.image_gen ?? {}) },
+          affinity_prompts: data.affinity_prompts ?? {},
+          vmsg: {
+            enabled: !!data.vmsg?.enabled,
+            apiBase: data.vmsg?.apiBase ?? "",
+            allowedIpsText: Array.isArray(data.vmsg?.allowedIps) ? data.vmsg.allowedIps.join("\n") : "",
+            bots: Array.isArray(data.vmsg?.bots) ? data.vmsg.bots : [],
+          },
         });
       });
   }, []);
@@ -106,7 +144,13 @@ export default function SettingsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...s,
-        fees: { creatorRate: s.fees.creatorRate / 100, worldRate: s.fees.worldRate / 100 },
+        fees: { creatorRate: s.fees.creatorRate / 100, worldRate: s.fees.worldRate / 100, giftRate: s.fees.giftRate / 100 },
+        vmsg: {
+          enabled: s.vmsg.enabled,
+          apiBase: s.vmsg.apiBase,
+          allowedIps: s.vmsg.allowedIpsText,
+          bots: s.vmsg.bots,
+        },
       }),
     });
     setSaved(true);
@@ -314,6 +358,24 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      <h3>호감도 반응 기본값</h3>
+      <div className="panel">
+        <div className="notice">
+          호감도 구간별로 캐릭터가 유저를 대하는 태도의 기본 가이드입니다. 캐릭터별 설정(스튜디오)이 비어 있으면
+          이 값이 채팅 프롬프트에 들어갑니다. 비워두고 저장하면 해당 구간은 내장 기본값으로 돌아갑니다.
+        </div>
+        {AFFINITY_BAND_UI.map(([key, label]) => (
+          <div key={key}>
+            <label>{label}</label>
+            <textarea
+              rows={2}
+              value={s.affinity_prompts[key] ?? ""}
+              onChange={(e) => setS({ ...s, affinity_prompts: { ...s.affinity_prompts, [key]: e.target.value } })}
+            />
+          </div>
+        ))}
+      </div>
+
       <h3>수수료 / 가격</h3>
       <div className="panel">
         <div className="row">
@@ -326,6 +388,18 @@ export default function SettingsPage() {
             <label>세계관 소유자 분배율 (% — 제작자 몫 중 세계관 소유자 몫)</label>
             <input type="number" min={0} max={100} value={s.fees.worldRate}
               onChange={(e) => setS({ ...s, fees: { ...s.fees, worldRate: Number(e.target.value) } })} />
+          </div>
+          <div>
+            <label>아이템 판매 수수료율 (% — 선물 판매액 중 캐릭터 제작자 몫)</label>
+            <input type="number" min={0} max={100} value={s.fees.giftRate}
+              onChange={(e) => setS({ ...s, fees: { ...s.fees, giftRate: Number(e.target.value) } })} />
+          </div>
+        </div>
+        <div className="row">
+          <div>
+            <label>코인 충전 페이지 링크 (비우면 충전 버튼은 준비 중 안내)</label>
+            <input type="text" value={s.billing.chargeUrl} placeholder="https://..."
+              onChange={(e) => setS({ ...s, billing: { chargeUrl: e.target.value } })} />
           </div>
         </div>
         <div className="row">
@@ -394,6 +468,101 @@ export default function SettingsPage() {
             <input type="number" min={0} value={s.pricing.byok.cost}
               onChange={(e) => setS({ ...s, pricing: { ...s.pricing, byok: { ...s.pricing.byok, cost: Number(e.target.value) } } })} />
           </div>
+        </div>
+      </div>
+
+      <h3>VMsgCenter 연동</h3>
+      <div className="panel">
+        <div className="notice">
+          VMessage 런처 메신저의 챗봇과 연동합니다. 챗봇 1개 = 캐릭터 1명이며, Client ID/Secret 은 VMessage
+          관리자 화면의 챗봇 메뉴에서 발급합니다 (Secret 은 발급 시 한 번만 표시). 발급 후 VMessage 쪽에
+          콜백 주소로 <code>https://&lt;채팅서버&gt;/api/vmsg/callback</code> 을 등록하세요. 메신저 대화도
+          웹 채팅과 동일하게 해당 유저의 코인에서 차감되며, 서비스에서 먼저 시작한 대화만 이어갈 수 있습니다.
+        </div>
+        <label>
+          <input type="checkbox" checked={s.vmsg.enabled} style={{ width: "auto", marginRight: 6 }}
+            onChange={(e) => setS({ ...s, vmsg: { ...s.vmsg, enabled: e.target.checked } })} />
+          연동 사용
+        </label>
+        <div className="row">
+          <div>
+            <label>VMessage API 서버 주소</label>
+            <input value={s.vmsg.apiBase} placeholder="https://vmsg.example.com:4000"
+              onChange={(e) => setS({ ...s, vmsg: { ...s.vmsg, apiBase: e.target.value } })} />
+            <p className="muted">답장 발송(/bot/v1/messages)에 사용하는 VMessage 메신저 웹 서버 주소</p>
+          </div>
+          <div>
+            <label>콜백 허용 IP (쉼표/줄바꿈 구분)</label>
+            <textarea rows={2} value={s.vmsg.allowedIpsText} placeholder="1.2.3.4&#10;5.6.7.8"
+              onChange={(e) => setS({ ...s, vmsg: { ...s.vmsg, allowedIpsText: e.target.value } })} />
+            <p className="muted">비우면 IP 제한 없음. 비워도 HMAC 서명 검증은 항상 수행됩니다 (프록시 뒤라면 X-Forwarded-For 기준)</p>
+          </div>
+        </div>
+
+        <label style={{ marginTop: 12 }}>챗봇 목록</label>
+        <table>
+          <thead>
+            <tr>
+              <th>Client ID</th>
+              <th>Client Secret</th>
+              <th>캐릭터</th>
+              <th>사용</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {s.vmsg.bots.map((b, i) => {
+              const setBot = (patch: Partial<typeof b>) =>
+                setS({ ...s, vmsg: { ...s.vmsg, bots: s.vmsg.bots.map((x, j) => (j === i ? { ...x, ...patch } : x)) } });
+              return (
+                <tr key={i}>
+                  <td>
+                    <input value={b.botClientId} placeholder="vbot_..."
+                      onChange={(e) => setBot({ botClientId: e.target.value })} />
+                  </td>
+                  <td>
+                    <input type="password" value={b.clientSecret} autoComplete="new-password"
+                      placeholder="저장됨 — 그대로 두면 유지"
+                      onChange={(e) => setBot({ clientSecret: e.target.value })} />
+                  </td>
+                  <td>
+                    <select value={b.characterId || ""}
+                      onChange={(e) => setBot({ characterId: Number(e.target.value) || 0 })}>
+                      <option value="">캐릭터 선택</option>
+                      {chars.map((c) => (
+                        <option key={c.id} value={c.id}>{c.world_name} / {c.name} (#{c.id})</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <input type="checkbox" checked={b.enabled} style={{ width: "auto" }}
+                      onChange={(e) => setBot({ enabled: e.target.checked })} />
+                  </td>
+                  <td>
+                    <button type="button" className="danger"
+                      onClick={() => setS({ ...s, vmsg: { ...s.vmsg, bots: s.vmsg.bots.filter((_, j) => j !== i) } })}>
+                      삭제
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {s.vmsg.bots.length === 0 && (
+              <tr><td colSpan={5} className="muted">등록된 챗봇이 없습니다.</td></tr>
+            )}
+          </tbody>
+        </table>
+        <div style={{ marginTop: 8 }}>
+          <button type="button"
+            onClick={() => setS({
+              ...s,
+              vmsg: {
+                ...s.vmsg,
+                bots: [...s.vmsg.bots, { botClientId: "", clientSecret: "", characterId: 0, enabled: true }],
+              },
+            })}>
+            + 챗봇 추가
+          </button>
         </div>
       </div>
 

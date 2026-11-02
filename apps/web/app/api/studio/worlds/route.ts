@@ -25,6 +25,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) return bad("name 은 필수입니다.");
+  const dup = await query("SELECT id FROM worlds WHERE name = ? LIMIT 1", [name]);
+  if (dup.length > 0) return bad("이미 존재하는 세계관 이름입니다.", 409);
   const result = await execute(
     `INSERT INTO worlds (name, description, ai_prompt, owner_user_id, visibility, status, is_active)
      VALUES (?, ?, ?, ?, 'private', 'active', 1)`,

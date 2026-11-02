@@ -127,7 +127,38 @@ export function formatTimeBlock(now: Date = new Date(), lastMessageAt?: Date | s
   return `${line}\n(시간대와 공백에 어울리게 반응하되, 시간이나 날짜를 매번 입에 올리지는 마라)`;
 }
 
-const INVISIBLE_CHARS = /[​-‏‪-‮⁠-⁤﻿­]/g;
+/** 실시간 대응 캐릭터: 마지막 대화에서 이 시간 이상 지나면 장면을 끝내고 새 장면에서 시작 */
+export const SCENE_BREAK_HOURS = 6;
+
+/**
+ * [장면] 블록 — 장소/상황 일관성 유지용.
+ * - sceneBreak(실시간 모드 + 오랜 공백): 지난 장면을 끝내고 새 장면에서 재회하도록 지시
+ * - 그 외: 장면 메모(자유 텍스트)를 주고 장소·상황을 유지하게 한다.
+ *   realtime=false(TRPG 모드)면 현실 시간 경과와 무관하게 장면이 이어지고,
+ *   장소 이동은 캐릭터가 제안해 유저가 응했을 때만 하도록 지시한다.
+ */
+export function formatSceneBlock(opts: {
+  /** 현재 장면 한 줄 (자유 텍스트). 없으면 사전 장소명이라도 */
+  scene?: string | null;
+  placeTitle?: string | null;
+  realtime: boolean;
+  sceneBreak?: boolean;
+}): string | null {
+  if (opts.sceneBreak) {
+    return (
+      `[장면 전환] 지난 대화의 장면은 그 사이에 자연스럽게 끝났다. 지금 시각과 요일에 어울리는 새로운 장면에서 다시 만난 것으로 시작하라. ` +
+      `장소와 상황을 새로 잡아 첫 응답에 가볍게 드러내고, 지난 장면의 일은 기억하되 그 장면을 그대로 이어가지는 마라.`
+    );
+  }
+  const desc = opts.scene?.trim() || (opts.placeTitle ? `${opts.placeTitle}에서 대화 중` : "");
+  if (!desc) return null;
+  const move = opts.realtime
+    ? ""
+    : " 현실 시간이 얼마나 지났든 이 장면은 이어진다. 장소를 옮기고 싶으면 대화로 먼저 제안하고, 유저가 응했을 때만 이동하라.";
+  return `[장면] ${desc}. 응답은 이 장소·상황과 어긋나지 않게 하라.${move}`;
+}
+
+const INVISIBLE_CHARS =/[​-‏‪-‮⁠-⁤﻿­]/g;
 const ROLE_TAG_PATTERN = /(<\|\s*[a-z_]+\s*\|>|<\/?\s*(system|assistant|user|instructions?)\s*>|\[\/?\s*(system|inst|시스템)\s*\])/gi;
 // 서버 블록 제목 흉내([참고 설정], [시스템 지시: ...] 등) → 소괄호로 바꿔 진짜 블록과 구별
 const BLOCK_HEADER_LIKE =
@@ -186,6 +217,8 @@ export function formatStateBlock(s: {
   relationship?: "none" | "lover" | "engaged" | "married";
   /** 캐릭터가 유저를 부르기로 한 호칭 */
   callName?: string | null;
+  /** 현재 호감도 구간의 반응 가이드 (캐릭터별 설정 → 전역 기본값으로 해석된 문장) */
+  affinityGuide?: string | null;
 }): string {
   const parts: string[] = [];
   if (s.facts.length > 0) {
@@ -202,8 +235,9 @@ export function formatStateBlock(s: {
             ? " 유저와 당신은 부부다."
             : "";
     const call = s.callName ? ` 유저를 "${s.callName}" 라고 부르기로 했다 — 그 호칭을 자연스럽게 사용하라.` : "";
+    const guide = s.affinityGuide?.trim() ? ` 지금 유저를 대하는 태도: ${s.affinityGuide.trim()}` : "";
     parts.push(
-      `[관계 상태] 호감도 ${s.affinity}/100 (-100 적대 ~ +100 깊은 유대). 말투와 태도에만 반영하고 수치 자체는 입에 올리지 마라.${rel}${call}`
+      `[관계 상태] 호감도 ${s.affinity}/100 (-100 적대 ~ +100 깊은 유대). 말투와 태도에만 반영하고 수치 자체는 입에 올리지 마라.${guide}${rel}${call}`
     );
   }
   if (s.characterMemories.length > 0) {

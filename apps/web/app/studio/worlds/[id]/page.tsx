@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useEffect, useState, use } from "react";
 import AnniversarySection from "./AnniversarySection";
 import WorldIllustrationsSection from "./WorldIllustrationsSection";
+import WorldItemsSection from "./WorldItemsSection";
 import DictionaryBrowser from "../../components/DictionaryBrowser";
 import ImageCropModal from "../../components/ImageCropModal";
 import { type ImageGenPayload } from "../../components/ImageGenModal";
 import AiGenFlow from "../../components/AiGenFlow";
 import { useRouter } from "next/navigation";
 import { studioFetch, jsonInit, aiCostLabel, type PricingInfo } from "../../studio-api";
+import { tintGradient } from "@/lib/tint";
 
 interface World {
   id: number;
@@ -100,11 +102,7 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, reloadKey]);
 
-  if (error) return <div className="container studio"><p className="empty">{error}</p></div>;
-  if (!world) return <div className="container studio"><p className="muted-center">로딩 중...</p></div>;
-
-  const costLabel = (kind: string) => aiCostLabel(pricing, kind);
-
+  // 훅은 아래 조기 return 보다 먼저 와야 한다 (렌더마다 훅 수가 달라지면 안 됨)
   useEffect(() => {
     if (!genOpen || genAssets) return;
     Promise.all([
@@ -118,6 +116,11 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [genOpen]);
+
+  if (error) return <div className="container studio"><p className="empty">{error}</p></div>;
+  if (!world) return <div className="container studio"><p className="muted-center">로딩 중...</p></div>;
+
+  const costLabel = (kind: string) => aiCostLabel(pricing, kind);
 
   const save = async () => {
     const res = await studioFetch(`/api/studio/worlds/${id}`, jsonInit("PUT", world));
@@ -227,14 +230,20 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
     setReloadKey((n) => n + 1);
   };
 
+  // 타이틀 컬러가 있으면 편집 화면 상단을 그 톤으로 물들인다
+  const pageTint = tintGradient(world.title_color);
+
   return (
-    <div className="container studio">
-      <h2 className="page-title">
+    <div className="container studio page-tinted" style={pageTint ? { background: pageTint } : undefined}>
+      <h2 className="page-title" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <Link href="/studio" className="back-link" title="스튜디오로">‹</Link> 세계관 편집: {world.name}
+        <a href={`/api/studio/worlds/${id}/export`} download>
+          <button type="button" className="small btn-secondary" style={{ marginTop: 0 }}>JSON 내보내기</button>
+        </a>
       </h2>
 
       {world.delete_scheduled_at && (
-        <div className="notice" style={{ borderColor: "#e5484d", color: "#e5484d" }}>
+        <div className="notice danger">
           이 세계관은 {new Date(world.delete_scheduled_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 에 삭제됩니다.{" "}
           <button type="button" className="small" onClick={cancelDelete}>삭제 취소</button>
         </div>
@@ -245,6 +254,7 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
         <button type="button" className={`tab ${tab === "basic" ? "active" : ""}`} onClick={() => setTab("basic")}>기본</button>
         <button type="button" className={`tab ${tab === "dict" ? "active" : ""}`} onClick={() => setTab("dict")}>사전</button>
         <button type="button" className={`tab ${tab === "illust" ? "active" : ""}`} onClick={() => setTab("illust")}>일러스트</button>
+        <button type="button" className={`tab ${tab === "item" ? "active" : ""}`} onClick={() => setTab("item")}>아이템</button>
         <button type="button" className={`tab ${tab === "anniv" ? "active" : ""}`} onClick={() => setTab("anniv")}>기념일</button>
       </div>
 
@@ -396,6 +406,10 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
           characterEditHref={(cid) => `/studio/characters/${cid}`}
         />
       ))}
+      </div>
+
+      <div style={{ display: tab === "item" ? undefined : "none" }}>
+      <WorldItemsSection worldId={id} />
       </div>
 
       <div style={{ display: tab === "illust" ? undefined : "none" }}>

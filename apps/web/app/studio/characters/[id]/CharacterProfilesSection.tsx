@@ -167,7 +167,7 @@ export default function CharacterProfilesSection({
           );
         })}
       </div>
-      {msg && <p style={{ color: "#ff6b6b", fontSize: 13 }}>{msg}</p>}
+      {msg && <p className="err-text" style={{ fontSize: 13 }}>{msg}</p>}
       <AiGenFlow
         open={genTarget !== null}
         title={`프로필 AI 생성 (${EMOTIONS.find((e) => e.key === genTarget)?.label ?? ""})`}

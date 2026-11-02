@@ -10,7 +10,9 @@ import CharacterProfilesSection from "./CharacterProfilesSection";
 import ProfileSetsSection from "./ProfileSetsSection";
 import CharacterAnniversarySection from "./CharacterAnniversarySection";
 import CharacterEventsSection from "./CharacterEventsSection";
+import CharacterGiftsSection from "./CharacterGiftsSection";
 import SanctionPanel from "../../components/SanctionPanel";
+import { tintGradient } from "@/lib/tint";
 
 interface Character {
   id: number;
@@ -26,11 +28,13 @@ interface Character {
   visibility?: "private" | "open";
   status?: "active" | "suspended";
   title_image_url?: string | null;
+  /** 타이틀 컬러(#rrggbb) — 카드/채팅 배경 톤. null = 세계관 색 따름 */
+  title_color?: string | null;
   owner_user_id?: number | null;
   owner_nickname?: string | null;
 }
 
-interface WorldOption { id: number; name: string; }
+interface WorldOption { id: number; name: string; title_color?: string | null; }
 interface DictOption {
   id: number;
   title: string;
@@ -459,8 +463,12 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
     loadIllusts();
   };
 
+  // 편집 화면 배경 톤: 캐릭터 타이틀 컬러 → 없으면 세계관 타이틀 컬러
+  const worldColor = worlds.find((w) => w.id === char.world_id)?.title_color ?? null;
+  const pageTint = tintGradient(char.title_color ?? worldColor);
+
   return (
-    <>
+    <div className="page-tinted" style={pageTint ? { background: pageTint } : undefined}>
       <h2 style={{ display: "flex", alignItems: "center", gap: 10 }}>
         캐릭터 편집: {char.name}
         <a href={`/api/characters/${char.id}/export`} download>
@@ -486,6 +494,11 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
         <button type="button" className={`tab ${tab === "dict" ? "active" : ""}`} onClick={() => setTab("dict")}>전용 사전</button>
         <button type="button" className={`tab ${tab === "event" ? "active" : ""}`} onClick={() => setTab("event")}>이벤트</button>
         <button type="button" className={`tab ${tab === "illust" ? "active" : ""}`} onClick={() => setTab("illust")}>일러스트</button>
+        <button type="button" className={`tab ${tab === "gift" ? "active" : ""}`} onClick={() => setTab("gift")}>선물</button>
+      </div>
+
+      <div style={{ display: tab === "gift" ? undefined : "none" }}>
+        <CharacterGiftsSection characterId={id} />
       </div>
 
       <div style={{ display: tab === "basic" ? undefined : "none" }}>
@@ -524,6 +537,24 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
               title="캐릭터의 세계관은 변경할 수 없습니다"
             />
           </div>
+        </div>
+
+        <label>타이틀 컬러</label>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
+          <input
+            type="color"
+            value={char.title_color ?? worldColor ?? "#7c8cf8"}
+            onChange={(e) => setChar({ ...char, title_color: e.target.value })}
+            style={{ width: 44, height: 32, padding: 2, cursor: "pointer" }}
+          />
+          <span className="muted" style={{ fontSize: 12 }}>
+            {char.title_color ?? `세계관 색 따름${worldColor ? ` (${worldColor})` : " (미지정)"}`} — 카드 테두리와 채팅 배경 톤에 쓰입니다.
+          </span>
+          {char.title_color && (
+            <button type="button" className="small ghost" onClick={() => setChar({ ...char, title_color: null })}>
+              세계관 색 따르기
+            </button>
+          )}
         </div>
         <label>캐릭터 설정</label>
         <textarea
@@ -937,6 +968,6 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
         }}
         onClose={() => setVideoPreview(null)}
       />
-    </>
+    </div>
   );
 }

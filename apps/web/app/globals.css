@@ -12,6 +12,19 @@
   --ai-bubble: #262b3a;
 }
 
+/* 낮(라이트) 스킨 — 헤더의 ☀/🌙 버튼으로 전환, localStorage 에 저장 */
+:root[data-theme="light"] {
+  --bg: #f3f4f8;
+  --panel: #ffffff;
+  --panel-hover: #eceef5;
+  --border: #d6dae6;
+  --text: #22252e;
+  --muted: #6a7184;
+  --accent: #5b6ee8;
+  --user-bubble: #4f6ef7;
+  --ai-bubble: #e7eaf3;
+}
+
 html, body { height: 100%; }
 
 body {
@@ -172,7 +185,7 @@ a { color: inherit; text-decoration: none; }
   pointer-events: none;
   z-index: 1;
 }
-.header-avatar {
+.chat-avatar {
   width: 42px;
   height: 42px;
   border-radius: 50%;
@@ -219,7 +232,8 @@ a { color: inherit; text-decoration: none; }
   min-height: 44px;
   max-height: 140px;
 }
-.chat-input button {
+/* 전송 버튼만 — `.chat-input button` 전체 선택은 레벨 드롭다운/선물 버튼까지 칠해버리므로 금지 */
+.chat-input .send-btn {
   background: var(--accent);
   border: none;
   border-radius: 10px;
@@ -230,37 +244,36 @@ a { color: inherit; text-decoration: none; }
 }
 .chat-input button:disabled { opacity: 0.5; cursor: default; }
 /* 채팅 입력창 앞 AI 레벨 선택 (커스텀 드롭다운 — 위로 펼침) */
-.chat-input .level-picker { position: relative; flex-shrink: 0; align-self: stretch; }
+.chat-input .level-picker { position: relative; flex-shrink: 0; align-self: center; }
 .level-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 100%;
-  min-height: 44px;
-  padding: 0 12px;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 999px;
   color: var(--text);
-  font-size: 13px;
+  font-size: 12px;
   font-family: inherit;
   cursor: pointer;
 }
 .level-btn:hover { background: var(--panel-hover); border-color: var(--accent); }
 .level-btn:disabled { opacity: 0.5; cursor: default; }
-.level-btn .lv-btn-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.level-btn .lv-caret { color: var(--muted); font-size: 10px; }
+.level-btn .lv-btn-name { max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.level-btn .lv-caret { color: var(--muted); font-size: 9px; }
 .lv-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 38px;
-  height: 22px;
-  padding: 0 7px;
+  min-width: 32px;
+  height: 19px;
+  padding: 0 6px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  color: var(--accent);
-  font-size: 11px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -291,16 +304,18 @@ a { color: inherit; text-decoration: none; }
   gap: 10px;
   width: 100%;
   text-align: left;
-  background: none;
-  border: none;
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: 10px;
-  padding: 9px 10px;
+  padding: 8px 10px;
   cursor: pointer;
   color: var(--text);
   font-family: inherit;
 }
-.level-item:hover { background: var(--panel-hover); }
-.level-item.on { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+/* 호버: 옅은 포인트색 하이라이트 (글자색 유지) / 선택: 포인트색 테두리 + ✓ */
+.level-item:hover { background: rgba(124, 140, 248, 0.16); color: var(--text); }
+.level-item.on { border-color: var(--accent); background: rgba(124, 140, 248, 0.08); }
+.level-item.on:hover { background: rgba(124, 140, 248, 0.16); }
 .level-item .lv-badge { margin-top: 1px; }
 .level-item .lv-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .level-item .lv-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
@@ -315,6 +330,54 @@ a { color: inherit; text-decoration: none; }
 }
 .level-item .lv-desc { font-size: 12px; color: var(--muted); line-height: 1.45; }
 .level-item .lv-check { color: var(--accent); font-weight: 700; margin-top: 2px; }
+/* 선물하기 버튼 — 레벨 버튼과 같은 컴팩트 필 */
+.chat-input .gift-btn {
+  align-self: center;
+  height: 34px;
+  width: 38px;
+  padding: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: var(--text);
+}
+.chat-input .gift-btn:hover { background: var(--panel-hover); border-color: var(--accent); }
+.chat-input .gift-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* 맨 아래로 스크롤 버튼 — 입력창 바로 위에 떠 있음 */
+.chat-page { position: relative; }
+.jump-bottom {
+  position: absolute;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  z-index: 30;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 7px 14px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+.jump-bottom:hover { border-color: var(--accent); background: var(--panel-hover); }
+
+/* 스크롤바 스타일 (Chromium/WebKit + Firefox) */
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: var(--muted); }
+
 /* 모바일: 버튼을 Lv 배지만으로 축약해 입력창 폭 확보 */
 @media (max-width: 640px) {
   .chat-input { gap: 6px; padding: 10px 10px; }
@@ -322,6 +385,9 @@ a { color: inherit; text-decoration: none; }
   .chat-input .level-btn { padding: 0 10px; }
   .level-btn .lv-btn-name { display: none; }
 }
+
+/* 타이틀 컬러 페이지 틴트 (세계관/캐릭터 편집 상단 그라데이션) */
+.page-tinted { border-radius: 16px; }
 
 .typing { color: var(--muted); font-size: 13px; padding: 0 16px 6px; }
 .error-banner {
@@ -331,6 +397,18 @@ a { color: inherit; text-decoration: none; }
   font-size: 13px;
 }
 .empty { color: var(--muted); text-align: center; margin-top: 40px; line-height: 1.8; }
+/* 배너 변형 + 상태 텍스트 — 낮/밤 스킨 모두 대응 (인라인 색 대신 이 클래스 사용) */
+:root[data-theme="light"] .error-banner { background: #fbe4e6; color: #b3303a; }
+.error-banner.ok { background: #1f3d2a; border-color: #2f7d4f; color: #8fe0ae; }
+.error-banner.warn { background: #3d3a1f; border-color: #7d742f; color: #e0d88f; }
+.error-banner.info { background: #1f2f3d; border-color: #2f5a7d; color: #8fc4e0; }
+:root[data-theme="light"] .error-banner.ok { background: #e3f5ea; border-color: #b7e0c6; color: #1d7a44; }
+:root[data-theme="light"] .error-banner.warn { background: #faf0dc; border-color: #e6d2a8; color: #8a6414; }
+:root[data-theme="light"] .error-banner.info { background: #e3eefa; border-color: #b9d4ee; color: #2a6198; }
+.ok-text { color: #7fd8a4; }
+.err-text { color: #ff6b6b; }
+:root[data-theme="light"] .ok-text { color: #1d8a4a; }
+:root[data-theme="light"] .err-text { color: #d64545; }
 
 /* ===== 메인 (세계 필터 / 캐릭터 카드) ===== */
 .section-title { font-size: 17px; margin: 22px 0 10px; }
@@ -435,6 +513,31 @@ a { color: inherit; text-decoration: none; }
 .char-card-world { color: var(--muted); font-size: 12px; margin-top: 2px; }
 
 .char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; }
+
+/* 홈 세계관 틴트 배경 — 콘텐츠 뒤 전체 화면 고정 레이어 */
+.bg-tint-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+/* 전환 레이어: 새 색이 위에서부터 쓸어내려온다.
+   아래쪽 160px 은 투명으로 페이드시켜 내려오는 경계가 부드럽게 보이고,
+   다 내려오면 페이드 구간은 화면 밖(아래)으로 빠져 순색만 남는다 */
+.bg-tint-layer.sweep {
+  bottom: auto;
+  height: calc(100vh + 160px);
+  background: linear-gradient(180deg, var(--sweep-color) calc(100% - 160px), transparent);
+  transform: translateY(-100%);
+  animation: bg-sweep-down 0.7s ease-in-out forwards;
+}
+@keyframes bg-sweep-down {
+  to { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* 모션 최소화 설정에선 사실상 즉시 완료 (onAnimationEnd 는 그대로 발생) */
+  .bg-tint-layer.sweep { animation-duration: 0.01s; }
+}
 .char-grid .char-card { width: auto; }
 
 .like-btn {
@@ -475,7 +578,7 @@ a { color: inherit; text-decoration: none; }
 }
 .studio h3 { margin: 20px 0 10px; font-size: 16px; }
 .studio label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
-.studio input[type="text"], .studio input[type="password"], .studio input:not([type]), .studio select, .studio textarea {
+.studio input[type="text"], .studio input[type="password"], .studio input[type="number"], .studio input:not([type]), .studio select, .studio textarea {
   width: 100%;
   background: var(--bg);
   border: 1px solid var(--border);
@@ -516,7 +619,7 @@ a { color: inherit; text-decoration: none; }
 .studio .list-item input { flex: 1 1 auto; min-width: 0; }
 .studio .list-item button { flex: 0 0 auto; white-space: nowrap; }
 .studio .notice {
-  background: #262b3a; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--panel-hover); border: 1px solid var(--border); border-radius: 8px;
   padding: 10px 12px; font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 8px;
 }
 .badge {
@@ -525,6 +628,17 @@ a { color: inherit; text-decoration: none; }
 }
 .badge.open { background: #1f3a2d; color: #7fd8a4; border-color: #2c5a43; }
 .badge.cond { background: #3a2f1f; color: #e0b46a; border-color: #5a4628; }
+:root[data-theme="light"] .badge.open { background: #e3f5ea; color: #1d7a44; border-color: #b7e0c6; }
+:root[data-theme="light"] .badge.cond { background: #faf0dc; color: #9a6b1a; border-color: #e6d2a8; }
+.badge.warn { color: #e0b050; border-color: #e0a030; }
+.badge.danger { color: #e5484d; border-color: #e5484d; }
+:root[data-theme="light"] .badge.warn { color: #9a6b1a; border-color: #cfa75a; }
+:root[data-theme="light"] .badge.danger { color: #c13438; border-color: #d98a8d; }
+/* 주의/경고 설명 박스 */
+.studio .notice.danger { border-color: #e5484d; color: #e5484d; }
+.studio .notice.warn { border-color: #e0a030; color: #e0b050; }
+:root[data-theme="light"] .studio .notice.danger { border-color: #d98a8d; color: #c13438; }
+:root[data-theme="light"] .studio .notice.warn { border-color: #cfa75a; color: #8a6414; }
 
 /* 사전 검색/자동완성/페이징 */
 .dict-search { display: flex; gap: 8px; margin-bottom: 10px; align-items: flex-start; }
@@ -593,8 +707,9 @@ a { color: inherit; text-decoration: none; }
 .world-picker-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 12px;
 }
-.world-picker-card {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 6px;
+/* .studio button(파란 배경) 규칙을 이기도록 선택자 강화 — 카드는 배경 없이 이미지 테두리 링만 */
+.world-picker-card, .studio button.world-picker-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 6px; margin: 0;
   background: none; border: none; border-radius: 10px;
   color: var(--text); text-align: left; cursor: pointer;
 }
@@ -619,12 +734,104 @@ a { color: inherit; text-decoration: none; }
   border-bottom: 1px solid var(--border);
   padding-bottom: 5px;
 }
+/* 새 캐릭터 — 인명사전 인물 선택: 검색창 + 스크롤 리스트 + 칩 */
+.dict-person-box { margin: 8px 0; }
+.dict-person-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 12px;
+  min-height: 120px;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+/* 기본은 테두리만, 호버/선택 시 세계관 타이틀 컬러(--world-color)가 든다
+   — `.studio button`(파란 배경, 0,1,1)을 이기도록 선택자 강화 */
+.dict-person-chip, .studio button.dict-person-chip {
+  margin: 0;
+  padding: 7px 14px;
+  font-size: 13px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  cursor: pointer;
+}
+.studio button.dict-person-chip:hover {
+  border-color: var(--world-color, var(--accent));
+  background: color-mix(in srgb, var(--world-color, var(--accent)) 14%, var(--bg));
+}
+.studio button.dict-person-chip.sel {
+  border-color: var(--world-color, var(--accent));
+  background: color-mix(in srgb, var(--world-color, var(--accent)) 24%, var(--bg));
+  font-weight: 600;
+}
+
 .world-mini { display: flex; align-items: center; gap: 12px; }
 .world-mini .title-img { width: 48px; flex: 0 0 48px; }
 .world-mini-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
 
 /* 사전 항목 편집 모달 */
 .modal.dict-edit-modal { max-width: 560px; max-height: 90vh; overflow-y: auto; }
+/* 채팅 소개 모달 — 세계관 설명/캐릭터 프로필.
+   세계관 타이틀 컬러(--world-color)를 포인트 색으로 쓴다 */
+.modal.chat-info-modal {
+  max-width: 560px;
+  max-height: 82vh;
+  overflow-y: auto;
+  padding: 26px 28px 22px;
+  border-top: 3px solid var(--world-color, var(--accent));
+}
+.chat-info-modal .info-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.chat-info-modal .info-head h3 { margin: 0; font-size: 20px; }
+.chat-info-modal .info-avatar {
+  width: 72px;
+  height: 72px;
+  box-shadow: 0 0 0 2px var(--world-color, var(--accent));
+}
+.chat-info-modal .info-world-tag {
+  font-size: 12px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 12px;
+}
+.chat-info-modal .info-section {
+  border-top: 1px solid var(--border);
+  padding: 12px 0 4px;
+}
+.chat-info-modal .info-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--world-color, var(--accent));
+  margin-bottom: 6px;
+}
+.chat-info-modal .pre-wrap { white-space: pre-wrap; margin-bottom: 8px; }
+.chat-info-modal .info-close {
+  display: block;
+  margin: 18px auto 0;
+  padding: 11px 48px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  background: var(--world-color, var(--accent));
+  color: #fff;
+  cursor: pointer;
+}
+.chat-info-modal .info-close:hover { filter: brightness(1.1); }
 .modal.dict-edit-modal textarea { width: 100%; }
 /* 모달 내부 폼 요소: 래퍼(.studio 등)와 무관하게 동일 스타일 보장 */
 .modal label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
@@ -640,6 +847,7 @@ a { color: inherit; text-decoration: none; }
 }
 .modal textarea { resize: vertical; }
 .modal .dict-edit-err { color: #ff6b6b; margin: 10px 0 0; }
+:root[data-theme="light"] .modal .dict-edit-err, :root[data-theme="light"] .crop-err { color: #d64545; }
 .dict-edit-actions { margin-top: 14px; display: flex; gap: 8px; }
 .dict-edit-actions button { margin-top: 0; }
 .btn-secondary {

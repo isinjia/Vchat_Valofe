@@ -7,26 +7,48 @@ import {
   getPricingSettings,
   getImageGenSettings,
   getScoringSettings,
+  getBillingSettings,
+  getAffinityPromptDefaults,
+  parseAffinityPrompts,
+  getVmsgSettings,
+  normalizeVmsgSettings,
   DEFAULT_LLM_SETTINGS,
   AI_ASSIST_KINDS,
   type StorageSettings,
 } from "@vchatbot/core";
 
+/** 시크릿 마스킹 (뒤 4자리만 노출) */
+const mask = (v: string) => (v ? `****${v.slice(-4)}` : "");
+
 export async function GET() {
-  const [storage, llm, fees, pricing, imageGen, scoring] = await Promise.all([
+  const [storage, llm, fees, pricing, imageGen, scoring, billing, affinityPrompts, vmsg] = await Promise.all([
     getSetting<StorageSettings>("storage"),
     getLlmSettings(),
     getFeeSettings(),
     getPricingSettings(),
     getImageGenSettings(),
     getScoringSettings(),
+    getBillingSettings(),
+    getAffinityPromptDefaults(),
+    getVmsgSettings(),
   ]);
   // apiKey 는 마스킹해서 내려준다
   const image_gen = {
     ...imageGen,
     apiKey: imageGen.apiKey ? `****${imageGen.apiKey.slice(-4)}` : "",
   };
-  return NextResponse.json({ storage, llm: llm ?? DEFAULT_LLM_SETTINGS, fees, pricing, image_gen, scoring });
+  return NextResponse.json({
+    storage,
+    llm: llm ?? DEFAULT_LLM_SETTINGS,
+    fees,
+    pricing,
+    image_gen,
+    scoring,
+    billing,
+    affinity_prompts: affinityPrompts,
+    // 챗봇 secret 은 마스킹해서 내려준다 (수정하지 않으면 그대로 전송 → 서버가 기존 값 유지)
+    vmsg: { ...vmsg, bots: vmsg.bots.map((b) => ({ ...b, clientSecret: mask(b.clientSecret) })) },
+  });
 }
 
 export async function PUT(req: NextRequest) {
@@ -62,7 +84,11 @@ export async function PUT(req: NextRequest) {
     await setSetting("fees", {
       creatorRate: clamp(body.fees.creatorRate),
       worldRate: clamp(body.fees.worldRate),
+      giftRate: clamp(body.fees.giftRate),
     });
+  }
+  if (body.billing) {
+    await setSetting("billing", { chargeUrl: String(body.billing.chargeUrl ?? "").trim() });
   }
   if (body.pricing) {
     const nn = (n: unknown) => Math.max(0, Math.floor(Number(n) || 0));
@@ -79,6 +105,22 @@ export async function PUT(req: NextRequest) {
       aiAssist,
       byok: { enabled: !!body.pricing.byok?.enabled, cost: nn(body.pricing.byok?.cost) },
     });
+  }
+  if (body.affinity_prompts) {
+    // 알려진 구간 키의 비어있지 않은 텍스트만 저장 (비운 구간은 내장 기본값으로 폴백)
+    await setSetting("affinity_prompts", parseAffinityPrompts(body.affinity_prompts) ?? {});
+  }
+  if (body.vmsg) {
+    const cur = await getVmsgSettings();
+    const next = normalizeVmsgSettings(body.vmsg);
+    // 마스킹 값("****...") 또는 빈 secret 은 기존 값 유지 (botClientId 로 매칭)
+    next.bots = next.bots.map((b) => {
+      const keep = !b.clientSecret || b.clientSecret.startsWith("****");
+      if (!keep) return b;
+      const prev = cur.bots.find((p) => p.botClientId === b.botClientId);
+      return { ...b, clientSecret: prev?.clientSecret ?? "" };
+    });
+    await setSetting("vmsg", next);
   }
   if (body.image_gen) {
     const cur = await getImageGenSettings();

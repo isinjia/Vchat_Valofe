@@ -25,6 +25,8 @@ export interface CharacterStateView {
   call_name: string | null;
   /** 현재 장면의 지역 (world_dictionary location 항목 id, 미식별 시 null) */
   current_place_id: number | null;
+  /** 현재 장면 한 줄 (자유 텍스트 — 사전에 없는 장소 포함, 채점 LLM 이 매 턴 갱신) */
+  current_scene: string | null;
 }
 
 /** 유저 x 캐릭터 상태 조회. 행이 없으면 기본값 반환 (행 생성은 하지 않음) */
@@ -39,12 +41,13 @@ export async function getUserCharacterState(
     relationship: UserRelationship;
     call_name: string | null;
     current_place_id: number | null;
+    current_scene: string | null;
   }>(
-    "SELECT affinity, facts, message_count, relationship, call_name, current_place_id FROM user_character_state WHERE user_id = ? AND character_id = ?",
+    "SELECT affinity, facts, message_count, relationship, call_name, current_place_id, current_scene FROM user_character_state WHERE user_id = ? AND character_id = ?",
     [userId, characterId]
   );
   if (rows.length === 0) {
-    return { affinity: 0, facts: [], message_count: 0, relationship: "none", call_name: null, current_place_id: null };
+    return { affinity: 0, facts: [], message_count: 0, relationship: "none", call_name: null, current_place_id: null, current_scene: null };
   }
   const r = rows[0];
   // mysql2 가 JSON 을 자동 파싱하지만 설정에 따라 문자열일 수 있음
@@ -56,6 +59,7 @@ export async function getUserCharacterState(
     relationship: r.relationship ?? "none",
     call_name: r.call_name ?? null,
     current_place_id: r.current_place_id ?? null,
+    current_scene: r.current_scene ?? null,
   };
 }
 
@@ -70,6 +74,20 @@ export async function setUserCurrentPlace(
      VALUES (?, ?, ?)
      ON DUPLICATE KEY UPDATE current_place_id = VALUES(current_place_id)`,
     [userId, characterId, placeId]
+  );
+}
+
+/** 현재 장면 한 줄(자유 텍스트) 갱신. null 이면 장면 종료(실시간 모드 장면 전환). 행이 없으면 생성 */
+export async function setUserCurrentScene(
+  userId: number,
+  characterId: number,
+  scene: string | null
+): Promise<void> {
+  await execute(
+    `INSERT INTO user_character_state (user_id, character_id, current_scene)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE current_scene = VALUES(current_scene)`,
+    [userId, characterId, scene ? scene.slice(0, 300) : null]
   );
 }
 

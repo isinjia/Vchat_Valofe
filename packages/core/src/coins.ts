@@ -13,7 +13,9 @@ export type CoinTxType =
   | "ai_assist_spend"
   | "illust_gen_spend"
   | "video_gen_spend"
+  | "gift_spend"
   | "chat_fee_income"
+  | "gift_fee_income"
   | "world_fee_income";
 
 export interface CoinRef {
@@ -140,6 +142,55 @@ export async function chargeChatWithFees(
     const charIncome = creatorFee - worldFee;
     if (charIncome > 0) {
       await creditCoins(charOwner, charIncome, "chat_fee_income", {
+        refType: "character",
+        refId: target.characterId,
+      });
+    }
+    if (worldFee > 0 && worldOwner) {
+      await creditCoins(worldOwner, worldFee, "world_fee_income", {
+        refType: "world",
+        refId: target.worldId,
+      });
+    }
+  }
+  return { balance, creatorFee, worldFee };
+}
+
+/**
+ * 선물 아이템 1회 과금 + 제작자·세계관 수수료 분배 (채팅과 동일 구조, 비율은 fees.giftRate).
+ * 유저 본인이 만든 캐릭터/세계관이면 수수료는 지급하지 않는다.
+ */
+export async function chargeGiftWithFees(
+  userId: number,
+  price: number,
+  target: ChatChargeTarget,
+  memo?: string
+): Promise<{ balance: number; creatorFee: number; worldFee: number }> {
+  const balance = await chargeCoins(userId, price, "gift_spend", {
+    refType: "character",
+    refId: target.characterId,
+    memo,
+  });
+  let creatorFee = 0;
+  let worldFee = 0;
+  const charOwner = target.characterOwnerId;
+  const worldOwner = target.worldOwnerId;
+  if (charOwner && charOwner !== userId && price > 0) {
+    const fees = await getFeeSettings();
+    // 크리에이터 등급의 수수료 가산(%p) 적용
+    const bonusRows = await query<{ fee_bonus: number | string }>(
+      `SELECT t.fee_bonus FROM users u JOIN chat_tiers t ON t.id = u.creator_tier_id WHERE u.id = ?`,
+      [charOwner]
+    );
+    const bonus = Math.max(0, Number(bonusRows[0]?.fee_bonus) || 0) / 100;
+    const rate = Math.min(0.9, fees.giftRate + bonus);
+    creatorFee = Math.floor(price * rate);
+    if (worldOwner && worldOwner !== charOwner && worldOwner !== userId) {
+      worldFee = Math.floor(creatorFee * fees.worldRate);
+    }
+    const charIncome = creatorFee - worldFee;
+    if (charIncome > 0) {
+      await creditCoins(charOwner, charIncome, "gift_fee_income", {
         refType: "character",
         refId: target.characterId,
       });

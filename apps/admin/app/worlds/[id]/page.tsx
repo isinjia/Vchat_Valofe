@@ -3,11 +3,13 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import AnniversarySection from "./AnniversarySection";
+import WorldItemsSection from "./WorldItemsSection";
 import WorldIllustrationsSection from "./WorldIllustrationsSection";
 import DictionaryBrowser from "../../components/DictionaryBrowser";
 import ImageCropModal from "../../components/ImageCropModal";
 import { type ImageGenPayload } from "../../components/ImageGenModal";
 import AiGenFlow from "../../components/AiGenFlow";
+import { tintGradient } from "@/lib/tint";
 
 interface World {
   id: number;
@@ -289,8 +291,11 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
     </>
   );
 
+  // 타이틀 컬러가 있으면 편집 화면 상단을 그 톤으로 물들인다
+  const pageTint = tintGradient(world.title_color);
+
   return (
-    <>
+    <div className="page-tinted" style={pageTint ? { background: pageTint } : undefined}>
       <h2 style={{ display: "flex", alignItems: "center", gap: 10 }}>
         세계관 편집: {world.name}
         <a href={`/api/worlds/${world.id}/export`} download>
@@ -313,6 +318,7 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
         <button type="button" className={`tab ${tab === "basic" ? "active" : ""}`} onClick={() => setTab("basic")}>기본</button>
         <button type="button" className={`tab ${tab === "dict" ? "active" : ""}`} onClick={() => setTab("dict")}>사전</button>
         <button type="button" className={`tab ${tab === "illust" ? "active" : ""}`} onClick={() => setTab("illust")}>일러스트</button>
+        <button type="button" className={`tab ${tab === "item" ? "active" : ""}`} onClick={() => setTab("item")}>아이템</button>
         <button type="button" className={`tab ${tab === "anniv" ? "active" : ""}`} onClick={() => setTab("anniv")}>기념일</button>
       </div>
 
@@ -568,9 +574,13 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
       <WorldIllustrationsSection worldId={id} titleImageUrl={world.title_image_url} />
       </div>
 
+      <div style={{ display: tab === "item" ? undefined : "none" }}>
+      <WorldItemsSection worldId={id} />
+      </div>
+
       <div style={{ display: tab === "anniv" ? undefined : "none" }}>
       <AnniversarySection worldId={id} />
       </div>
-    </>
+    </div>
   );
 }

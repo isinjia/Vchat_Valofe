@@ -21,8 +21,14 @@ import {
   scoreExchange,
   getScoringSettings,
   formatStateBlock,
+  getAffinityPromptDefaults,
+  parseAffinityPrompts,
+  resolveAffinityGuide,
   formatAnniversaryBlock,
   formatTimeBlock,
+  formatSceneBlock,
+  SCENE_BREAK_HOURS,
+  setUserCurrentScene,
   sanitizeUserMessage,
   invalidateCachePattern,
   generateGuestLine,
@@ -158,6 +164,8 @@ export async function prepareChatTurn(
     userContent = `${formatEventBlock(activeEvent.event, activeEvent.justStarted)}\n\n${userContent}`;
   }
   const { characterMemories, worldMemories } = await loadMemories(userId, ctx.character.id, ctx.world.id);
+  // 호감도 구간별 반응 가이드: 캐릭터별 설정이 비어 있으면 관리자 전역 기본값 → 내장 기본값
+  const affinityDefaults = await getAffinityPromptDefaults();
   const stateBlock = formatStateBlock({
     affinity: state.affinity,
     facts: state.facts,
@@ -165,13 +173,41 @@ export async function prepareChatTurn(
     worldMemories,
     relationship: state.relationship,
     callName: state.call_name,
+    affinityGuide: resolveAffinityGuide(
+      state.affinity,
+      parseAffinityPrompts(ctx.character.affinity_prompts),
+      affinityDefaults
+    ),
   });
   // 기념일 블록: 상태 블록 → 기념일 블록 → RAG 참고 설정 → 원본 순
   const anniversaryBlock = formatAnniversaryBlock(ctx.anniversaries);
   if (anniversaryBlock) userContent = `${anniversaryBlock}\n\n${userContent}`;
   if (stateBlock) userContent = `${stateBlock}\n\n${userContent}`;
-  // 시간 블록: 현재 시각/요일 + 마지막 대화 경과 (맨 앞)
   const lastMessageAt = history.length > 0 ? history[history.length - 1].createdAt : null;
+
+  // 장면 블록: 장소/상황 일관성 유지.
+  // 실시간 대응 캐릭터(realtime_mode)는 오랜 공백(SCENE_BREAK_HOURS) 후 장면을 끝내고 새 장면에서 재회.
+  const realtime = !!Number(ctx.character.realtime_mode ?? 0);
+  const gapHours = lastMessageAt ? (Date.now() - new Date(lastMessageAt).getTime()) / 3600000 : 0;
+  const sceneBreak = realtime && history.length > 0 && gapHours >= SCENE_BREAK_HOURS;
+  if (sceneBreak && (state.current_scene || state.current_place_id)) {
+    // 지난 장면 종료 — 장면 메모/사전 장소를 비워 다음 턴부터 새로 쌓는다
+    await Promise.all([
+      setUserCurrentScene(userId, ctx.character.id, null),
+      setUserCurrentPlace(userId, ctx.character.id, null),
+    ]);
+    state.current_scene = null;
+    state.current_place_id = null;
+  }
+  if (history.length > 0) {
+    const placeTitle = state.current_place_id
+      ? ctx.dictionary.find((d) => d.id === state.current_place_id)?.title ?? null
+      : null;
+    const sceneBlock = formatSceneBlock({ scene: state.current_scene, placeTitle, realtime, sceneBreak });
+    if (sceneBlock) userContent = `${sceneBlock}\n\n${userContent}`;
+  }
+
+  // 시간 블록: 현재 시각/요일 + 마지막 대화 경과 (맨 앞)
   userContent = `${formatTimeBlock(new Date(), lastMessageAt)}\n\n${userContent}`;
 
   // 오프닝(assistant)으로 이력이 시작되면 저장하지 않은 지시문을 앞에 붙여 user 로 시작하게 한다
@@ -232,6 +268,17 @@ export interface FinishParams {
 
 export async function finishChatTurn(send: (data: unknown) => void, p: FinishParams): Promise<void> {
   const { userId, ctx, history, state, message, assistantText, chatCost } = p;
+
+  // 스트림 비정상 종료 가드: 서버 LLM 경로(assistantMeta 에 stopReason 키가 있음)에서
+  // 종료 사유 없이(null) 응답이 사실상 비어 있으면 LLM 스트림이 도중에 죽은 것 —
+  // 과금/저장/채점 없이 에러만 보내 재시도를 유도한다. (브라우저 생성 경로는 stopReason 키가 없어 해당 없음)
+  if ("stopReason" in p.assistantMeta && p.assistantMeta.stopReason == null && assistantText.trim().length < 10) {
+    console.error(
+      `비정상 스트림 종료 — 과금/저장 생략 (character=${ctx.character.id}, provider=${String(p.assistantMeta.providerName)}, len=${assistantText.length})`
+    );
+    send({ type: "error", message: "AI 응답이 중간에 끊겼습니다. 코인은 차감되지 않았으니 다시 시도해 주세요." });
+    return;
+  }
 
   // 과금 + 수수료 분배. 실패해도 이미 전송된 응답은 유지
   let creatorFee = 0;
@@ -294,10 +341,15 @@ export async function finishChatTurn(send: (data: unknown) => void, p: FinishPar
             guestCandidates,
             placeCandidates,
             scenario: ctx.character.scenario,
+            currentScene: state.current_scene,
           }),
           timeout,
         ]);
         const affinity = await applyScoreResult(userId, ctx.character.id, score);
+        // 장면 메모(자유 텍스트): 이번 턴 기준으로 갱신 (null 이면 기존 유지)
+        if (score.currentScene && score.currentScene !== state.current_scene) {
+          await setUserCurrentScene(userId, ctx.character.id, score.currentScene);
+        }
         // 현재 장소: 후보 목록 중 하나로 식별됐을 때만 갱신 (미식별이면 기존 유지)
         if (score.currentPlace) {
           const pe = placeEntries.find((d) => d.title === score.currentPlace);

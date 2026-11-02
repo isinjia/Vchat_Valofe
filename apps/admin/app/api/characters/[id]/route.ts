@@ -16,8 +16,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
 export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const { name, profile, personality, speech_style, ai_prompt, scenario, greeting, is_active, visibility, status } =
+  const { name, profile, personality, speech_style, ai_prompt, scenario, greeting, is_active, visibility, status, title_color } =
     await req.json();
+  // 타이틀 컬러: #rrggbb 또는 null (null = 세계관 색 따름)
+  const titleColor = typeof title_color === "string" && /^#[0-9a-fA-F]{6}$/.test(title_color) ? title_color : null;
   // 세계관은 수정에서 바꿀 수 없다 (사전/관계/기념일이 세계관에 묶여 있음) — 현재 세계관 기준으로 중복 검사
   const cur = await query<{ world_id: number }>("SELECT world_id FROM characters WHERE id = ?", [id]);
   if (cur.length === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -27,7 +29,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   await execute(
     `UPDATE characters
      SET name = ?, profile = ?, personality = ?, speech_style = ?, ai_prompt = ?, scenario = ?, greeting = ?, is_active = ?,
-         visibility = ?, status = ?
+         visibility = ?, status = ?, title_color = ?
      WHERE id = ?`,
     [
       name,
@@ -40,6 +42,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       is_active ? 1 : 0,
       visibility === "open" ? "open" : "private",
       status === "suspended" ? "suspended" : "active",
+      titleColor,
       id,
     ]
   );

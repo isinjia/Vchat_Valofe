@@ -13,8 +13,13 @@ interface CcuItem { hour: string; users: number; messages: number }
 interface RankData {
   topUsers: { id: number; vfunUserId: string | null; uNo: number | null; nickname: string | null; messages: number }[];
   topCharacters: { id: number; name: string; worldName: string; messages: number; users: number }[];
+  topItems: { name: string; worldName: string; count: number; sales: number }[];
+  topGifted: { id: number; name: string; worldName: string; count: number; amount: number; users: number }[];
 }
-type Tab = "metrics" | "ai" | "rank";
+interface SalesItem { date: string; gift: number; chat: number; support: number; total: number }
+interface SalesData { days: number; items: SalesItem[]; totals: { gift: number; chat: number; support: number; total: number } }
+type Tab = "metrics" | "sales" | "ai" | "rank";
+const SALES_RANGES = [7, 14, 30];
 const CCU_RANGES = [{ hours: 24, label: "24시간" }, { hours: 48, label: "48시간" }, { hours: 168, label: "7일" }];
 
 interface ShareData {
@@ -191,10 +196,31 @@ export default function StatsPage() {
     let alive = true;
     fetch(`/api/stats/rankings?days=${rankDays}`)
       .then((r) => r.json())
-      .then((d) => { if (alive) setRank({ topUsers: d?.topUsers ?? [], topCharacters: d?.topCharacters ?? [] }); })
-      .catch(() => { if (alive) setRank({ topUsers: [], topCharacters: [] }); });
+      .then((d) => {
+        if (alive) {
+          setRank({
+            topUsers: d?.topUsers ?? [],
+            topCharacters: d?.topCharacters ?? [],
+            topItems: d?.topItems ?? [],
+            topGifted: d?.topGifted ?? [],
+          });
+        }
+      })
+      .catch(() => { if (alive) setRank({ topUsers: [], topCharacters: [], topItems: [], topGifted: [] }); });
     return () => { alive = false; };
   }, [rankDays]);
+
+  // 판매지표 (코인 소비 기준)
+  const [salesDays, setSalesDays] = useState(30);
+  const [sales, setSales] = useState<SalesData | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/stats/sales?days=${salesDays}`)
+      .then((r) => r.json())
+      .then((d) => { if (alive) setSales(d && Array.isArray(d.items) ? d : null); })
+      .catch(() => { if (alive) setSales(null); });
+    return () => { alive = false; };
+  }, [salesDays]);
   const hide = (t: Tab) => ({ display: tab === t ? "block" : "none" });
 
   const today = daily && daily.length > 0 ? daily[daily.length - 1] : null;
@@ -234,8 +260,72 @@ export default function StatsPage() {
       <h2>서비스 지표</h2>
       <div className="tabs">
         <button type="button" className={`tab ${tab === "metrics" ? "active" : ""}`} onClick={() => setTab("metrics")}>지표</button>
+        <button type="button" className={`tab ${tab === "sales" ? "active" : ""}`} onClick={() => setTab("sales")}>판매지표</button>
         <button type="button" className={`tab ${tab === "ai" ? "active" : ""}`} onClick={() => setTab("ai")}>AI</button>
         <button type="button" className={`tab ${tab === "rank" ? "active" : ""}`} onClick={() => setTab("rank")}>사용량 랭킹</button>
+      </div>
+
+      <div style={hide("sales")}>
+      <div className="panel">
+        <div style={{ display: "flex", gap: 8 }}>
+          {SALES_RANGES.map((d) => (
+            <button key={d} style={{ marginTop: 0, opacity: salesDays === d ? 1 : 0.5 }} onClick={() => setSalesDays(d)}>
+              {d}일
+            </button>
+          ))}
+        </div>
+        <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+          코인 소비 기준 판매액입니다. 아이템 = 선물 사용, 채팅 = 메시지 과금, 지원 = AI 보조·이미지·영상 생성.
+        </p>
+      </div>
+
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+        <Tile label={`아이템 판매액 (${salesDays}일)`} value={sales?.totals.gift ?? 0} />
+        <Tile label={`채팅 판매액 (${salesDays}일)`} value={sales?.totals.chat ?? 0} />
+        <Tile label={`지원 판매액 (${salesDays}일)`} value={sales?.totals.support ?? 0} />
+        <Tile label={`합계 (${salesDays}일)`} value={sales?.totals.total ?? 0} />
+      </div>
+
+      <h3>일별 판매액</h3>
+      <div className="panel">
+        {sales && sales.items.some((i) => i.total > 0) ? (
+          <ResponsiveContainer width="100%" height={CHART_H}>
+            <LineChart data={sales.items} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke={GRID} vertical={false} />
+              <XAxis dataKey="date" tickFormatter={dateTick} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={AXIS_LINE} />
+              <YAxis allowDecimals={false} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={AXIS_LINE} tickFormatter={(v: number) => v.toLocaleString()} />
+              <Tooltip formatter={(v) => Number(v).toLocaleString()} />
+              <Legend />
+              <Line type="monotone" dataKey="gift" name="아이템" stroke={C_BLUE} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              <Line type="monotone" dataKey="chat" name="채팅" stroke={C_ORANGE} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              <Line type="monotone" dataKey="support" name="지원" stroke={C_AQUA} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <NoData />
+        )}
+      </div>
+
+      <h3>일별 판매액 테이블</h3>
+      <div className="panel">
+        <table>
+          <thead>
+            <tr><th>날짜</th><th>아이템</th><th>채팅</th><th>지원</th><th>합계</th></tr>
+          </thead>
+          <tbody>
+            {(sales?.items ?? []).slice().reverse().map((i) => (
+              <tr key={i.date}>
+                <td>{i.date}</td>
+                <td>{fmt(i.gift)}</td>
+                <td>{fmt(i.chat)}</td>
+                <td>{fmt(i.support)}</td>
+                <td><b>{fmt(i.total)}</b></td>
+              </tr>
+            ))}
+            {(!sales || sales.items.length === 0) && <tr><td colSpan={5} className="muted">데이터 없음</td></tr>}
+          </tbody>
+        </table>
+      </div>
       </div>
 
       <div style={hide("metrics")}>
@@ -627,6 +717,50 @@ export default function StatsPage() {
                   <td>{i + 1}</td>
                   <td><Link href={`/characters/${c.id}`}>{c.name} ({c.worldName})</Link></td>
                   <td>{fmt(c.messages)}</td>
+                  <td>{fmt(c.users)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <NoData />
+        )}
+      </div>
+
+      <h3>아이템 판매량 랭킹 TOP 20</h3>
+      <div className="panel">
+        {rank && rank.topItems.length > 0 ? (
+          <table>
+            <thead><tr><th>순위</th><th>아이템</th><th>세계관</th><th>판매수</th><th>판매액</th></tr></thead>
+            <tbody>
+              {rank.topItems.map((it, i) => (
+                <tr key={`${it.name}-${it.worldName}`}>
+                  <td>{i + 1}</td>
+                  <td>{it.name}</td>
+                  <td>{it.worldName}</td>
+                  <td>{fmt(it.count)}</td>
+                  <td>{fmt(it.sales)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <NoData />
+        )}
+      </div>
+
+      <h3>선물 받은 캐릭터 랭킹 TOP 20</h3>
+      <div className="panel">
+        {rank && rank.topGifted.length > 0 ? (
+          <table>
+            <thead><tr><th>순위</th><th>캐릭터</th><th>선물 수</th><th>선물 금액</th><th>선물한 유저 수</th></tr></thead>
+            <tbody>
+              {rank.topGifted.map((c, i) => (
+                <tr key={c.id}>
+                  <td>{i + 1}</td>
+                  <td><Link href={`/characters/${c.id}`}>{c.name} ({c.worldName})</Link></td>
+                  <td>{fmt(c.count)}</td>
+                  <td>{fmt(c.amount)}</td>
                   <td>{fmt(c.users)}</td>
                 </tr>
               ))}

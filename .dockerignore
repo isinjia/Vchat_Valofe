@@ -1,0 +1,18 @@
+# 도커 빌드 컨텍스트에서 제외 — 빌드는 컨테이너 안에서 새로 한다
+node_modules
+**/node_modules
+.next
+**/.next
+**/tsconfig.tsbuildinfo
+.git
+.env
+.env.*
+!.env.example
+*.log
+sampledata
+deploy/backup/out
+scripts/backup-*.txt
+scripts/_*.txt
+scripts/_*.json
+Works_ToolVChatBotscripts_*.txt
+services/.worker-token

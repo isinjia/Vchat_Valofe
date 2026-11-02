@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SiteHeader from "./components/SiteHeader";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { tintBackground } from "@/lib/tint";
 
 interface WorldItem {
   id: number;
@@ -28,18 +29,8 @@ interface CharItem {
   owner_name?: string | null;
 }
 
-/** 세계관 타이틀 컬러를 어두운 배경 톤으로 블렌딩 (#rrggbb → rgb) */
-function tintBackground(hex: string | null | undefined): string | null {
-  if (!hex || !/^#[0-9a-fA-F]{6}$/.test(hex)) return null;
-  const base = { r: 0x12, g: 0x14, b: 0x1a }; // --bg
-  const mix = (c: number, bc: number) => Math.round(bc * 0.82 + c * 0.18);
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgb(${mix(r, base.r)}, ${mix(g, base.g)}, ${mix(b, base.b)})`;
-}
 
-type Sort = "popular" | "chats" | "newest" | "likes";
+type Sort = "popular" | "chats" | "newest" | "likes" | "gifts";
 const LIMIT = 20;
 
 interface LikeProps {
@@ -152,14 +143,23 @@ export default function HomeClient() {
     onToggle: () => toggleLike(c),
   });
 
-  // 세계관 선택 시 배경을 타이틀 컬러 톤으로
+  // 세계관 선택 시 배경을 타이틀 컬러 톤으로 — 새 색이 위에서부터 쓸어내려오는 전환
+  // settled: 정착된 배경, sweep: 내려오는 중인 새 배경 (애니메이션 끝나면 settled 로 승격)
+  const [bgSettled, setBgSettled] = useState<string | null>(null);
+  const [bgSweep, setBgSweep] = useState<{ color: string | null; seq: number } | null>(null);
+  const bgTargetRef = useRef<string | null>(null);
+  const bgSeqRef = useRef(0);
+
   useEffect(() => {
     const w = worlds.find((x) => x.id === worldId);
     const tint = tintBackground(w?.title_color);
-    document.body.style.backgroundColor = tint ?? "";
-    return () => {
-      document.body.style.backgroundColor = "";
-    };
+    if (tint === bgTargetRef.current) return; // 목록 리프레시 등으로 색이 그대로면 재생 안 함
+    bgTargetRef.current = tint;
+    // 스윕 진행 중에 또 바뀌면 이전 스윕 색을 먼저 정착시키고 새 스윕 시작
+    setBgSweep((prev) => {
+      if (prev) setBgSettled(prev.color);
+      return { color: tint, seq: ++bgSeqRef.current };
+    });
   }, [worldId, worlds]);
 
   // 필터/정렬 변경 시 이전 요청 결과를 무시하기 위한 세대 번호
@@ -241,6 +241,19 @@ export default function HomeClient() {
 
   return (
     <>
+    {/* 세계관 틴트 배경 — 콘텐츠 뒤 고정 레이어, 전환 시 새 색이 위에서부터 내려온다 */}
+    <div className="bg-tint-layer" style={{ background: bgSettled ?? "var(--bg)" }} />
+    {bgSweep && (
+      <div
+        key={bgSweep.seq}
+        className="bg-tint-layer sweep"
+        style={{ "--sweep-color": bgSweep.color ?? "var(--bg)" } as React.CSSProperties}
+        onAnimationEnd={() => {
+          setBgSettled(bgSweep.color);
+          setBgSweep(null);
+        }}
+      />
+    )}
     <SiteHeader />
     <div className="container">
       <h2 className="section-title">세계</h2>
@@ -316,6 +329,10 @@ export default function HomeClient() {
           <button className={`sort-btn ${sort === "chats" ? "active" : ""}`} onClick={() => setSort("chats")}
             title="누적 대화가 많은 순">
             대화순
+          </button>
+          <button className={`sort-btn ${sort === "gifts" ? "active" : ""}`} onClick={() => setSort("gifts")}
+            title="받은 선물이 많은 순 (선물 금액 기준)">
+            받은 선물
           </button>
           <button className={`sort-btn ${sort === "newest" ? "active" : ""}`} onClick={() => setSort("newest")}>
             최신순

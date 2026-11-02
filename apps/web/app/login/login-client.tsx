@@ -68,16 +68,7 @@ export default function LoginClient({ initialError }: { initialError: string | n
           vfun 계정으로 로그인하세요 (개발/스테이지)
         </p>
         {error && (
-          <div
-            style={{
-              background: "#3a1d24",
-              color: "#ff8d9b",
-              padding: "8px 12px",
-              borderRadius: 8,
-              fontSize: 13,
-              marginBottom: 12,
-            }}
-          >
+          <div className="error-banner" style={{ padding: "8px 12px", borderRadius: 8, fontSize: 13, marginBottom: 12 }}>
             {error}
           </div>
         )}
