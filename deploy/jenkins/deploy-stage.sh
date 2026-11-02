@@ -22,6 +22,10 @@ if [ -z "$ENV_FILE" ] || [ ! -f "$ENV_FILE" ]; then
 fi
 echo "[deploy] env: $ENV_FILE"
 
+# compose 의 서비스 env_file 에도 같은 파일이 들어가도록 절대경로로 export
+# (compose yml 의 env_file: ${ENV_FILE:-../../.env.stage} 가 이 값을 쓴다)
+export ENV_FILE="$(cd "$(dirname "$ENV_FILE")" && pwd)/$(basename "$ENV_FILE")"
+
 compose() {
   docker compose --env-file "$ENV_FILE" -f deploy/docker/docker-compose.stage.yml "$@"
 }
