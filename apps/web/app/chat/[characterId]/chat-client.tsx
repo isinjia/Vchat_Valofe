@@ -206,8 +206,10 @@ interface Props {
   likeCount: number;
   /** 프로필 이미지: emotion 키('default', joy, sad, ...) -> 아바타 구성. 없으면 빈 객체 */
   profileMap: Record<string, ProfileVisual>;
-  /** 캐릭터(없으면 세계관) 타이틀 컬러 — 채팅 배경 톤 */
-  titleColor?: string | null;
+  /** 세계관 타이틀 컬러 — 채팅창 배경 톤 */
+  worldColor?: string | null;
+  /** 캐릭터 타이틀 컬러(없으면 세계관 컬러) — 캐릭터 말풍선 톤 */
+  charColor?: string | null;
   /** 유저에게 보여줄 세계관 설명 */
   worldDescription?: string | null;
   /** 유저에게 보여줄 캐릭터 프로필 */
@@ -224,7 +226,8 @@ export default function ChatClient({
   illustMap,
   likeCount: initialLikeCount,
   profileMap,
-  titleColor,
+  worldColor,
+  charColor,
   worldDescription,
   characterProfile,
   scenario,
@@ -673,11 +676,20 @@ export default function ChatClient({
     send(`(${r.item.name}을(를) 선물로 건넨다)`, r.item.image_url ?? null);
   };
 
-  // 타이틀 컬러를 어두운 배경에 블렌딩해 채팅 화면 전체 톤으로
-  const chatTint = tintBackground(titleColor, 0.12);
+  // 채팅창 배경 = 세계관 컬러, 캐릭터 말풍선 = 캐릭터 컬러(없으면 세계관 컬러)를 테마 배경에 블렌딩
+  const chatTint = tintBackground(worldColor, 0.1);
+  const bubbleTint = tintBackground(charColor, 0.22);
 
   return (
-    <div className="chat-page" style={chatTint ? { background: `linear-gradient(180deg, ${chatTint} 0, var(--bg) 85%)` } : undefined}>
+    <div
+      className="chat-page"
+      style={
+        {
+          ...(chatTint ? { background: chatTint } : {}),
+          ...(bubbleTint ? { "--ai-bubble-char": bubbleTint } : {}),
+        } as React.CSSProperties
+      }
+    >
       <header className="chat-header">
         <Link href="/" className="back">←</Link>
         {/* 헤더 아바타: 고급 프로필(기본 감정 기준) → 기본 프로필 → 기본 일러스트 */}
@@ -859,8 +871,8 @@ export default function ChatClient({
             className="modal chat-info-modal"
             onClick={(e) => e.stopPropagation()}
             style={
-              titleColor && /^#[0-9a-fA-F]{6}$/.test(titleColor)
-                ? ({ "--world-color": titleColor } as React.CSSProperties)
+              worldColor && /^#[0-9a-fA-F]{6}$/.test(worldColor)
+                ? ({ "--world-color": worldColor } as React.CSSProperties)
                 : undefined
             }
           >

@@ -71,7 +71,8 @@ export default async function ChatPage({
       illustMap={illustMap}
       likeCount={likeCount}
       profileMap={profileMap}
-      titleColor={ctx.character.title_color ?? ctx.world.title_color ?? null}
+      worldColor={ctx.world.title_color ?? null}
+      charColor={ctx.character.title_color ?? ctx.world.title_color ?? null}
       worldDescription={ctx.world.description}
       characterProfile={ctx.character.profile}
       scenario={ctx.character.scenario ?? null}
