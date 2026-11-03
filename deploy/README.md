@@ -152,6 +152,11 @@ ENV_FILE=/etc/vchatbot/.env.stage bash deploy/jenkins/migrate.sh apply      # �
 - `migrate.sh apply` — 미적용분만 적용 (Jenkins 파이프라인이 매 배포마다 실행; 없으면 그냥 통과)
 - `migrate.sh baseline` — **덤프 복원 직후 최초 1회**: 덤프에는 모든 변경이 이미 들어 있으므로, 전 파일을 실행 없이 "적용됨"으로만 기록해 기준점을 만든다. 이걸 빼먹으면 첫 apply 가 이미 반영된 ALTER 를 다시 실행하다 에러가 난다.
 
+배포 없이 수동으로 돌리고 싶으면 **전용 잡** `deploy/Jenkinsfile.migrate` 로 Pipeline Job 을 만든다
+(New Item → Pipeline → script from SCM → Script Path `deploy/Jenkinsfile.migrate`).
+빌드 시 ACTION 파라미터(status/apply/baseline)를 고른다 — 평소 배포는 메인 잡이 자동 적용하므로
+주 용도는 배포 전 status 확인과 덤프 복원 직후 baseline 이다.
+
 ## VMessage 스테이지와 머신 공유 시 (4코어/16GB VM 기준)
 
 사용자 적은 스테이지면 스펙은 충분하다. 단 셋만 잡아둘 것:

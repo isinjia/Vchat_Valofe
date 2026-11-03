@@ -1,0 +1,31 @@
+// DB 마이그레이션 전용 잡 (데몬 머신 로컬 Jenkins)
+// Job 설정: New Item → Pipeline → Pipeline script from SCM → Script Path: deploy/Jenkinsfile.migrate
+//
+// 평소에는 메인 잡(deploy/Jenkinsfile)의 'DB 마이그레이션' 스테이지가 배포 때마다 자동 적용하므로,
+// 이 잡은 배포 없이 ① 상태 확인(status) ② 적용만(apply) ③ 덤프 복원 직후 기준선(baseline) 할 때 쓴다.
+// baseline 은 모든 파일을 실행 없이 "적용됨"으로만 기록한다 — 덤프에 변경이 이미 들어 있을 때 최초 1회.
+pipeline {
+  agent any
+
+  options {
+    disableConcurrentBuilds()
+    timestamps()
+  }
+
+  environment {
+    ENV_FILE = '/etc/vchatbot/.env.stage'
+  }
+
+  parameters {
+    choice(name: 'ACTION', choices: ['status', 'apply', 'baseline'],
+      description: 'status=적용/미적용 목록, apply=미적용분 실행, baseline=전부 기록만(실행 안 함 — 덤프 복원 직후 1회)')
+  }
+
+  stages {
+    stage('DB 마이그레이션') {
+      steps {
+        sh "bash deploy/jenkins/migrate.sh ${params.ACTION}"
+      }
+    }
+  }
+}
