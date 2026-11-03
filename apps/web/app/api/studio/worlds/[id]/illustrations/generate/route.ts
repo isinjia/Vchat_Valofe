@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   query,
   generateImage,
-  getImageGenSettings,
+  isImageGenConfigured,
   chargeCoins,
   getPricingSettings,
 } from "@vchatbot/core";
@@ -43,9 +43,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (rows.length === 0) return bad("이 세계관의 지역사전 항목이 아닙니다.");
   }
 
-  const ig = await getImageGenSettings();
-  if (!ig.enabled || !ig.apiKey) {
-    return bad("이미지 생성이 설정되지 않았습니다. 관리자 설정에서 이미지 생성 API 를 등록하세요.");
+  if (!(await isImageGenConfigured())) {
+    return bad("이미지 생성이 설정되지 않았습니다. 관리자 > LLM 관리 > 이미지 생성 AI 에서 등록하세요.");
   }
 
   // 참조 이미지: 업로드(base64) + 기존 세계관 배경 + (선택) 세계관 타이틀 이미지

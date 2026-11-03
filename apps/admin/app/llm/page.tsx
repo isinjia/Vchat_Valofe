@@ -77,6 +77,7 @@ function ChatLlmTab() {
   const [costForm, setCostForm] = useState({ cost_per_1m_input: 0, cost_per_1m_output: 0, cost_currency: "USD" });
   const [list, setList] = useState<Llm[]>([]);
   const [form, setForm] = useState(EMPTY);
+  const [editId, setEditId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -122,8 +123,24 @@ function ChatLlmTab() {
     load();
   }, []);
 
-  const create = async () => {
+  const submit = async () => {
     setError("");
+    if (editId != null) {
+      // 키를 비워두면 기존 키 유지 (마스킹된 키를 되돌려보내지 않도록 __KEEP__)
+      const r = await fetch(`/api/llm/${editId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, api_key: form.api_key || "__KEEP__" }),
+      });
+      if (!r.ok) {
+        setError((await r.json()).error ?? "저장 실패");
+        return;
+      }
+      setEditId(null);
+      setForm(EMPTY);
+      load();
+      return;
+    }
     const r = await fetch("/api/llm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -135,6 +152,22 @@ function ChatLlmTab() {
     }
     setForm(EMPTY);
     load();
+  };
+
+  const startEdit = (l: Llm) => {
+    setEditId(l.id);
+    setError("");
+    setForm({
+      name: l.name,
+      provider: l.provider,
+      model: l.model,
+      api_key: "",
+      base_url: l.base_url ?? "",
+      max_tokens: l.max_tokens,
+      cost_per_1m_input: Number(l.cost_per_1m_input),
+      cost_per_1m_output: Number(l.cost_per_1m_output),
+      cost_currency: l.cost_currency || "USD",
+    });
   };
 
   // 마스킹된 api_key 를 되돌려보내지 않도록 __KEEP__ 전송
@@ -200,12 +233,16 @@ function ChatLlmTab() {
   const remove = async (l: Llm) => {
     if (!confirm(`"${l.name}" 을(를) 삭제할까요? 등급 할당도 함께 제거됩니다.`)) return;
     await fetch(`/api/llm/${l.id}`, { method: "DELETE" });
+    if (editId === l.id) {
+      setEditId(null);
+      setForm(EMPTY);
+    }
     load();
   };
 
   return (
     <>
-      <h3>LLM 추가</h3>
+      <h3>{editId != null ? "LLM 수정" : "LLM 추가"}</h3>
       <div className="panel">
         <div className="row">
           <div>
@@ -231,7 +268,7 @@ function ChatLlmTab() {
           <div>
             <label>API Key</label>
             <input type="password" value={form.api_key}
-              placeholder={form.provider === "anthropic" ? "비우면 서버 환경변수 사용" : ""}
+              placeholder={editId != null ? "비우면 기존 키 유지" : form.provider === "anthropic" ? "비우면 서버 환경변수 사용" : ""}
               onChange={(e) => setForm({ ...form, api_key: e.target.value })} />
           </div>
           {form.provider === "openai_compatible" && (
@@ -266,7 +303,12 @@ function ChatLlmTab() {
         </div>
         {error && <p style={{ color: "var(--danger)", marginTop: 8 }}>{error}</p>}
         <div style={{ marginTop: 12 }}>
-          <button onClick={create}>추가</button>
+          <button onClick={submit}>{editId != null ? "저장" : "추가"}</button>{" "}
+          {editId != null && (
+            <button className="small" onClick={() => { setEditId(null); setForm(EMPTY); setError(""); }}>
+              취소
+            </button>
+          )}
         </div>
       </div>
 
@@ -314,6 +356,7 @@ function ChatLlmTab() {
                   </button>
                 </td>
                 <td>
+                  <button className="small" onClick={() => startEdit(l)}>수정</button>{" "}
                   <button className="small" onClick={() => startEditCost(l)}>단가</button>{" "}
                   <button className="small" onClick={() => toggleAccounts(l)}>
                     계정 {l.account_count}

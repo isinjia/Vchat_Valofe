@@ -18,6 +18,17 @@ export async function resolveImageProvider(): Promise<ImageProviderRow | null> {
   return rows[0] ?? null;
 }
 
+/**
+ * 이미지 생성이 사용 가능한 상태인지 — LLM 관리의 이미지 생성 AI(image_providers) 우선,
+ * 없으면 레거시 설정(app_settings.image_gen) 확인. generateImage 의 해석 순서와 동일.
+ */
+export async function isImageGenConfigured(): Promise<boolean> {
+  const p = await resolveImageProvider();
+  if (p) return !!p.api_key;
+  const s = await getImageGenSettings();
+  return !!(s.enabled && s.apiKey);
+}
+
 /** 생성 옵션 */
 export interface ImageGenOptions {
   /** 투명 배경 요청 — openai 계열은 background=transparent 파라미터, gemini 는 프롬프트 지시(보장 안 됨) */

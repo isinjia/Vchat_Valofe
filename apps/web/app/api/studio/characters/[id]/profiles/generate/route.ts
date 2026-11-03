@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   query,
   generateImage,
-  getImageGenSettings,
+  isImageGenConfigured,
   chargeCoins,
   getPricingSettings,
 } from "@vchatbot/core";
@@ -37,9 +37,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const emotion = typeof body.emotion === "string" ? body.emotion : "";
   if (!EMOTIONS.includes(emotion)) return bad("emotion 이 올바르지 않습니다.");
 
-  const ig = await getImageGenSettings();
-  if (!ig.enabled || !ig.apiKey) {
-    return bad("이미지 생성이 설정되지 않았습니다. 관리자 설정에서 이미지 생성 API 를 등록하세요.");
+  if (!(await isImageGenConfigured())) {
+    return bad("이미지 생성이 설정되지 않았습니다. 관리자 > LLM 관리 > 이미지 생성 AI 에서 등록하세요.");
   }
 
   // 참조 수집: 업로드(base64) 뒤에 타이틀/기본 프로필을 앞쪽으로 끼워 넣는다

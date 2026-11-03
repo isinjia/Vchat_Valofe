@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   generateImage,
-  getImageGenSettings,
+  isImageGenConfigured,
   chargeCoins,
   getPricingSettings,
 } from "@vchatbot/core";
@@ -36,9 +36,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   parsed.refs.push(...(await collectAssetRefs(body, { worldId, userId: auth.userId }, req.nextUrl.origin)));
   if (parsed.refs.length > MAX_REFS) return bad(`참조 이미지는 합산 최대 ${MAX_REFS}장입니다.`);
 
-  const ig = await getImageGenSettings();
-  if (!ig.enabled || !ig.apiKey) {
-    return bad("이미지 생성이 설정되지 않았습니다. 관리자 설정에서 이미지 생성 API 를 등록하세요.");
+  if (!(await isImageGenConfigured())) {
+    return bad("이미지 생성이 설정되지 않았습니다. 관리자 > LLM 관리 > 이미지 생성 AI 에서 등록하세요.");
   }
 
   let buffer: Buffer;
