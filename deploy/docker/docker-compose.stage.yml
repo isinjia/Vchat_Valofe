@@ -37,6 +37,7 @@ services:
       - web
       - admin
     ports:
+      - "${WEB_TLS_443_PORT:-443}:443"   # 표준 포트 — 포트 없이 https://<도메인> 접속 (web)
       - "${WEB_TLS_PORT:-5000}:5000"
       - "${ADMIN_TLS_PORT:-5001}:5001"
     volumes:
