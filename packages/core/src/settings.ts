@@ -307,6 +307,8 @@ export const AI_ASSIST_KINDS = [
   "scenario",
   "greeting",
   "compact_prompt",
+  "story_card",
+  "story_scene",
 ] as const;
 
 export const AI_ASSIST_KIND_LABELS: Record<string, string> = {
@@ -318,6 +320,8 @@ export const AI_ASSIST_KIND_LABELS: Record<string, string> = {
   scenario: "상황 설정",
   greeting: "첫 인사말",
   compact_prompt: "브라우저 AI 압축",
+  story_card: "스토리 카드 텍스트",
+  story_scene: "스토리 플레이 장면",
 };
 
 /** 코인 가격 설정 */

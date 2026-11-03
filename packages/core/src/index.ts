@@ -31,3 +31,4 @@ export * from "./video-gen";
 export * from "./profile-sets";
 export * from "./gifts";
 export * from "./transfer";
+export * from "./story";

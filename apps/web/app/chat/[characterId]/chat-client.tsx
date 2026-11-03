@@ -73,11 +73,14 @@ function AiMessageBody({
   guest,
   animate,
   onReveal,
+  avatar,
 }: {
   content: string;
   guest: boolean;
   animate: boolean;
   onReveal: () => void;
+  /** 대사 말풍선마다 앞에 붙일 프로필 아바타 (없으면 생략) */
+  avatar?: React.ReactNode;
 }) {
   const segments = splitSegments(content);
   const [shown, setShown] = useState(animate ? 0 : Number.MAX_SAFE_INTEGER);
@@ -100,7 +103,10 @@ function AiMessageBody({
         seg.kind === "narr" ? (
           <div key={i} className={`narration${animate ? " seg-in" : ""}`}>{seg.text}</div>
         ) : (
-          <div key={i} className={`bubble${guest ? " guest" : ""}${animate ? " seg-in" : ""}`}>{seg.text}</div>
+          <div key={i} className={`bubble-row${animate ? " seg-in" : ""}`}>
+            {avatar}
+            <div className={`bubble${guest ? " guest" : ""}`}>{seg.text}</div>
+          </div>
         )
       )}
     </div>
@@ -307,6 +313,10 @@ interface Props {
   characterProfile?: string | null;
   /** 대화 시작 상황 설정 (있으면 소개에 함께 표시) */
   scenario?: string | null;
+  /** 공개된 스토리 수 — 1개 이상이면 헤더에 스토리 플레이 버튼 표시 */
+  storyCount?: number;
+  /** 비공개 캐릭터 공유 키 (스토리 링크에 전달) */
+  shareKey?: string | null;
 }
 
 export default function ChatClient({
@@ -323,6 +333,8 @@ export default function ChatClient({
   worldDescription,
   characterProfile,
   scenario,
+  storyCount = 0,
+  shareKey = null,
 }: Props) {
   const router = useRouter();
   const [infoOpen, setInfoOpen] = useState(false); // 세계관/캐릭터 소개 모달
@@ -846,6 +858,16 @@ export default function ChatClient({
             >
               ⓘ 소개
             </button>
+            {storyCount > 0 && (
+              <Link
+                href={`/chat/${characterId}/story${shareKey ? `?k=${encodeURIComponent(shareKey)}` : ""}`}
+                className="like-btn"
+                title="스토리 플레이"
+                style={{ marginLeft: 4 }}
+              >
+                📖 스토리
+              </Link>
+            )}
           </div>
           <div className="world">{worldName}</div>
         </div>
@@ -927,7 +949,9 @@ export default function ChatClient({
               {m.guestName && <div className="guest-name">{m.guestName}</div>}
               <div className={`msg ${m.role === "user" ? "user" : "ai"}`}>
                 {m.role === "user" && time && <span className="msg-time">{time}</span>}
-                {visual && <AvatarStack visual={visual} fallbackUrl={avatarUrl} title={characterName} className="msg-avatar" />}
+                {visual && !m.content && (
+                  <AvatarStack visual={visual} fallbackUrl={avatarUrl} title={characterName} className="msg-avatar" />
+                )}
                 {m.role === "user" ? (
                   <div className="bubble">{m.content}</div>
                 ) : m.content ? (
@@ -936,6 +960,12 @@ export default function ChatClient({
                     guest={!!m.guestName}
                     animate={idx >= (initialCountRef.current ?? Number.MAX_SAFE_INTEGER)}
                     onReveal={followBottom}
+                    // 대사 말풍선이 나뉘어 출력될 때마다 각 말풍선 앞에 프로필 아바타
+                    avatar={
+                      visual ? (
+                        <AvatarStack visual={visual} fallbackUrl={avatarUrl} title={characterName} className="msg-avatar" />
+                      ) : undefined
+                    }
                   />
                 ) : (
                   <div className={`bubble${m.guestName ? " guest" : ""}`}>

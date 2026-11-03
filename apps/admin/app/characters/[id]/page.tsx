@@ -480,6 +480,9 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
         <a href={`/api/characters/${char.id}/export`} download>
           <button type="button" className="small btn-secondary">JSON 내보내기</button>
         </a>
+        <a href={`/characters/${char.id}/stories`}>
+          <button type="button" className="small btn-secondary">스토리 모드</button>
+        </a>
         <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>
           제작자:{" "}
           {char.owner_user_id ? (
