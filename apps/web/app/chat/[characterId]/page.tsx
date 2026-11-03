@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { loadChatContext, loadRecentMessages, isCharacterHidden, query, resolveProfileVisuals } from "@vchatbot/core";
+import { loadChatContext, loadRecentMessages, isCharacterHidden, query, resolveProfileVisuals, listPublishedStories } from "@vchatbot/core";
 import { getUserId } from "@/lib/user";
 import ChatClient from "./chat-client";
 
@@ -61,6 +61,7 @@ export default async function ChatPage({
 
   const basic = ctx.illustrations.find((i) => i.kind === "basic");
   const illustMap = Object.fromEntries(ctx.illustrations.map((i) => [i.id, i.url]));
+  const stories = await listPublishedStories(ctx.character.id);
 
   return (
     <ChatClient
@@ -77,6 +78,8 @@ export default async function ChatPage({
       worldDescription={ctx.world.description}
       characterProfile={ctx.character.profile}
       scenario={ctx.character.scenario ?? null}
+      storyCount={stories.length}
+      shareKey={k ?? null}
     />
   );
 }

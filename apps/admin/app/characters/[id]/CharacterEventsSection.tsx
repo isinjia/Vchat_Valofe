@@ -11,6 +11,7 @@ export interface CharEvent {
   trigger_affinity_min: number | null;
   trigger_keywords: string | null;
   trigger_relationship: string | null;
+  trigger_prereq_event_id: number | null;
   situation: string;
   success_condition: string;
   fail_condition: string | null;
@@ -28,6 +29,7 @@ const EMPTY = {
   trigger_affinity_min: "",
   trigger_keywords: "",
   trigger_relationship: "",
+  trigger_prereq_event_id: "",
   situation: "",
   success_condition: "",
   fail_condition: "",
@@ -41,11 +43,13 @@ const EMPTY = {
 
 const REL_LABEL: Record<string, string> = { none: "관계 없음", lover: "연인", engaged: "약혼", married: "결혼" };
 
-function condSummary(e: CharEvent): string {
+function condSummary(e: CharEvent, nameById: Map<number, string>): string {
   const parts: string[] = [];
   if (e.trigger_affinity_min != null) parts.push(`호감도 ${e.trigger_affinity_min}+`);
   if (e.trigger_keywords) parts.push(`키워드: ${e.trigger_keywords}`);
   if (e.trigger_relationship) parts.push(`관계: ${REL_LABEL[e.trigger_relationship] ?? e.trigger_relationship}`);
+  if (e.trigger_prereq_event_id)
+    parts.push(`선행: ${nameById.get(e.trigger_prereq_event_id) ?? `#${e.trigger_prereq_event_id}`} 성공`);
   return parts.length ? parts.join(" / ") : "조건 없음";
 }
 
@@ -93,6 +97,7 @@ export default function CharacterEventsSection({
       trigger_affinity_min: e.trigger_affinity_min == null ? "" : String(e.trigger_affinity_min),
       trigger_keywords: e.trigger_keywords ?? "",
       trigger_relationship: e.trigger_relationship ?? "",
+      trigger_prereq_event_id: e.trigger_prereq_event_id ? String(e.trigger_prereq_event_id) : "",
       situation: e.situation ?? "",
       success_condition: e.success_condition ?? "",
       fail_condition: e.fail_condition ?? "",
@@ -118,6 +123,7 @@ export default function CharacterEventsSection({
       trigger_affinity_min: form.trigger_affinity_min.trim() === "" ? null : Number(form.trigger_affinity_min),
       trigger_keywords: form.trigger_keywords,
       trigger_relationship: form.trigger_relationship || null,
+      trigger_prereq_event_id: form.trigger_prereq_event_id ? Number(form.trigger_prereq_event_id) : null,
       situation: form.situation,
       success_condition: form.success_condition,
       fail_condition: form.fail_condition,
@@ -236,6 +242,18 @@ export default function CharacterEventsSection({
               <option value="married">결혼일 때만</option>
             </select>
           </div>
+          <div>
+            <label>발동: 선행 이벤트 성공</label>
+            <select
+              value={form.trigger_prereq_event_id}
+              onChange={(e) => setForm({ ...form, trigger_prereq_event_id: e.target.value })}
+            >
+              <option value="">조건 없음</option>
+              {list.filter((x) => x.id !== editId).map((x) => (
+                <option key={x.id} value={x.id}>{x.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
         <label>상황 지시</label>
         <textarea
@@ -340,7 +358,7 @@ export default function CharacterEventsSection({
                   {e.success_line ? <span title="달성 대사 있음"> 💬</span> : null}
                   {e.success_illustration_id ? <span title="달성 이미지 있음"> 🖼</span> : null}
                 </td>
-                <td className="muted">{condSummary(e)}</td>
+                <td className="muted">{condSummary(e, new Map(list.map((x) => [x.id, x.name])))}</td>
                 <td>{Number(e.success_count ?? 0)}명</td>
                 <td>{e.is_active ? <span className="badge">활성</span> : <span className="muted">비활성</span>}</td>
                 <td>

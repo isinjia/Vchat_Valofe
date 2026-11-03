@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query, generateImage, getImageGenSettings } from "@vchatbot/core";
+import { query, generateImage, isImageGenConfigured } from "@vchatbot/core";
 import { parseRefImages, fetchRefImage, collectAssetRefs, withRefNotes, MAX_REFS } from "@/lib/image-refs";
 import { PROFILE_EMOTIONS } from "@/lib/profile-sets";
 
@@ -45,9 +45,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt) return bad("prompt 가 필요합니다.");
 
-  const ig = await getImageGenSettings();
-  if (!ig.enabled || !ig.apiKey) {
-    return bad("이미지 생성이 설정되지 않았습니다. 관리자 설정에서 이미지 생성 API 를 등록하세요.");
+  if (!(await isImageGenConfigured())) {
+    return bad("이미지 생성이 설정되지 않았습니다. 관리자 > LLM 관리 > 이미지 생성 AI 에서 등록하세요.");
   }
 
   const parsed = parseRefImages(body.refImages);

@@ -1,0 +1,367 @@
+/* 스토리보드 에디터 — 호스트 앱(web/admin)의 테마 변수(--panel/--border/--text/--muted/--accent)를 그대로 사용 */
+
+.sbe-root {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: calc(100vh - 120px);
+  min-height: 480px;
+}
+
+/* ---------- 상단 바 ---------- */
+.sbe-topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sbe-back { font-size: 13px; color: var(--muted, #888); white-space: nowrap; }
+.sbe-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #222);
+  white-space: nowrap;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sbe-title {
+  width: 220px;
+  padding: 6px 10px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+  background: var(--panel, #fff);
+  color: var(--text, #222);
+  font-weight: 600;
+}
+.sbe-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--border, #ddd);
+  color: var(--text, #222);
+  white-space: nowrap;
+}
+.sbe-badge-pub { background: #2e9e5b; color: #fff; }
+.sbe-dirty { color: #e8a13c; font-size: 11px; }
+.sbe-topbar-spacer { flex: 1; }
+.sbe-sep { width: 1px; height: 22px; background: var(--border, #ccc); }
+.sbe-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+  background: var(--panel, #fff);
+  color: var(--text, #222);
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.sbe-btn:hover { border-color: var(--accent, #4f6ef7); }
+.sbe-btn:disabled { opacity: 0.5; cursor: default; }
+.sbe-btn-primary { background: var(--accent, #4f6ef7); border-color: var(--accent, #4f6ef7); color: #fff; }
+.sbe-flash { font-size: 13px; color: #2e9e5b; white-space: nowrap; }
+
+/* ---------- 변수 바 ---------- */
+.sbe-vars {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 8px;
+  background: var(--panel, #fff);
+}
+.sbe-vars-label { font-size: 12px; color: var(--muted, #888); white-space: nowrap; }
+.sbe-var { display: inline-flex; align-items: center; gap: 4px; }
+.sbe-var-name {
+  width: 90px;
+  padding: 3px 6px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text, #222);
+  font-size: 13px;
+}
+.sbe-var-init {
+  width: 64px;
+  padding: 3px 6px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text, #222);
+  font-size: 13px;
+}
+
+/* ---------- 공개 에러 ---------- */
+.sbe-errors {
+  position: relative;
+  border: 1px solid #d64545;
+  background: rgba(214, 69, 69, 0.08);
+  border-radius: 8px;
+  padding: 10px 32px 10px 12px;
+  font-size: 13px;
+  color: var(--text, #222);
+}
+.sbe-errors ul { margin: 6px 0 0 18px; }
+.sbe-errors > .sbe-x { position: absolute; top: 8px; right: 8px; }
+
+/* ---------- 캔버스 ---------- */
+.sbe-scroller {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 10px;
+  background:
+    linear-gradient(rgba(127, 127, 127, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(127, 127, 127, 0.07) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.sbe-scroller.sbe-panning { cursor: grabbing; }
+.sbe-scroller.sbe-panning * { cursor: grabbing !important; }
+.sbe-zoom-wrap { position: relative; overflow: hidden; }
+.sbe-canvas { position: relative; width: 4000px; height: 2600px; transform-origin: 0 0; }
+.sbe-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* ---------- 멀리보기 (줌아웃) ---------- */
+.sbe-btn-on { background: var(--accent, #4f6ef7); border-color: var(--accent, #4f6ef7); color: #fff; }
+.sbe-canvas.sbe-ov .sbe-card-body { pointer-events: none; }
+.sbe-canvas.sbe-ov .sbe-card-body .sbe-port { pointer-events: auto; }
+.sbe-canvas.sbe-ov .sbe-port { scale: 2; }
+.sbe-ov-zoom {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--accent, #4f6ef7);
+  background: var(--panel, #fff);
+  font-size: 18px;
+  cursor: pointer;
+  z-index: 5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.sbe-ov-zoom:hover { background: var(--accent, #4f6ef7); }
+
+/* ---------- 팝업 내용 에디터 ---------- */
+.sbe-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.sbe-modal {
+  width: 440px;
+  max-width: 94vw;
+  max-height: 84vh;
+  overflow: auto;
+  background: var(--panel, #fff);
+  color: var(--text, #222);
+  border: 1px solid var(--border, #ccc);
+  border-radius: 12px;
+  font-size: 13px;
+}
+.sbe-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border, #ccc);
+}
+.sbe-edge {
+  fill: none;
+  stroke: var(--accent, #4f6ef7);
+  stroke-width: 2;
+  pointer-events: none;
+}
+.sbe-edge-sel { stroke: #e8a13c; stroke-width: 3; }
+.sbe-edge-pending { stroke-dasharray: 6 4; opacity: 0.8; }
+.sbe-edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.sbe-edge-del { cursor: pointer; pointer-events: all; }
+.sbe-edge-del circle { fill: #d64545; }
+.sbe-edge-del text { fill: #fff; font-size: 10px; }
+
+/* ---------- 카드 ---------- */
+.sbe-card {
+  position: absolute;
+  width: 260px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 10px;
+  background: var(--panel, #fff);
+  color: var(--text, #222);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  font-size: 13px;
+}
+.sbe-card-start, .sbe-card-end { width: 150px; }
+.sbe-card-branch { width: 310px; }
+.sbe-card-start .sbe-card-head { background: #2e9e5b; color: #fff; border-radius: 9px 9px 9px 9px; }
+.sbe-card-end .sbe-card-head { background: #8a5fd0; color: #fff; border-radius: 9px; }
+.sbe-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  font-weight: 600;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  border-bottom: 1px solid var(--border, #ccc);
+  border-radius: 9px 9px 0 0;
+  background: rgba(127, 127, 127, 0.08);
+}
+.sbe-card-start .sbe-card-head, .sbe-card-end .sbe-card-head { border-bottom: none; }
+.sbe-card-head:active { cursor: grabbing; }
+.sbe-card-body { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; }
+.sbe-card-body input[type="text"],
+.sbe-card-body input:not([type]),
+.sbe-card-body input[type="number"],
+.sbe-card-body textarea,
+.sbe-card-body select {
+  width: 100%;
+  padding: 5px 7px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text, #222);
+  font-size: 13px;
+  font-family: inherit;
+}
+.sbe-card-body textarea { resize: vertical; }
+
+/* ---------- 포트 ---------- */
+.sbe-port {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--accent, #4f6ef7);
+  background: var(--panel, #fff);
+  cursor: crosshair;
+  flex-shrink: 0;
+  touch-action: none;
+}
+.sbe-port:hover, .sbe-port-hot { background: var(--accent, #4f6ef7); }
+.sbe-port-on { background: var(--accent, #4f6ef7); }
+.sbe-port-in {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-color: #e8a13c;
+}
+.sbe-port-in:hover, .sbe-port-in.sbe-port-hot { background: #e8a13c; }
+.sbe-port-bottom {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.sbe-port-right { margin-left: 2px; }
+
+/* ---------- 카드 내부 요소 ---------- */
+.sbe-x {
+  border: none;
+  background: transparent;
+  color: var(--muted, #888);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  line-height: 1;
+}
+.sbe-x:hover { color: #d64545; }
+.sbe-mini {
+  padding: 4px 8px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text, #222);
+  cursor: pointer;
+  font-size: 12px;
+  align-self: flex-start;
+}
+.sbe-mini:hover { border-color: var(--accent, #4f6ef7); }
+.sbe-mini:disabled { opacity: 0.5; cursor: default; }
+.sbe-filebtn { position: relative; overflow: hidden; display: inline-block; }
+.sbe-filebtn input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.sbe-img { position: relative; }
+.sbe-img img { width: 100%; border-radius: 6px; display: block; }
+.sbe-img .sbe-x {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border-radius: 4px;
+}
+.sbe-img-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.sbe-img-prompt { display: flex; flex-direction: column; gap: 4px; }
+.sbe-opt { border-top: 1px dashed var(--border, #ccc); padding-top: 6px; }
+.sbe-opt:first-child { border-top: none; padding-top: 0; }
+.sbe-opt-row { display: flex; align-items: center; gap: 4px; }
+.sbe-opt-row input, .sbe-opt-row select { min-width: 0; }
+.sbe-card-body .sbe-opt-row input[type="number"].sbe-range { width: 56px; flex: none; }
+.sbe-rule {
+  border: 1px dashed var(--border, #ccc);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sbe-rule-head { display: flex; align-items: center; gap: 4px; }
+.sbe-rule-head .sbe-muted { white-space: nowrap; }
+.sbe-card-body .sbe-rule-head select.sbe-rule-logic { width: auto; flex: 1; min-width: 0; font-size: 12px; padding: 3px 5px; }
+.sbe-rule-head .sbe-x { margin-left: auto; }
+.sbe-card-body .sbe-rule .sbe-opt-row select { flex: 1 1 auto; width: auto; min-width: 60px; }
+.sbe-card-body .sbe-rule .sbe-opt-row input[type="number"].sbe-range { width: 48px; }
+.sbe-logic-tag {
+  flex: none;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent, #4f6ef7);
+  min-width: 30px;
+  text-align: center;
+  background: transparent;
+  border: 1px solid var(--accent, #4f6ef7);
+  border-radius: 5px;
+  padding: 2px 3px;
+  cursor: pointer;
+  line-height: 1;
+}
+.sbe-logic-tag:hover { background: var(--accent, #4f6ef7); color: #fff; }
+.sbe-card-body .sbe-rule .sbe-opt-row select.sbe-term-mode { flex: none; width: 58px; min-width: 58px; font-size: 12px; padding: 4px 2px; }
+.sbe-else {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border, #ccc);
+  color: var(--muted, #888);
+  font-size: 12px;
+  text-align: center;
+}
+.sbe-ops summary { cursor: pointer; color: var(--muted, #888); font-size: 12px; }
+.sbe-varops { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.sbe-varop-row { display: flex; align-items: center; gap: 4px; }
+/* 카드 공통 width:100% 규칙보다 우선하도록 구체적으로 지정 — 변수명이 보이게 셀렉트가 남는 폭을 다 가진다 */
+.sbe-card-body .sbe-varop-row select.sbe-varop-var { flex: 1 1 auto; width: auto; min-width: 0; }
+.sbe-card-body .sbe-varop-row select.sbe-varop-op { width: 52px; flex: none; }
+.sbe-card-body .sbe-varop-row input[type="number"] { width: 58px; flex: none; }
+.sbe-var .sbe-muted { white-space: nowrap; }
+.sbe-muted { color: var(--muted, #888); font-size: 12px; }
+.sbe-help { font-size: 12px; color: var(--muted, #888); }

@@ -62,6 +62,8 @@ const AI_KINDS: [string, string][] = [
   ["scenario", "상황 설정"],
   ["greeting", "첫 인사말"],
   ["compact_prompt", "브라우저 AI 압축 (캐릭터 설정 요약)"],
+  ["story_card", "스토리 카드 텍스트"],
+  ["story_scene", "스토리 플레이 장면 (플레이 중 생성 — 사용량 과금 권장)"],
 ];
 
 const EMPTY: Settings = {
@@ -82,7 +84,10 @@ const EMPTY: Settings = {
 
 export default function SettingsPage() {
   const [s, setS] = useState<Settings>(EMPTY);
-  const [saved, setSaved] = useState(false);
+  const [savedKey, setSavedKey] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [cdnTesting, setCdnTesting] = useState(false);
+  const [cdnResult, setCdnResult] = useState<{ ok: boolean; message: string; url?: string } | null>(null);
   const [providers, setProviders] = useState<{ id: number; name: string; model: string; is_active: number | boolean }[]>([]);
 
   const [chars, setChars] = useState<{ id: number; name: string; world_name: string }[]>([]);
@@ -139,23 +144,67 @@ export default function SettingsPage() {
       });
   }, []);
 
-  const save = async () => {
-    await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...s,
-        fees: { creatorRate: s.fees.creatorRate / 100, worldRate: s.fees.worldRate / 100, giftRate: s.fees.giftRate / 100 },
-        vmsg: {
-          enabled: s.vmsg.enabled,
-          apiBase: s.vmsg.apiBase,
-          allowedIps: s.vmsg.allowedIpsText,
-          bots: s.vmsg.bots,
-        },
-      }),
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+  /** 섹션별 전송 payload — /api/settings PUT 은 보낸 키만 갱신하므로 부분 저장이 안전하다 */
+  const payloads: Record<string, () => Record<string, unknown>> = {
+    storage: () => ({ storage: s.storage }),
+    llm: () => ({ llm: s.llm, scoring: s.scoring }),
+    image_gen: () => ({ image_gen: s.image_gen }),
+    affinity: () => ({ affinity_prompts: s.affinity_prompts }),
+    fees: () => ({
+      fees: { creatorRate: s.fees.creatorRate / 100, worldRate: s.fees.worldRate / 100, giftRate: s.fees.giftRate / 100 },
+      billing: s.billing,
+      pricing: s.pricing,
+    }),
+    vmsg: () => ({
+      vmsg: { enabled: s.vmsg.enabled, apiBase: s.vmsg.apiBase, allowedIps: s.vmsg.allowedIpsText, bots: s.vmsg.bots },
+    }),
+  };
+
+  const saveSection = async (key: string, payload: Record<string, unknown>) => {
+    setSavingKey(key);
+    try {
+      await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setSavedKey(key);
+      setTimeout(() => setSavedKey((cur) => (cur === key ? null : cur)), 1500);
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const saveAll = () =>
+    saveSection("all", Object.assign({}, ...Object.values(payloads).map((f) => f())));
+
+  const SaveButton = ({ k }: { k: string }) => (
+    <button onClick={() => saveSection(k, payloads[k]())} disabled={savingKey != null}>
+      {savedKey === k ? "저장됨 ✓" : "저장"}
+    </button>
+  );
+
+  /** 입력 중인(저장 전) 스토리지 설정으로 업로드→공개 URL 조회→삭제까지 실제 테스트 */
+  const testCdn = async () => {
+    setCdnTesting(true);
+    setCdnResult(null);
+    try {
+      const r = await fetch("/api/settings/storage-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storage: s.storage }),
+      });
+      const d = await r.json();
+      setCdnResult(
+        d.ok
+          ? { ok: true, message: "업로드·공개 URL 조회 성공", url: d.url }
+          : { ok: false, message: d.error ?? "테스트 실패", url: d.url }
+      );
+    } catch (e) {
+      setCdnResult({ ok: false, message: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setCdnTesting(false);
+    }
   };
 
   const st = s.storage;
@@ -254,6 +303,26 @@ export default function SettingsPage() {
             </div>
           </>
         )}
+        <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <SaveButton k="storage" />
+          <button type="button" onClick={testCdn} disabled={cdnTesting}>
+            {cdnTesting ? "테스트 중..." : "CDN 테스트"}
+          </button>
+          {cdnResult && (
+            <span style={{ fontSize: 13, color: cdnResult.ok ? "#2e9e5b" : "var(--danger)" }}>
+              {cdnResult.ok ? "✓" : "✗"} {cdnResult.message}
+              {cdnResult.url && (
+                <>
+                  {" — "}
+                  <a href={cdnResult.url} target="_blank" rel="noreferrer">{cdnResult.url}</a>
+                </>
+              )}
+            </span>
+          )}
+        </div>
+        <p className="muted" style={{ marginTop: 6 }}>
+          CDN 테스트는 화면에 입력된 값(저장 전 포함)으로 테스트 파일을 실제 업로드하고 공개 URL 로 조회한 뒤 삭제합니다.
+        </p>
       </div>
 
       <h3>LLM</h3>
@@ -320,6 +389,9 @@ export default function SettingsPage() {
         <p className="muted" style={{ marginTop: 8 }}>
           API 키는 보안상 DB 가 아닌 서버 환경변수(ANTHROPIC_API_KEY)로 설정합니다.
         </p>
+        <div style={{ marginTop: 12 }}>
+          <SaveButton k="llm" />
+        </div>
       </div>
 
       <h3>이미지 생성 (일러스트 AI)</h3>
@@ -357,6 +429,9 @@ export default function SettingsPage() {
             </select>
           </div>
         </div>
+        <div style={{ marginTop: 12 }}>
+          <SaveButton k="image_gen" />
+        </div>
       </div>
 
       <h3>호감도 반응 기본값</h3>
@@ -375,6 +450,9 @@ export default function SettingsPage() {
             />
           </div>
         ))}
+        <div style={{ marginTop: 12 }}>
+          <SaveButton k="affinity" />
+        </div>
       </div>
 
       <h3>수수료 / 가격</h3>
@@ -469,6 +547,9 @@ export default function SettingsPage() {
             <input type="number" min={0} value={s.pricing.byok.cost}
               onChange={(e) => setS({ ...s, pricing: { ...s.pricing, byok: { ...s.pricing.byok, cost: Number(e.target.value) } } })} />
           </div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <SaveButton k="fees" />
         </div>
       </div>
 
@@ -565,11 +646,16 @@ export default function SettingsPage() {
             + 챗봇 추가
           </button>
         </div>
+        <div style={{ marginTop: 12 }}>
+          <SaveButton k="vmsg" />
+        </div>
       </div>
 
       <QuotaSection />
 
-      <button onClick={save}>{saved ? "저장됨 ✓" : "전체 저장"}</button>
+      <button onClick={saveAll} disabled={savingKey != null}>
+        {savedKey === "all" ? "저장됨 ✓" : "전체 저장"}
+      </button>
     </>
   );
 }

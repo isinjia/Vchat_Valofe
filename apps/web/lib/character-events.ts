@@ -7,6 +7,7 @@ export type EventFields = {
   trigger_affinity_min: number | null;
   trigger_keywords: string | null;
   trigger_relationship: string | null;
+  trigger_prereq_event_id: number | null;
   situation: string;
   success_condition: string;
   fail_condition: string | null;
@@ -65,6 +66,15 @@ export function parseEventInput(
     if (r === null || r === undefined || r === "") v.trigger_relationship = null;
     else if ((REL_TRIGGER as readonly unknown[]).includes(r)) v.trigger_relationship = r as string;
     else return { error: "관계 조건 값이 올바르지 않습니다." };
+  }
+  if (want("trigger_prereq_event_id")) {
+    const raw = b.trigger_prereq_event_id;
+    if (raw === null || raw === undefined || raw === "") v.trigger_prereq_event_id = null;
+    else {
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n <= 0) return { error: "선행 이벤트 값이 올바르지 않습니다." };
+      v.trigger_prereq_event_id = n;
+    }
   }
   if (want("set_relationship")) {
     const r = b.set_relationship;

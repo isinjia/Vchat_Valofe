@@ -584,6 +584,9 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
         <a href={`/api/studio/characters/${id}/export`} download>
           <button type="button" className="small btn-secondary" style={{ marginTop: 0 }}>JSON 내보내기</button>
         </a>
+        <Link href={`/studio/characters/${id}/stories`}>
+          <button type="button" className="small btn-secondary" style={{ marginTop: 0 }}>스토리 모드</button>
+        </Link>
       </h2>
 
       {char.delete_scheduled_at && (

@@ -968,3 +968,112 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid var(--border); border-radius: 999px; padding: 1px 7px;
 }
 .dict-combo-empty { padding: 10px; color: var(--muted); font-size: 13px; }
+
+/* ===== 스토리 모드 (목록 + 플레이어) — 일반 채팅과 별도 화면 ===== */
+.story-list { display: flex; flex-direction: column; gap: 10px; }
+.story-list-item {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--panel);
+}
+.story-list-item:hover { background: var(--panel-hover); }
+.story-list-title { font-weight: 600; }
+.story-list-state { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+.story-play { max-width: 720px; margin: 0 auto; padding: 0 16px; height: 100dvh; display: flex; flex-direction: column; }
+.story-play-head { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.story-play-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; }
+.story-play-coins { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.story-play-coins a { color: var(--accent); font-weight: 700; }
+.story-play-head .back { font-size: 18px; color: var(--muted); }
+.story-play-title { font-weight: 700; font-size: 17px; }
+.story-play-sub { font-size: 12px; color: var(--muted); }
+.story-play-main { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+.story-play-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+  padding: 18px; display: flex; flex-direction: column; gap: 14px;
+}
+.story-play-center { align-items: center; text-align: center; padding: 40px 18px; }
+.story-play-img { width: 100%; border-radius: 10px; display: block; }
+.story-play-text p { margin: 0 0 10px; line-height: 1.7; }
+.story-play-text p:last-child { margin-bottom: 0; }
+.story-play-btn {
+  align-self: flex-end; padding: 10px 22px; border: none; border-radius: 10px;
+  background: var(--accent); color: #fff; font-size: 14px; cursor: pointer;
+}
+.story-play-btn:disabled { opacity: 0.6; cursor: default; }
+.story-play-center .story-play-btn { align-self: center; }
+.story-play-btn-sub { background: var(--panel-hover); color: var(--text); display: inline-flex; align-items: center; }
+.story-play-choices { display: flex; flex-direction: column; gap: 8px; }
+.story-play-choice {
+  padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--panel-hover); color: var(--text); font-size: 14px; cursor: pointer; text-align: left;
+}
+.story-play-choice:hover { border-color: var(--accent); }
+.story-play-choice:disabled { opacity: 0.6; cursor: default; }
+
+/* ===== 스토리 플레이어 — 채팅형 장면 출력 (플레이어 대사도 AI 생성) ===== */
+.story-play-chat {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 2px 16px;
+}
+.story-chat-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  margin: 10px 0 2px;
+}
+.story-chat-divider::before, .story-chat-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.story-chat-narr {
+  color: var(--muted);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.6;
+  padding: 0 6px;
+}
+.story-chat-row { display: flex; }
+.story-chat-row.me { justify-content: flex-end; }
+.story-chat-row.them { justify-content: flex-start; }
+.story-chat-bubble {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  line-height: 1.6;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+.story-chat-row.them .story-chat-bubble {
+  background: var(--ai-bubble-char, var(--ai-bubble));
+  color: var(--text);
+  border-bottom-left-radius: 6px;
+}
+.story-chat-row.me .story-chat-bubble {
+  background: var(--user-bubble);
+  color: #fff;
+  border-bottom-right-radius: 6px;
+}
+.story-chat-typing { color: var(--muted); font-size: 13px; padding: 0 6px; }
+.story-play-actions {
+  position: sticky;
+  bottom: 0;
+  padding: 10px 0 14px;
+  background: var(--bg);
+  display: flex;
+}
+.story-chat-cost { text-align: right; color: var(--muted); font-size: 11px; padding: 0 4px; }
+
+/* 분할 출력되는 대사 말풍선마다 앞에 프로필 아바타 */
+.bubble-row { display: flex; align-items: flex-end; max-width: 100%; }
+.bubble-row .bubble { max-width: 100%; }
+.bubble-row .msg-avatar { align-self: flex-end; }

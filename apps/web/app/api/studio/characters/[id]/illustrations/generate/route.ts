@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   query,
   generateImage,
-  getImageGenSettings,
+  isImageGenConfigured,
   chargeCoins,
   getPricingSettings,
 } from "@vchatbot/core";
@@ -43,9 +43,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   // 외부 호출 전에 설정 여부부터 확인
-  const ig = await getImageGenSettings();
-  if (!ig.enabled || !ig.apiKey) {
-    return bad("이미지 생성이 설정되지 않았습니다. 관리자 설정에서 이미지 생성 API 를 등록하세요.");
+  if (!(await isImageGenConfigured())) {
+    return bad("이미지 생성이 설정되지 않았습니다. 관리자 > LLM 관리 > 이미지 생성 AI 에서 등록하세요.");
   }
 
   // 참조 이미지: 업로드(base64) + 등록 자산(프로필/일러스트/세계관 배경) + (선택) 캐릭터 타이틀 이미지
