@@ -28,6 +28,12 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const il = await query("SELECT id FROM illustrations WHERE id = ? AND character_id = ?", [sid, g.cid]);
     if (il.length === 0) return bad("달성 시 이미지가 이 캐릭터의 일러스트가 아닙니다.");
   }
+  const pid = parsed.value.trigger_prereq_event_id;
+  if (pid) {
+    if (pid === g.eid) return bad("자기 자신을 선행 이벤트로 지정할 수 없습니다.");
+    const pe = await query("SELECT id FROM character_events WHERE id = ? AND character_id = ?", [pid, g.cid]);
+    if (pe.length === 0) return bad("선행 이벤트가 이 캐릭터의 이벤트가 아닙니다.");
+  }
   const entries = Object.entries(parsed.value);
   if (entries.length === 0) return bad("변경할 필드가 없습니다.");
   await execute(`UPDATE character_events SET ${entries.map(([k]) => `${k} = ?`).join(", ")} WHERE id = ?`, [

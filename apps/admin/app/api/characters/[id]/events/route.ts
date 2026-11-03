@@ -30,13 +30,18 @@ export async function POST(req: NextRequest, { params }: Params) {
     const il = await query("SELECT id FROM illustrations WHERE id = ? AND character_id = ?", [v.success_illustration_id, Number(id)]);
     if (il.length === 0) return bad("달성 시 이미지가 이 캐릭터의 일러스트가 아닙니다.");
   }
+  if (v.trigger_prereq_event_id) {
+    const pe = await query("SELECT id FROM character_events WHERE id = ? AND character_id = ?", [v.trigger_prereq_event_id, Number(id)]);
+    if (pe.length === 0) return bad("선행 이벤트가 이 캐릭터의 이벤트가 아닙니다.");
+  }
   const result = await execute(
     `INSERT INTO character_events (character_id, name, trigger_affinity_min, trigger_keywords, trigger_relationship,
-       situation, success_condition, fail_condition, set_relationship, retry_hours, max_turns, is_active,
+       trigger_prereq_event_id, situation, success_condition, fail_condition, set_relationship, retry_hours, max_turns, is_active,
        success_line, success_illustration_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      Number(id), v.name, v.trigger_affinity_min, v.trigger_keywords, v.trigger_relationship, v.situation,
+      Number(id), v.name, v.trigger_affinity_min, v.trigger_keywords, v.trigger_relationship,
+      v.trigger_prereq_event_id ?? null, v.situation,
       v.success_condition, v.fail_condition, v.set_relationship, v.retry_hours, v.max_turns, v.is_active,
       v.success_line ?? null, v.success_illustration_id ?? null,
     ]

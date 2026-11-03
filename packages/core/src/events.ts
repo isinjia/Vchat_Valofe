@@ -12,6 +12,8 @@ export interface CharacterEventRow {
   trigger_affinity_min: number | null;
   trigger_keywords: string | null;
   trigger_relationship: UserRelationship | null;
+  /** 선행 이벤트: 지정 시 해당 이벤트를 성공한 유저에게만 발동 (이벤트 체인) */
+  trigger_prereq_event_id: number | null;
   situation: string;
   success_condition: string;
   fail_condition: string | null;
@@ -68,8 +70,10 @@ export async function maybeStartEvent(
        AND NOT EXISTS (SELECT 1 FROM user_character_events f
              WHERE f.event_id = e.id AND f.user_id = ? AND f.status = 'failed'
                AND f.ended_at > DATE_SUB(NOW(), INTERVAL e.retry_hours HOUR))
+       AND (e.trigger_prereq_event_id IS NULL OR EXISTS (SELECT 1 FROM user_character_events p
+             WHERE p.event_id = e.trigger_prereq_event_id AND p.user_id = ? AND p.status = 'success'))
      ORDER BY e.id`,
-    [characterId, userId, userId]
+    [characterId, userId, userId, userId]
   );
   for (const e of candidates) {
     if (e.trigger_affinity_min != null && state.affinity < e.trigger_affinity_min) continue;
