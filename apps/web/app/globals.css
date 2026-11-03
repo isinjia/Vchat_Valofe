@@ -204,6 +204,32 @@ a { color: inherit; text-decoration: none; }
 .msg.ai .bubble { background: var(--ai-bubble-char, var(--ai-bubble)); border-bottom-left-radius: 4px; }
 
 .msg.ai .bubble.guest { background: var(--panel); border: 1px dashed var(--border); }
+
+/* 캐릭터 응답 분할: 대사는 말풍선별로, (…) 상황 설명은 지문 스타일로 */
+.bubble-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 75%;
+  min-width: 0;
+}
+.bubble-stack .bubble { max-width: 100%; }
+.narration {
+  color: var(--muted);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.5;
+  padding: 2px 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+/* 새로 받은 응답의 조각이 시간차로 나타날 때 */
+.seg-in { animation: seg-in 0.28s ease-out both; }
+@keyframes seg-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
 .guest-name { font-size: 11px; color: var(--muted); margin: 0 0 3px 4px; }
 
 .msg-illust {

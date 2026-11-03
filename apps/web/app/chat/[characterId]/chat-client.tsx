@@ -31,6 +31,82 @@ const dateLabel = (d: string | Date) =>
 const timeLabel = (d?: string | Date) =>
   d ? new Date(d).toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" }) : "";
 
+/** 캐릭터 응답의 한 조각: 대사(say)는 말풍선, (…) 상황 설명(narr)은 지문 스타일 */
+interface Segment {
+  kind: "say" | "narr";
+  text: string;
+}
+
+/**
+ * 캐릭터 응답을 줄 단위로 분해한다. 괄호(또는 RP 관행인 *별표*)로 감싼 줄은 상황 설명(지문), 나머지는 대사.
+ * 스트리밍 중에는 닫는 괄호가 아직 안 왔을 수 있으므로 "( 로 시작 + ) 없음"도 지문으로 본다.
+ * "(웃으며) 안녕" 처럼 중간에 닫히는 줄이나 형식을 안 지킨 출력은 대사 말풍선으로 그대로 표시한다 (유실 없음).
+ */
+function splitSegments(content: string): Segment[] {
+  return content
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const parenWrapped = /^[(（].*[)）]$/.test(line) && !/[)）]/.test(line.slice(1, -1));
+      const parenStreaming = /^[(（]/.test(line) && !/[)）]/.test(line);
+      if (parenWrapped || parenStreaming) {
+        return { kind: "narr" as const, text: line.replace(/^[(（]\s*/, "").replace(/\s*[)）]$/, "") };
+      }
+      // *행동 묘사* / **행동 묘사** 한 줄 전체 감싼 형태 (모델이 응답 형식을 어기는 흔한 관행)
+      const starWrapped = /^\*{1,2}[^*].*[^*]\*{1,2}$/.test(line) && !/\*/.test(line.replace(/^\*{1,2}/, "").replace(/\*{1,2}$/, ""));
+      if (starWrapped) {
+        return { kind: "narr" as const, text: line.replace(/^\*{1,2}\s*/, "").replace(/\s*\*{1,2}$/, "") };
+      }
+      return { kind: "say" as const, text: line };
+    });
+}
+
+const SEGMENT_REVEAL_MS = 550;
+
+/**
+ * 캐릭터 말풍선 묶음: 대사별로 상자를 나누고 지문은 따로 표시.
+ * animate 면 처음 나타날 때 조각을 시간차(SEGMENT_REVEAL_MS)로 하나씩 공개한다 (이력은 즉시 전체 표시).
+ */
+function AiMessageBody({
+  content,
+  guest,
+  animate,
+  onReveal,
+}: {
+  content: string;
+  guest: boolean;
+  animate: boolean;
+  onReveal: () => void;
+}) {
+  const segments = splitSegments(content);
+  const [shown, setShown] = useState(animate ? 0 : Number.MAX_SAFE_INTEGER);
+
+  useEffect(() => {
+    if (!animate || shown >= segments.length) return;
+    const t = setTimeout(() => setShown((s) => s + 1), shown === 0 ? 0 : SEGMENT_REVEAL_MS);
+    return () => clearTimeout(t);
+  }, [animate, shown, segments.length]);
+
+  // 조각이 새로 공개되면 스크롤 추적 (부모의 맨 아래 따라가기)
+  useEffect(() => {
+    if (animate) onReveal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown]);
+
+  return (
+    <div className="bubble-stack">
+      {segments.slice(0, shown).map((seg, i) =>
+        seg.kind === "narr" ? (
+          <div key={i} className={`narration${animate ? " seg-in" : ""}`}>{seg.text}</div>
+        ) : (
+          <div key={i} className={`bubble${guest ? " guest" : ""}${animate ? " seg-in" : ""}`}>{seg.text}</div>
+        )
+      )}
+    </div>
+  );
+}
+
 /** 프로필 아바타 구성: 원 안 레이어(배경→얼굴) + 원 밖까지 덮는 효과 오버레이 */
 interface ProfileVisual {
   layers: string[];
@@ -308,6 +384,8 @@ export default function ChatClient({
   const bodyRef = useRef<HTMLDivElement>(null);
   // React StrictMode 의 effect 이중 실행으로 오프닝이 두 번 호출되는 것을 방지
   const openingStarted = useRef(false);
+  // 이 인덱스 이상의 메시지(입장 후 새로 받은 것)만 조각 시간차 공개 애니메이션 적용
+  const initialCountRef = useRef<number | null>(null);
 
   const browserMode = levels?.effectiveKind === "browser";
 
@@ -354,6 +432,8 @@ export default function ChatClient({
         emotion?: string | null;
       }[] = await res.json();
       setHistoryLoaded(true);
+      // 이력까지는 즉시 전체 표시, 그 이후 새로 받는 응답부터 조각 시간차 공개
+      if (initialCountRef.current === null) initialCountRef.current = history.length;
       // 오프닝이 이미 시작됐다면(StrictMode 중복 실행) 스트리밍 중인 말풍선을 덮어쓰지 않는다
       if (openingStarted.current) return;
       setMessages(
@@ -397,6 +477,11 @@ export default function ChatClient({
   useEffect(() => {
     if (atBottomRef.current) bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
   }, [messages, streaming]);
+
+  /** 조각이 시간차로 공개될 때도 맨 아래를 따라간다 (위로 스크롤해 읽는 중이면 유지) */
+  const followBottom = () => {
+    if (atBottomRef.current) bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
+  };
 
   /** SSE 응답을 읽어 마지막 assistant 말풍선에 반영 (send / 오프닝 / 브라우저 반납 공용) */
   const consumeSse = async (stream: ReadableStream<Uint8Array>) => {
@@ -843,7 +928,20 @@ export default function ChatClient({
               <div className={`msg ${m.role === "user" ? "user" : "ai"}`}>
                 {m.role === "user" && time && <span className="msg-time">{time}</span>}
                 {visual && <AvatarStack visual={visual} fallbackUrl={avatarUrl} title={characterName} className="msg-avatar" />}
-                <div className={`bubble${m.guestName ? " guest" : ""}`}>{m.content || (streaming && idx === messages.length - 1 ? "…" : "")}</div>
+                {m.role === "user" ? (
+                  <div className="bubble">{m.content}</div>
+                ) : m.content ? (
+                  <AiMessageBody
+                    content={m.content}
+                    guest={!!m.guestName}
+                    animate={idx >= (initialCountRef.current ?? Number.MAX_SAFE_INTEGER)}
+                    onReveal={followBottom}
+                  />
+                ) : (
+                  <div className={`bubble${m.guestName ? " guest" : ""}`}>
+                    {streaming && idx === messages.length - 1 ? "…" : ""}
+                  </div>
+                )}
                 {m.role !== "user" && time && <span className="msg-time">{time}</span>}
               </div>
               {m.illustrationUrl &&
