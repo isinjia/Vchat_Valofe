@@ -7,7 +7,7 @@
 #   ENV_FILE=/etc/vchatbot/.env.stage docker compose --env-file "$ENV_FILE" -f ... up -d
 #
 # 포트 변경: .env.stage 의 WEB_TLS_PORT/ADMIN_TLS_PORT 만 바꾸고 up -d 재실행
-# (VMessage 사용 포트 4000/4002/4100/8443/8444/8080/9443 은 피할 것)
+# (VMessage 사용 포트 4000/4002/4100/8443/8444/8080 은 피할 것 — 9443 은 미사용 확인되어 queue 가 재활용)
 name: vchatbot-stage
 
 # TLS 는 nginx 컨테이너가 포트별로 종료한다 (호스트 nginx 설치 금지 — 이 VM 은 dnf 설치 최소화 정책).
@@ -30,9 +30,22 @@ services:
     restart: unless-stopped
     env_file: ${ENV_FILE:-../../.env.stage}
 
+  # LLM 대기열 — 사내 AI 머신의 llm-worker 가 nginx(9443 TLS) 너머로 롱폴링해 작업을 가져간다.
+  # admin LLM 등록은 내부 주소 http://queue:8600/v1 권장 (컨테이너끼리 직결, 방화벽 무관).
+  # 배포는 메인 잡과 분리 — deploy/Jenkinsfile.queue (deploy-stage.sh build-queue/up-queue/health-queue).
+  queue:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.queue
+    image: vchatbot-queue:stage
+    restart: unless-stopped
+    env_file: ${ENV_FILE:-../../.env.stage}
+
   nginx:
     image: nginx:1.27-alpine        # 버전 고정
     restart: unless-stopped
+    # queue 는 의도적으로 depends_on 에 없다 — nginx 는 resolver 로 매 요청 해석하므로
+    # queue 없이도 뜨고, 덕분에 queue 를 별도 잡으로 독립 배포할 수 있다.
     depends_on:
       - web
       - admin
@@ -40,6 +53,7 @@ services:
       - "${WEB_TLS_443_PORT:-443}:443"   # 표준 포트 — 포트 없이 https://<도메인> 접속 (web)
       - "${WEB_TLS_PORT:-5000}:5000"
       - "${ADMIN_TLS_PORT:-5001}:5001"
+      - "${QUEUE_TLS_PORT:-9443}:9443"   # LLM 대기열 (워커 롱폴링용 — 방화벽 기개방된 미사용 포트 재활용)
     volumes:
       - ../nginx/stage-tls.conf:/etc/nginx/conf.d/default.conf:ro
       # VMessage 와 공용 *.valofe.com 인증서 (cert.pem/key.pem) — 읽기 전용, 권한/소유자 변경 금지

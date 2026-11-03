@@ -1,0 +1,39 @@
+// LLM 대기열(queue) 배포 파이프라인 — 메인 잡(AIChat-stage)과 분리된 별도 잡
+// Job 설정: New Item → Pipeline → Pipeline script from SCM → Script Path: deploy/Jenkinsfile.queue
+// 전제: 메인 잡과 동일 (jenkins 유저 docker 그룹, env 파일 /etc/vchatbot/.env.stage)
+// env 필수값: QUEUE_WORKER_TOKEN (없으면 queue 컨테이너가 기동 직후 종료된다)
+pipeline {
+  agent any
+
+  options {
+    disableConcurrentBuilds()
+    timestamps()
+  }
+
+  environment {
+    ENV_FILE = '/etc/vchatbot/.env.stage'
+  }
+
+  stages {
+    stage('빌드 queue') {
+      steps { sh 'bash deploy/jenkins/deploy-stage.sh build-queue' }
+    }
+    stage('기동') {
+      // queue + nginx 만 올린다 (nginx 는 QUEUE_TLS_PORT 매핑 반영용 — web/admin 은 건드리지 않음)
+      steps { sh 'bash deploy/jenkins/deploy-stage.sh up-queue' }
+    }
+    stage('헬스체크') {
+      steps { sh 'bash deploy/jenkins/deploy-stage.sh health-queue' }
+    }
+    stage('이미지 정리') {
+      steps { sh 'bash deploy/jenkins/deploy-stage.sh prune' }
+    }
+  }
+
+  post {
+    failure {
+      sh 'docker compose --env-file $ENV_FILE -f deploy/docker/docker-compose.stage.yml ps || true'
+      sh 'docker compose --env-file $ENV_FILE -f deploy/docker/docker-compose.stage.yml logs --tail 50 queue || true'
+    }
+  }
+}
