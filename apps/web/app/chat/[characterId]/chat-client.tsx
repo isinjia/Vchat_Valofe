@@ -93,10 +93,13 @@ interface LevelInfo {
 function LevelPicker({
   levels,
   disabled,
+  browserAllowed,
   onChange,
 }: {
   levels: LevelsPayload;
   disabled: boolean;
+  /** 이 캐릭터가 브라우저 AI(크롬 내장) 레벨을 허용하는지 — 아니면 해당 레벨 선택 불가 */
+  browserAllowed: boolean;
   onChange: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -161,27 +164,37 @@ function LevelPicker({
             </span>
             {levels.selectedId == null && <span className="lv-check">✓</span>}
           </button>
-          {levels.levels.map((l) => (
-            <button
-              key={l.id}
-              type="button"
-              className={`level-item${levels.selectedId === l.id ? " on" : ""}`}
-              onClick={() => pick(String(l.id))}
-              role="option"
-              aria-selected={levels.selectedId === l.id}
-            >
-              <span className="lv-badge">Lv.{l.level}</span>
-              <span className="lv-body">
-                <span className="lv-row">
-                  <b>{l.name}</b>
-                  {l.kind === "browser" && <span className="lv-tag">내 PC</span>}
-                  <span className="lv-cost"><CoinIcon size={12} /> {l.cost.toLocaleString()}</span>
+          {levels.levels.map((l) => {
+            // 브라우저 레벨은 캐릭터가 허용(압축 프로필 준비)한 경우에만 선택 가능
+            const blocked = l.kind === "browser" && !browserAllowed;
+            return (
+              <button
+                key={l.id}
+                type="button"
+                className={`level-item${levels.selectedId === l.id ? " on" : ""}`}
+                onClick={() => !blocked && pick(String(l.id))}
+                disabled={blocked}
+                style={blocked ? { opacity: 0.45, cursor: "not-allowed" } : undefined}
+                role="option"
+                aria-selected={levels.selectedId === l.id}
+              >
+                <span className="lv-badge">Lv.{l.level}</span>
+                <span className="lv-body">
+                  <span className="lv-row">
+                    <b>{l.name}</b>
+                    {l.kind === "browser" && <span className="lv-tag">내 PC</span>}
+                    <span className="lv-cost"><CoinIcon size={12} /> {l.cost.toLocaleString()}</span>
+                  </span>
+                  {blocked ? (
+                    <span className="lv-desc">이 캐릭터는 브라우저 AI 를 지원하지 않습니다</span>
+                  ) : (
+                    l.description && <span className="lv-desc">{l.description}</span>
+                  )}
                 </span>
-                {l.description && <span className="lv-desc">{l.description}</span>}
-              </span>
-              {levels.selectedId === l.id && <span className="lv-check">✓</span>}
-            </button>
-          ))}
+                {levels.selectedId === l.id && <span className="lv-check">✓</span>}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -210,6 +223,8 @@ interface Props {
   worldColor?: string | null;
   /** 캐릭터 타이틀 컬러(없으면 세계관 컬러) — 캐릭터 말풍선 톤 */
   charColor?: string | null;
+  /** 이 캐릭터가 브라우저 AI(크롬 내장) 레벨을 허용하는지 */
+  browserAllowed?: boolean;
   /** 유저에게 보여줄 세계관 설명 */
   worldDescription?: string | null;
   /** 유저에게 보여줄 캐릭터 프로필 */
@@ -228,6 +243,7 @@ export default function ChatClient({
   profileMap,
   worldColor,
   charColor,
+  browserAllowed = false,
   worldDescription,
   characterProfile,
   scenario,
@@ -485,16 +501,28 @@ export default function ChatClient({
   const generateInBrowser = async (prep: { system: string; messages: { role: "user" | "assistant"; content: string }[] }) => {
     let acc = "";
     setDownloadPct(null);
-    for await (const delta of streamBrowserLlm(prep.system, prep.messages, (loaded) =>
-      setDownloadPct(Math.min(100, Math.round(loaded * 100)))
-    )) {
-      acc += delta;
-      setMessages((prev) => {
-        const next = [...prev];
-        const last = next[next.length - 1];
-        next[next.length - 1] = { ...last, content: last.content + delta };
-        return next;
-      });
+    // 컨텍스트 한도 초과(세션 생성 실패)면 앞쪽 이력을 절반씩 버리고 재시도 (마지막 user 메시지는 유지)
+    let msgs = prep.messages;
+    for (;;) {
+      try {
+        for await (const delta of streamBrowserLlm(prep.system, msgs, (loaded) =>
+          setDownloadPct(Math.min(100, Math.round(loaded * 100)))
+        )) {
+          acc += delta;
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            next[next.length - 1] = { ...last, content: last.content + delta };
+            return next;
+          });
+        }
+        break;
+      } catch (e) {
+        const quota = /컨텍스트 한도/.test((e as Error)?.message ?? "");
+        // 생성 도중 에러거나(이미 출력됨) 더 줄일 이력이 없으면 그대로 실패
+        if (!quota || acc || msgs.length <= 1) throw e;
+        msgs = msgs.slice(Math.ceil((msgs.length - 1) / 2));
+      }
     }
     setDownloadPct(null);
     if (!acc.trim()) throw new Error("브라우저 AI 가 빈 응답을 반환했습니다.");
@@ -776,6 +804,11 @@ export default function ChatClient({
           이 브라우저에서는 내장 AI(Gemini Nano)를 쓸 수 없습니다. 최신 Chrome(지원 기기)이 필요합니다 — 위에서 다른 AI 레벨을 선택해 주세요.
         </div>
       )}
+      {browserMode && !browserUnavailable && !browserAllowed && (
+        <div className="error-banner warn">
+          이 캐릭터는 브라우저 AI(크롬 내장) 레벨을 지원하지 않습니다. 위에서 다른 AI 레벨을 선택해 주세요.
+        </div>
+      )}
       {browserMode && browserAvail === "downloadable" && (
         <div className="error-banner warn">
           첫 사용 시 브라우저 AI 모델 다운로드가 필요합니다. 첫 메시지 전송 시 자동으로 받기 시작합니다.
@@ -834,7 +867,7 @@ export default function ChatClient({
       )}
 
       <div className="chat-input">
-        {levels && <LevelPicker levels={levels} disabled={streaming} onChange={changeLevel} />}
+        {levels && <LevelPicker levels={levels} disabled={streaming} browserAllowed={browserAllowed} onChange={changeLevel} />}
         <button
           type="button"
           className="gift-btn"

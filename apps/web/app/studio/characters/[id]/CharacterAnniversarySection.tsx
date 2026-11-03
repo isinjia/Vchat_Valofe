@@ -18,21 +18,75 @@ const noticeLabel = (n?: number) => ((n ?? 7) === 0 ? "당일만" : `D-${n ?? 7}
 const durLabel = (n?: number) => ((n ?? 1) > 1 ? ` (${n}일간)` : "");
 const mmdd = (m: number, d: number) => `${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
-/** 캐릭터 개인 기념일 섹션: 그 캐릭터만 기억하는 날 추가 + 목록/삭제 */
+type OverrideState = { skip: boolean; description: string };
+
+/** 캐릭터 개인 기념일 섹션: 그 캐릭터만 기억하는 날 추가 + 목록/삭제 + 공유 기념일 오버라이드 */
 export default function CharacterAnniversarySection({ characterId }: { characterId: string }) {
   const [list, setList] = useState<Anniv[]>([]);
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState("");
 
+  // 세계관 공유 기념일 + 캐릭터별 오버라이드 (적용 안 함 / 설명 덮어쓰기)
+  const [shared, setShared] = useState<Anniv[]>([]);
+  const [ov, setOv] = useState<Record<number, OverrideState>>({});
+  const [ovDirty, setOvDirty] = useState(false);
+  const [ovError, setOvError] = useState("");
+  const [ovSaving, setOvSaving] = useState(false);
+
   const base = `/api/studio/characters/${characterId}/anniversaries`;
+  const ovBase = `/api/studio/characters/${characterId}/anniversary-overrides`;
 
   const load = () =>
     studioFetch(base).then((r) => r.json()).then((d) => setList(Array.isArray(d) ? d : [])).catch(() => {});
 
+  const loadOverrides = () =>
+    studioFetch(ovBase)
+      .then((r) => r.json())
+      .then((d) => {
+        setShared(Array.isArray(d.shared) ? d.shared : []);
+        const next: Record<number, OverrideState> = {};
+        for (const o of Array.isArray(d.overrides) ? d.overrides : []) {
+          next[o.anniversary_id] = { skip: o.mode === "skip", description: o.description ?? "" };
+        }
+        setOv(next);
+        setOvDirty(false);
+      })
+      .catch(() => {});
+
   useEffect(() => {
     load();
+    loadOverrides();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [characterId]);
+
+  const setOverride = (id: number, patch: Partial<OverrideState>) => {
+    setOv((prev) => ({ ...prev, [id]: { ...(prev[id] ?? { skip: false, description: "" }), ...patch } }));
+    setOvDirty(true);
+  };
+
+  const saveOverrides = async () => {
+    setOvError("");
+    setOvSaving(true);
+    try {
+      const overrides = shared.map((s) => ({
+        anniversary_id: s.id,
+        skip: ov[s.id]?.skip === true,
+        description: ov[s.id]?.description ?? "",
+      }));
+      const r = await studioFetch(ovBase, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ overrides }),
+      });
+      if (!r.ok) {
+        setOvError((await r.json().catch(() => ({}))).error ?? "저장 실패");
+        return;
+      }
+      loadOverrides();
+    } finally {
+      setOvSaving(false);
+    }
+  };
 
   const add = async () => {
     setError("");
@@ -193,6 +247,55 @@ export default function CharacterAnniversarySection({ characterId }: { character
             {list.length === 0 && <tr><td colSpan={4} className="muted">등록된 개인 기념일이 없습니다.</td></tr>}
           </tbody>
         </table>
+      </div>
+
+      <h3>세계관 공유 기념일 ({shared.length})</h3>
+      <div className="panel">
+        <div className="notice">
+          세계관에 등록된 공유 기념일입니다. 이 캐릭터만 적용을 끄거나, 설명(태도)을 캐릭터 시점으로 덮어쓸 수
+          있습니다. 날짜·이름은 공유값을 그대로 따릅니다.
+        </div>
+        <table style={{ marginTop: 8 }}>
+          <thead>
+            <tr><th>날짜</th><th>이름</th><th>기본 설명</th><th style={{ width: "40%" }}>이 캐릭터 설정</th></tr>
+          </thead>
+          <tbody>
+            {shared.map((s) => {
+              const o = ov[s.id] ?? { skip: false, description: "" };
+              return (
+                <tr key={s.id} style={o.skip ? { opacity: 0.55 } : undefined}>
+                  <td>{mmdd(s.month, s.day)}{durLabel(s.duration_days)} <span className="muted">({noticeLabel(s.notice_days)})</span></td>
+                  <td>{s.name}</td>
+                  <td className="muted">{s.description}</td>
+                  <td>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                      <input
+                        type="checkbox"
+                        checked={o.skip}
+                        onChange={(e) => setOverride(s.id, { skip: e.target.checked })}
+                      />
+                      이 캐릭터에 적용 안 함
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={o.description}
+                      disabled={o.skip}
+                      placeholder="설명 덮어쓰기 — 비우면 기본 설명 그대로"
+                      onChange={(e) => setOverride(s.id, { description: e.target.value })}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+            {shared.length === 0 && <tr><td colSpan={4} className="muted">세계관에 공유 기념일이 없습니다.</td></tr>}
+          </tbody>
+        </table>
+        {ovError && <p style={{ color: "var(--danger)", marginTop: 8 }}>{ovError}</p>}
+        {shared.length > 0 && (
+          <button onClick={saveOverrides} disabled={!ovDirty || ovSaving}>
+            {ovSaving ? "저장 중..." : ovDirty ? "공유 기념일 설정 저장" : "저장됨"}
+          </button>
+        )}
       </div>
     </>
   );

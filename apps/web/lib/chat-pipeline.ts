@@ -46,6 +46,7 @@ import {
   setUserRelationship,
   setUserCurrentPlace,
   getUserTierRankInfo,
+  resolveCompactPersona,
   type ActiveEventState,
   type GuestInfo,
   type LlmChatMessage,
@@ -93,6 +94,20 @@ export async function prepareChatTurn(
 ): Promise<PrepareResult> {
   const ctx = await loadChatContext(Number(characterId));
   if (!ctx) return { ok: false, status: 404, error: "캐릭터를 찾을 수 없습니다." };
+
+  // 브라우저 AI(크롬 내장) 레벨: 캐릭터가 허용(browser_llm_enabled)해야 하고,
+  // 설정이 길면 편집자가 만들어 둔 압축 프로필이 있어야 한다 (자동 생성 안 함)
+  let personaOverride: string | null = null;
+  if (opts.compact) {
+    if (!Number(ctx.character.browser_llm_enabled ?? 0)) {
+      return { ok: false, status: 403, error: "이 캐릭터는 브라우저 AI(크롬 내장) 레벨을 지원하지 않습니다. 다른 AI 레벨을 선택해 주세요." };
+    }
+    const cp = resolveCompactPersona(ctx.character);
+    if (!cp.usable) {
+      return { ok: false, status: 403, error: "이 캐릭터의 브라우저 AI 용 압축 설정이 아직 생성되지 않았습니다. 캐릭터 편집 화면에서 [압축 프로필 생성] 후 사용할 수 있습니다." };
+    }
+    personaOverride = cp.override;
+  }
 
   // 사용중지된 캐릭터/세계관은 채팅 불가
   if (ctx.character.status === "suspended" || ctx.world.status === "suspended") {
@@ -235,7 +250,7 @@ export async function prepareChatTurn(
   }, []);
 
   // 시스템 프롬프트는 캐릭터/세계관이 바뀌지 않는 한 동일 → 프롬프트 캐싱 대상
-  const systemPrompt = buildSystemPrompt(ctx, { includeDictionary: !useRag });
+  const systemPrompt = buildSystemPrompt(ctx, { includeDictionary: !useRag, personaOverride });
 
   return { ok: true, turn: { ctx, chatCost, systemPrompt, messages, history, state, llm, event: activeEvent } };
 }

@@ -24,6 +24,7 @@ export * from "./sanctions";
 export * from "./events";
 export * from "./relationship";
 export * from "./scoring";
+export * from "./compact-persona";
 export * from "./guest";
 export * from "./image-gen";
 export * from "./video-gen";

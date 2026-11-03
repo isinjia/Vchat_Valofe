@@ -1,6 +1,7 @@
 "use client";
 
 import DictionaryBrowser from "../../components/DictionaryBrowser";
+import DictSearchSelect from "../../components/DictSearchSelect";
 import ImageCropModal from "../../components/ImageCropModal";
 import ImageGenModal, { type ImageGenPayload } from "../../components/ImageGenModal";
 import AiGenFlow, { GenVideoPreview } from "../../components/AiGenFlow";
@@ -27,6 +28,10 @@ interface Character {
   is_active: number;
   visibility?: "private" | "open";
   status?: "active" | "suspended";
+  /** 1=크롬 내장 AI(무료 브라우저 레벨) 허용 */
+  browser_llm_enabled?: number;
+  /** 브라우저 AI 프로필 상태 (서버 계산): ready | stale(재생성 필요) | missing */
+  compact_status?: "ready" | "stale" | "missing";
   title_image_url?: string | null;
   /** 타이틀 컬러(#rrggbb) — 카드/채팅 배경 톤. null = 세계관 색 따름 */
   title_color?: string | null;
@@ -171,6 +176,7 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
   const [titleCropOpen, setTitleCropOpen] = useState(false); // 타이틀 이미지 크롭 팝업
   // AI 생성 중인 필드 (scenario | greeting)
   const [generating, setGenerating] = useState<"scenario" | "greeting" | null>(null);
+  const [compactBusy, setCompactBusy] = useState(false); // 브라우저 AI 프로필 생성 중
 
   const loadRels = () =>
     fetch(`/api/characters/${id}/relationships`).then((r) => r.json()).then(setRels);
@@ -626,6 +632,50 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
           />
           활성화 (유저 화면에 노출)
         </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={!!char.browser_llm_enabled}
+            onChange={(e) => setChar({ ...char, browser_llm_enabled: e.target.checked ? 1 : 0 })}
+            style={{ width: "auto", marginRight: 6 }}
+          />
+          크롬 내장 AI 허용 (무료 브라우저 레벨)
+        </label>
+        <div className="notice">
+          허용 시 전용 프로필 생성이 한 번 필요합니다 — 버튼을 누르면 설정 길이에 따라 그대로 캐싱 또는
+          AI 압축을 자동 선택합니다(관리자는 코인 차감 없음). 생성은 저장된 설정 기준이며, 설정을 바꾸면
+          &quot;재생성 필요&quot;로 표시되지만 자동으로 다시 만들지는 않습니다.
+          <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10 }}>
+            <span>
+              {char.compact_status === "ready" && "브라우저 AI 프로필 준비됨 (최신 상태)."}
+              {char.compact_status === "stale" && "⚠ 설정이 변경되어 재생성이 필요합니다."}
+              {char.compact_status === "missing" && "브라우저 AI 프로필이 없습니다 — 생성해야 사용할 수 있습니다."}
+            </span>
+            {(char.compact_status === "stale" || char.compact_status === "missing") && (
+              <button
+                type="button"
+                disabled={compactBusy}
+                onClick={async () => {
+                  setCompactBusy(true);
+                  try {
+                    const res = await fetch(`/api/characters/${id}/compact`, { method: "POST" });
+                    const r = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                      alert(`생성 실패: ${r.error ?? res.statusText}`);
+                      return;
+                    }
+                    setChar({ ...char, compact_status: "ready" });
+                    alert(r.method === "cached" ? "설정이 짧아 그대로 캐싱했습니다." : "AI 압축으로 생성했습니다.");
+                  } finally {
+                    setCompactBusy(false);
+                  }
+                }}
+              >
+                {compactBusy ? "생성 중..." : char.compact_status === "stale" ? "프로필 재생성" : "프로필 생성"}
+              </button>
+            )}
+          </div>
+        </div>
         <div className="row">
           <div>
             <label>공개 여부</label>
@@ -671,19 +721,11 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
         <div className="row">
           <div>
             <label>세계관 사전에서 선택 (인물·지역·용어)</label>
-            <select
+            <DictSearchSelect
+              entries={entries}
               value={newRel.target}
-              onChange={(e) => setNewRel({ ...newRel, target: Number(e.target.value) || "" })}
-            >
-              <option value="">선택...</option>
-              {(["person", "location", "term"] as const).map((cat) => (
-                <optgroup key={cat} label={cat === "person" ? "인명사전" : cat === "location" ? "지역사전" : "용어사전"}>
-                  {entries.filter((d) => d.category === cat).map((d) => (
-                    <option key={d.id} value={d.id}>{d.title}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+              onChange={(id) => setNewRel({ ...newRel, target: id })}
+            />
           </div>
           <div>
             <label>관계/기억 설명</label>

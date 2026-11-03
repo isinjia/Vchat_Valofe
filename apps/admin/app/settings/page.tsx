@@ -61,6 +61,7 @@ const AI_KINDS: [string, string][] = [
   ["speech_style", "말투"],
   ["scenario", "상황 설정"],
   ["greeting", "첫 인사말"],
+  ["compact_prompt", "브라우저 AI 압축 (캐릭터 설정 요약)"],
 ];
 
 const EMPTY: Settings = {

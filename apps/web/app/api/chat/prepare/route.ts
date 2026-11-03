@@ -10,6 +10,7 @@ import {
   resolveAiLevelForUser,
   isCharacterHidden,
   getUserChatBlockMessage,
+  resolveCompactPersona,
   query,
   type LlmChatMessage,
 } from "@vchatbot/core";
@@ -65,9 +66,24 @@ export async function POST(req: NextRequest) {
     // 제작자 인사말이 있으면 /api/chat/start 가 처리하므로 여기 올 일이 없지만, 방어적으로 안내
     if (ctx.character.greeting?.trim()) return NextResponse.json({ started: false });
 
+    // 캐릭터가 브라우저 AI 를 허용해야 하고, 설정이 길면 압축 프로필이 준비돼 있어야 한다
+    if (!Number(ctx.character.browser_llm_enabled ?? 0)) {
+      return NextResponse.json(
+        { error: "이 캐릭터는 브라우저 AI(크롬 내장) 레벨을 지원하지 않습니다. 다른 AI 레벨을 선택해 주세요." },
+        { status: 403 }
+      );
+    }
+    const cp = resolveCompactPersona(ctx.character);
+    if (!cp.usable) {
+      return NextResponse.json(
+        { error: "이 캐릭터의 브라우저 AI 용 압축 설정이 아직 생성되지 않았습니다. 캐릭터 편집 화면에서 [압축 프로필 생성] 후 사용할 수 있습니다." },
+        { status: 403 }
+      );
+    }
+
     const [llm, cost] = await Promise.all([getLlmSettings(), getChatCostForUser(userId)]);
     // 브라우저 모델은 입력 한도가 작으므로 사전 전체는 넣지 않는다
-    const system = buildSystemPrompt(ctx, { includeDictionary: false });
+    const system = buildSystemPrompt(ctx, { includeDictionary: false, personaOverride: cp.override });
     const messages: LlmChatMessage[] = [
       { role: "user", content: `${formatTimeBlock(new Date(), null)}\n\n${OPENING_INSTRUCTION}` },
     ];

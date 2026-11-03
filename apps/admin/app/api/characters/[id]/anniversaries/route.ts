@@ -26,7 +26,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { name, month, day, notice_days, duration_days, description } = parsed.value;
   const result = await execute(
     "INSERT INTO world_anniversaries (world_id, character_id, preset_id, name, month, day, notice_days, duration_days, description) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?)",
-    [chars[0].world_id, chars[0].id, name, month, day, notice_days, description]
+    [chars[0].world_id, chars[0].id, name, month, day, notice_days, duration_days, description]
   );
   await invalidateChatContext(chars[0].id);
   return NextResponse.json({ id: result.insertId }, { status: 201 });

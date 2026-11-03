@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query, execute, invalidateChatContext, scheduleDeletion, cancelDeletion } from "@vchatbot/core";
+import {
+  query,
+  execute,
+  invalidateChatContext,
+  scheduleDeletion,
+  cancelDeletion,
+  compactPersonaStatus,
+  type CharacterPersona,
+} from "@vchatbot/core";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -11,12 +19,16 @@ export async function GET(_req: NextRequest, { params }: Params) {
     [id]
   );
   if (rows.length === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  return NextResponse.json(rows[0]);
+  return NextResponse.json({
+    ...rows[0],
+    // 브라우저 AI 프로필 상태: ready | stale(재생성 필요) | missing
+    compact_status: compactPersonaStatus(rows[0] as unknown as CharacterPersona),
+  });
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const { name, profile, personality, speech_style, ai_prompt, scenario, greeting, is_active, visibility, status, title_color } =
+  const { name, profile, personality, speech_style, ai_prompt, scenario, greeting, is_active, visibility, status, title_color, browser_llm_enabled } =
     await req.json();
   // 타이틀 컬러: #rrggbb 또는 null (null = 세계관 색 따름)
   const titleColor = typeof title_color === "string" && /^#[0-9a-fA-F]{6}$/.test(title_color) ? title_color : null;
@@ -29,7 +41,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   await execute(
     `UPDATE characters
      SET name = ?, profile = ?, personality = ?, speech_style = ?, ai_prompt = ?, scenario = ?, greeting = ?, is_active = ?,
-         visibility = ?, status = ?, title_color = ?
+         visibility = ?, status = ?, title_color = ?, browser_llm_enabled = ?
      WHERE id = ?`,
     [
       name,
@@ -43,6 +55,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       visibility === "open" ? "open" : "private",
       status === "suspended" ? "suspended" : "active",
       titleColor,
+      browser_llm_enabled ? 1 : 0,
       id,
     ]
   );

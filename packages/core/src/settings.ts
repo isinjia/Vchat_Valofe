@@ -297,7 +297,7 @@ export interface AiAssistPricing {
   minCost: number;
 }
 
-/** 스튜디오 AI 보조 기능(kind) 목록 — /api/studio/generate 의 TASKS 와 일치 */
+/** 스튜디오 AI 보조 기능(kind) 목록 — /api/studio/generate 의 TASKS + 압축(compact_prompt, 별도 라우트) */
 export const AI_ASSIST_KINDS = [
   "world_description",
   "world_prompt",
@@ -306,6 +306,7 @@ export const AI_ASSIST_KINDS = [
   "speech_style",
   "scenario",
   "greeting",
+  "compact_prompt",
 ] as const;
 
 export const AI_ASSIST_KIND_LABELS: Record<string, string> = {
@@ -316,6 +317,7 @@ export const AI_ASSIST_KIND_LABELS: Record<string, string> = {
   speech_style: "말투",
   scenario: "상황 설정",
   greeting: "첫 인사말",
+  compact_prompt: "브라우저 AI 압축",
 };
 
 /** 코인 가격 설정 */

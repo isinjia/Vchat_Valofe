@@ -362,6 +362,9 @@ CREATE TABLE IF NOT EXISTS characters (
   greeting     MEDIUMTEXT NULL,                   -- 제작자가 쓴 첫 인사말 (비우면 AI 자동 생성)
   affinity_prompts JSON NULL,                     -- 호감도 구간별 반응 가이드 (비면 관리자 기본값 사용)
   realtime_mode TINYINT(1) NOT NULL DEFAULT 0,    -- 1=실시간 대응 (오래 비우면 새 장면), 0=TRPG 식 장면 지속
+  browser_llm_enabled TINYINT(1) NOT NULL DEFAULT 0, -- 1=크롬 내장 AI(브라우저 레벨) 허용
+  compact_prompt MEDIUMTEXT NULL,                 -- 브라우저 AI 용 압축 캐릭터 설정 (편집자가 수동 생성)
+  compact_prompt_hash VARCHAR(64) NULL,           -- 생성 당시 원본 설정 해시 (불일치 = 재생성 필요 표시)
   title_image_key VARCHAR(512)  NULL,             -- 타이틀 이미지(3:4 세로형) 스토리지 키
   title_image_url VARCHAR(1024) NULL,
   title_color VARCHAR(7) NULL,                    -- 타이틀 컬러(#rrggbb) — 카드/채팅 배경 톤 (NULL=세계관 색)
@@ -597,6 +600,20 @@ CREATE TABLE IF NOT EXISTS world_anniversaries (
   CONSTRAINT fk_wa_preset FOREIGN KEY (preset_id) REFERENCES anniversary_presets(id) ON DELETE SET NULL,
   INDEX idx_wa_world (world_id, month, day),
   INDEX idx_wa_char (character_id, month, day)
+) ENGINE=InnoDB;
+
+-- 세계관 공유 기념일의 캐릭터별 오버라이드:
+--   skip     = 이 캐릭터에는 그 기념일을 적용하지 않음 (사이 안 좋은 캐릭터의 생일 등)
+--   override = 날짜/이름은 공유값 그대로, 설명(캐릭터의 태도)만 이 캐릭터 시점으로 덮어씀
+CREATE TABLE IF NOT EXISTS character_anniversary_overrides (
+  character_id BIGINT UNSIGNED NOT NULL,
+  anniversary_id BIGINT UNSIGNED NOT NULL,
+  mode ENUM('skip','override') NOT NULL DEFAULT 'skip',
+  description TEXT NULL,  -- mode='override' 일 때 이 캐릭터 시점의 설명
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (character_id, anniversary_id),
+  CONSTRAINT fk_cao_char FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+  CONSTRAINT fk_cao_anniv FOREIGN KEY (anniversary_id) REFERENCES world_anniversaries(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------
