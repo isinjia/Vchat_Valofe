@@ -54,11 +54,18 @@ health_one() { # health_one <이름> <TLS포트>
   return 1
 }
 
+# bind-mount 된 nginx conf 변경은 컨테이너 재생성을 유발하지 않으므로 매 배포 reload 로 반영
+# (문법 검사 통과 시에만 reload — 실패하면 배포를 멈추고 알린다)
+reload_nginx() {
+  compose exec -T nginx nginx -t
+  compose exec -T nginx nginx -s reload
+}
+
 step="${1:-all}"
 case "$step" in
   build-web)   compose build web ;;
   build-admin) compose build admin ;;
-  up)          compose up -d ;;
+  up)          compose up -d; reload_nginx ;;
   health)
     health_one web   "$(port_of WEB_TLS_PORT 5000)"
     health_one admin "$(port_of ADMIN_TLS_PORT 5001)"
@@ -68,6 +75,7 @@ case "$step" in
     compose build web
     compose build admin
     compose up -d
+    reload_nginx
     health_one web   "$(port_of WEB_TLS_PORT 5000)"
     health_one admin "$(port_of ADMIN_TLS_PORT 5001)"
     docker image prune -f
