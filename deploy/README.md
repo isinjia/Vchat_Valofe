@@ -76,8 +76,9 @@ docker compose -f deploy/docker/docker-compose.stage.yml logs -f web
 compose 의 `nginx` 서비스(이미지 버전 고정)가 포트별로 TLS 만 종료한다:
 
 - 도메인은 vmsg-center-stage.valofe.com 하나를 그대로 쓰고 **포트로 나눈다** (vhost 없음):
-  `https://<도메인>` (443) → web, `https://<도메인>:5000` → web, `https://<도메인>:5001` → admin
-  (`.env.stage` 의 `WEB_TLS_443_PORT`/`WEB_TLS_PORT`/`ADMIN_TLS_PORT` — 5000/5001 은 기존 HTTP 시절 포트를
+  `https://<도메인>` (443) → web, `https://<도메인>:5000` → web, `https://<도메인>:5001` → admin,
+  `https://<도메인>:9443` → queue (LLM 대기열 — 방화벽 기개방된 미사용 포트 재활용)
+  (`.env.stage` 의 `WEB_TLS_443_PORT`/`WEB_TLS_PORT`/`ADMIN_TLS_PORT`/`QUEUE_TLS_PORT` — 5000/5001 은 기존 HTTP 시절 포트를
   TLS 로 승계해 주소 유지, 443 은 포트 없는 표준 주소용으로 web 에 추가 연결)
 - 원본 HTTP 포트는 호스트에 공개되지 않는다 — compose 내부 네트워크 전용. 평문 진입로 없음.
   web 의 내부 포트는 3000 이 아니라 **5000** (서버 머신 호스트의 다른 3000 프로세스와 혼동 방지).
@@ -88,8 +89,26 @@ compose 의 `nginx` 서비스(이미지 버전 고정)가 포트별로 TLS 만 �
   nginx 가 그 헤더를 채워준다. 같은 머신의 VMessage 컨테이너가 보내는 콜백은 출발 IP 가 도커 브리지로 보일 수 있으니
   IP 허용은 보조로만 쓰고 서명 검증(HMAC)을 기본으로 한다 (콜백 구현이 이미 그렇게 되어 있음).
 
-포트 변경은 `.env.stage` 의 `WEB_TLS_443_PORT` / `WEB_TLS_PORT` / `ADMIN_TLS_PORT` 만 바꾸고 `up -d` 재실행 (재빌드 불필요).
-VMessage 사용 포트 4000/4002/4100/8443/8444/8080/9443 은 피할 것.
+포트 변경은 `.env.stage` 의 `WEB_TLS_443_PORT` / `WEB_TLS_PORT` / `ADMIN_TLS_PORT` / `QUEUE_TLS_PORT` 만 바꾸고 `up -d` 재실행 (재빌드 불필요).
+VMessage 사용 포트 4000/4002/4100/8443/8444/8080 은 피할 것.
+(9443 은 VMessage 예약이었으나 미사용 확인 — 방화벽 기개방을 살려 LLM 대기열이 사용, 2026-11-03 결정)
+
+## LLM 대기열(queue) + 사내 AI 머신 워커
+
+LM Studio 를 쓰는 사내 AI 머신이 **outbound 롱폴링**으로 작업을 가져가는 구조 (AI 머신 쪽 포트 개방 불필요).
+
+- 대기열은 compose 의 `queue` 서비스 — nginx 9443 TLS 뒤 (내부 앱 포트는 8600).
+  9443 은 방화벽이 **이미 열려 있는** 미사용 포트를 재활용한 것이라 추가 개방이 필요 없다.
+  `.env.stage` 에 `QUEUE_WORKER_TOKEN`(필수 — 없으면 컨테이너가 기동 직후 종료됨)과
+  `QUEUE_CLIENT_TOKEN`(권장 — 공개 포트이므로 /v1 인증) 설정.
+- **배포는 별도 잡** — `deploy/Jenkinsfile.queue` 로 Pipeline Job 을 하나 더 만든다
+  (New Item → Pipeline → script from SCM → Script Path `deploy/Jenkinsfile.queue`).
+  메인 잡(AIChat-stage)은 web/admin/nginx 만, queue 잡은 queue(+nginx 포트 매핑 반영)만 배포한다.
+  손으로 돌릴 때: `ENV_FILE=/etc/vchatbot/.env.stage bash deploy/jenkins/deploy-stage.sh build-queue && ... up-queue && ... health-queue`
+- AI 머신 쪽 실행은 `services/llm-worker/README.md` — 요점:
+  `QUEUE_URL=https://vmsg-center-stage.valofe.com:9443`, `QUEUE_WORKER_TOKEN` 동일 값, `npm run worker`.
+- admin LLM 등록: base_url 은 내부 주소 `http://queue:8600/v1` 권장 (web/admin 컨테이너가
+  compose 내부 네트워크로 직결 — 방화벽/TLS 무관), API Key = `QUEUE_CLIENT_TOKEN` 값.
 
 ## 코드 업데이트 재배포
 
@@ -157,7 +176,7 @@ ENV_FILE=/etc/vchatbot/.env.stage bash deploy/jenkins/migrate.sh apply      # �
 
 충돌 포인트 (VMessage 쪽과 2026-11-02 상호 확인 완료):
 
-- **포트**: VMessage 사용 포트 = 8443/8444(TLS 소켓), 4000/4002(웹 API), 4100(관리자), 8080(Jenkins), 9443(예약). `WEB_TLS_PORT`/`ADMIN_TLS_PORT` 는 이들만 피하면 됨 (5000/5001 무충돌 확인). 443 은 VMessage 미사용(8443/8444/9443 만) —
+- **포트**: VMessage 사용 포트 = 8443/8444(TLS 소켓), 4000/4002(웹 API), 4100(관리자), 8080(Jenkins). 9443 은 VMessage 예약이었으나 미사용이라 우리 LLM 대기열(`QUEUE_TLS_PORT`)이 재활용 (방화벽 기개방). `WEB_TLS_PORT`/`ADMIN_TLS_PORT` 는 이들만 피하면 됨 (5000/5001 무충돌 확인). 443 은 VMessage 미사용(8443/8444 만) —
 다만 호스트의 다른 프로세스가 443 을 점유 중이면 compose up 에서 바인드 실패하니 `ss -tlnp | grep :443` 으로 선확인. 호스트 3000 은 다른 프로세스가 사용 중 — 우리는 안 씀.
 - **TLS**: VMessage 는 자체 TLS(노드가 /opt/vmsg/certs 로 직접 처리), 우리는 compose 내 nginx 컨테이너 — 위 "HTTPS 구성" 절. VMessage 포트를 nginx 뒤로 넣지 말 것 (8443/8444 는 HTTP 아님, 4000/4100 프록시 시 그쪽 IP 제한이 깨짐).
 - **Redis**: VMessage 는 DB 0 + "VMSG:" 접두 키만 사용. 우리는 DB 1 (`redis://host:6379/1`). Pub/Sub 채널은 DB 번호와 무관하게 전역 공유라 "VMSG:" 로 시작하는 채널명은 금지 (현재 Pub/Sub 미사용이라 해당 없음).

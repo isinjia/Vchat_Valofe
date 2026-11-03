@@ -4,6 +4,7 @@
 #   ENV_FILE=/etc/vchatbot/.env.stage bash deploy/jenkins/deploy-stage.sh [단계]
 #
 # 단계: build-web | build-admin | up | health | prune | all(기본)
+#       build-queue | up-queue | health-queue — LLM 대기열 전용 (별도 잡 deploy/Jenkinsfile.queue)
 # 4코어 공유 머신(VMessage 동거) 기준으로 web → admin 을 순차 빌드한다.
 set -euo pipefail
 
@@ -37,11 +38,11 @@ port_of() {
   echo "${v:-$2}"
 }
 
-health_one() { # health_one <이름> <TLS포트>
-  local name="$1" port="$2" code i
+health_one() { # health_one <이름> <TLS포트> [경로]
+  local name="$1" port="$2" path="${3:-/}" code i
   for i in $(seq 1 30); do
     # nginx 컨테이너가 TLS 종료 — 인증서 CN 과 localhost 가 달라 -k 로 검증 생략
-    code=$(curl -sk -o /dev/null -w '%{http_code}' "https://localhost:${port}/" || true)
+    code=$(curl -sk -o /dev/null -w '%{http_code}' "https://localhost:${port}${path}" || true)
     if [ -n "$code" ] && [ "$code" != "000" ] && [ "$code" -lt 500 ]; then
       echo "[health] $name OK (:$port → $code)"
       return 0
@@ -65,21 +66,27 @@ step="${1:-all}"
 case "$step" in
   build-web)   compose build web ;;
   build-admin) compose build admin ;;
-  up)          compose up -d; reload_nginx ;;
+  # 메인 up 은 queue 를 건드리지 않는다 (queue 는 별도 잡 — 아래 *-queue 단계)
+  up)          compose up -d web admin nginx; reload_nginx ;;
   health)
     health_one web   "$(port_of WEB_TLS_PORT 5000)"
     health_one admin "$(port_of ADMIN_TLS_PORT 5001)"
     ;;
+  # ----- LLM 대기열 전용 (deploy/Jenkinsfile.queue) -----
+  build-queue)  compose build queue ;;
+  # nginx 를 함께 올리는 건 QUEUE_TLS_PORT 매핑 변경 반영용 — web/admin 은 이미지가 안 바뀌었으면 재생성되지 않는다
+  up-queue)     compose up -d queue nginx; reload_nginx ;;
+  health-queue) health_one queue "$(port_of QUEUE_TLS_PORT 9443)" /healthz ;;
   prune)       docker image prune -f ;;
   all)
     compose build web
     compose build admin
-    compose up -d
+    compose up -d web admin nginx
     reload_nginx
     health_one web   "$(port_of WEB_TLS_PORT 5000)"
     health_one admin "$(port_of ADMIN_TLS_PORT 5001)"
     docker image prune -f
     echo "[deploy] 완료"
     ;;
-  *) echo "사용법: deploy-stage.sh [build-web|build-admin|up|health|prune|all]" >&2; exit 2 ;;
+  *) echo "사용법: deploy-stage.sh [build-web|build-admin|up|health|prune|all | build-queue|up-queue|health-queue]" >&2; exit 2 ;;
 esac
