@@ -7,6 +7,8 @@ import {
   cancelDeletion,
   getAffinityPromptDefaults,
   parseAffinityPrompts,
+  compactPersonaStatus,
+  type CharacterPersona,
 } from "@vchatbot/core";
 import { requireUser, ownedCharacter, bad, visibilityOf } from "@/lib/studio";
 
@@ -32,6 +34,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
     affinity_prompts: parseAffinityPrompts(own.row.affinity_prompts),
     // 비어 있는 구간의 placeholder 로 보여줄 전역 기본값 (관리자 설정 반영)
     affinity_prompt_defaults: await getAffinityPromptDefaults(),
+    // 브라우저 AI 프로필 상태: ready | stale(재생성 필요) | missing
+    compact_status: compactPersonaStatus(own.row as unknown as CharacterPersona),
     sanction_until: sanction[0]?.ends_at ?? null,
     sanction_reason: sanction[0]?.reason ?? null,
   });
@@ -67,7 +71,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   await execute(
     `UPDATE characters
      SET name = ?, profile = ?, personality = ?, speech_style = ?, ai_prompt = ?,
-         scenario = ?, greeting = ?, affinity_prompts = ?, realtime_mode = ?, visibility = ?, title_color = ?
+         scenario = ?, greeting = ?, affinity_prompts = ?, realtime_mode = ?, browser_llm_enabled = ?, visibility = ?, title_color = ?
      WHERE id = ? AND owner_user_id = ?`,
     [
       name,
@@ -79,6 +83,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       s(b.greeting).trim() ? s(b.greeting) : null,
       affinityPrompts ? JSON.stringify(affinityPrompts) : null,
       b.realtime_mode ? 1 : 0,
+      b.browser_llm_enabled ? 1 : 0,
       visibilityOf(b.visibility),
       titleColor,
       Number(id),

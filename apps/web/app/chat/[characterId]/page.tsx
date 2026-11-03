@@ -73,6 +73,7 @@ export default async function ChatPage({
       profileMap={profileMap}
       worldColor={ctx.world.title_color ?? null}
       charColor={ctx.character.title_color ?? ctx.world.title_color ?? null}
+      browserAllowed={!!Number(ctx.character.browser_llm_enabled ?? 0)}
       worldDescription={ctx.world.description}
       characterProfile={ctx.character.profile}
       scenario={ctx.character.scenario ?? null}

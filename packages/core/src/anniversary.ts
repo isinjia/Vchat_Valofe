@@ -34,3 +34,37 @@ export function parseAnniversaryInput(body: unknown):
   }
   return { value: { name, month, day, notice_days, duration_days, description } };
 }
+
+export interface AnniversaryOverride {
+  anniversary_id: number;
+  mode: "skip" | "override";
+  /** mode='override' 일 때 이 캐릭터 시점의 설명 */
+  description: string | null;
+}
+
+const OVERRIDE_DESC_MAX = 500;
+
+/**
+ * 공유 기념일 캐릭터별 오버라이드 입력 검증.
+ * body: { overrides: [{ anniversary_id, skip?, description? }] }
+ * skip 도 아니고 설명도 비어 있으면 "기본 적용"이므로 목록에서 제외(= 저장 안 함)한다.
+ */
+export function parseAnniversaryOverrides(body: unknown): { value: AnniversaryOverride[] } | { error: string } {
+  const b = (body ?? {}) as Record<string, unknown>;
+  if (!Array.isArray(b.overrides)) return { error: "overrides 배열이 필요합니다." };
+  const map = new Map<number, AnniversaryOverride>();
+  for (const raw of b.overrides) {
+    const r = (raw ?? {}) as Record<string, unknown>;
+    const id = Number(r.anniversary_id);
+    if (!Number.isInteger(id) || id <= 0) return { error: "anniversary_id 가 올바르지 않습니다." };
+    const skip = r.skip === true;
+    const description = typeof r.description === "string" ? r.description.trim() : "";
+    if (description.length > OVERRIDE_DESC_MAX) {
+      return { error: `덮어쓰기 설명은 ${OVERRIDE_DESC_MAX}자 이하여야 합니다.` };
+    }
+    if (skip) map.set(id, { anniversary_id: id, mode: "skip", description: null });
+    else if (description) map.set(id, { anniversary_id: id, mode: "override", description });
+    else map.delete(id); // 기본 적용
+  }
+  return { value: [...map.values()] };
+}

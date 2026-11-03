@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import DictionaryBrowser from "../../components/DictionaryBrowser";
+import DictSearchSelect from "../../components/DictSearchSelect";
 import ImageCropModal from "../../components/ImageCropModal";
 import CharacterProfilesSection from "./CharacterProfilesSection";
 import ProfileSetsSection from "./ProfileSetsSection";
@@ -32,6 +33,10 @@ interface Character {
   affinity_prompt_defaults?: Record<string, string>;
   /** 1=실시간 대응 (오래 비우면 새 장면에서 재회), 0=TRPG 식 장면 지속 */
   realtime_mode?: number;
+  /** 1=크롬 내장 AI(무료 브라우저 레벨) 허용 */
+  browser_llm_enabled?: number;
+  /** 브라우저 AI 프로필 상태 (서버 계산): ready | stale(재생성 필요) | missing */
+  compact_status?: "ready" | "stale" | "missing";
   visibility: "private" | "open";
   title_image_url?: string | null;
   /** 타이틀 컬러(#rrggbb) — 카드/채팅 배경 톤. null = 세계관 색 따름 */
@@ -157,6 +162,7 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
   const router = useRouter();
   const [char, setChar] = useState<Character | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [compactBusy, setCompactBusy] = useState(false); // 브라우저 AI 압축 생성 중
   const [mine, setMine] = useState<WorldOpt[]>([]);
   const [open, setOpen] = useState<WorldOpt[]>([]);
   const [illusts, setIllusts] = useState<Illust[]>([]);
@@ -243,6 +249,27 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
   const costLabel = (kind: string) => aiCostLabel(pricing, kind);
   const myIds = new Set(mine.map((w) => w.id));
   const set = (patch: Partial<Character>) => setChar({ ...char, ...patch });
+
+  // 브라우저 AI 압축 프로필 수동 생성 (저장된 설정 기준, 보조 LLM 1회)
+  const generateCompact = async () => {
+    setCompactBusy(true);
+    try {
+      const res = await studioFetch(`/api/studio/characters/${id}/compact`, jsonInit("POST", {}));
+      const r = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(`생성 실패: ${r.error ?? res.statusText}`);
+        return;
+      }
+      set({ compact_status: "ready" });
+      alert(
+        r.method === "cached"
+          ? "설정이 짧아 그대로 캐싱했습니다. (무료)"
+          : `설정이 길어 AI 로 압축했습니다. (코인 ${Number(r.cost ?? 0).toLocaleString()} 차감)`
+      );
+    } finally {
+      setCompactBusy(false);
+    }
+  };
 
   const save = async () => {
     const res = await studioFetch(`/api/studio/characters/${id}`, jsonInit("PUT", char));
@@ -666,6 +693,35 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
           무관하게 같은 장면을 계속 이어가고, 장소 이동은 캐릭터가 제안해 유저가 응했을 때만 합니다.
         </div>
 
+        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <input
+            type="checkbox"
+            checked={!!char.browser_llm_enabled}
+            style={{ width: "auto", margin: 0 }}
+            onChange={(e) => set({ browser_llm_enabled: e.target.checked ? 1 : 0 })}
+          />
+          크롬 내장 AI 허용 (무료 브라우저 레벨)
+        </label>
+        <div className="notice">
+          허용하면 유저가 브라우저 내장 AI 레벨로 이 캐릭터와 대화할 수 있습니다. 소형 AI 라 전용
+          <b> 프로필 생성</b>이 한 번 필요합니다 — 버튼을 누르면 설정 길이에 따라 그대로 캐싱(무료)
+          하거나 AI 로 압축(코인)하는 것을 자동으로 선택합니다. 생성은 저장된 설정 기준이니 수정 중이면
+          먼저 저장하세요. 설정을 바꾸면 &quot;재생성 필요&quot;로 표시되지만 자동으로 다시 만들지는
+          않으며, 그동안 채팅은 이전 생성본으로 동작합니다.
+          <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10 }}>
+            <span>
+              {char.compact_status === "ready" && "브라우저 AI 프로필 준비됨 (최신 상태)."}
+              {char.compact_status === "stale" && "⚠ 설정이 변경되어 재생성이 필요합니다."}
+              {char.compact_status === "missing" && "브라우저 AI 프로필이 없습니다 — 생성해야 사용할 수 있습니다."}
+            </span>
+            {(char.compact_status === "stale" || char.compact_status === "missing") && (
+              <button type="button" onClick={generateCompact} disabled={compactBusy}>
+                {compactBusy ? "생성 중..." : char.compact_status === "stale" ? "프로필 재생성" : "프로필 생성"}
+              </button>
+            )}
+          </div>
+        </div>
+
         <h3>호감도 반응 설정</h3>
         <div className="notice">
           유저와의 호감도 구간별로 이 캐릭터가 상대를 대하는 태도입니다. 비워둔 구간은 운영 기본값(회색으로
@@ -748,19 +804,11 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
         <div className="row">
           <div>
             <label>세계관 사전에서 선택 (인물·지역·용어)</label>
-            <select
+            <DictSearchSelect
+              entries={entries}
               value={newRel.target}
-              onChange={(e) => setNewRel({ ...newRel, target: Number(e.target.value) || "" })}
-            >
-              <option value="">선택...</option>
-              {(["person", "location", "term"] as const).map((cat) => (
-                <optgroup key={cat} label={cat === "person" ? "인명사전" : cat === "location" ? "지역사전" : "용어사전"}>
-                  {entries.filter((d) => d.category === cat).map((d) => (
-                    <option key={d.id} value={d.id}>{d.title}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+              onChange={(id) => setNewRel({ ...newRel, target: id })}
+            />
           </div>
           <div>
             <label>관계/기억 설명</label>

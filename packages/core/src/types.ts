@@ -54,6 +54,12 @@ export interface CharacterPersona {
   affinity_prompts?: Record<string, string> | string | null;
   /** 1=실시간 대응: 오래 비우면 장면을 끝내고 새 장면에서 재회. 0=TRPG 식 장면 지속 */
   realtime_mode?: number;
+  /** 1=크롬 내장 AI(브라우저 레벨) 허용. 긴 설정은 압축 프로필이 있어야 사용 가능 */
+  browser_llm_enabled?: number;
+  /** 브라우저 AI 용 압축 캐릭터 설정 (스튜디오에서 편집자가 수동 생성) */
+  compact_prompt?: string | null;
+  /** 압축 생성 당시 원본 설정 해시 — 불일치면 "재생성 필요" 표시 (자동 재생성 안 함) */
+  compact_prompt_hash?: string | null;
   /** 타이틀 컬러(#rrggbb) — 카드 테두리/채팅 배경 톤 (null = 세계관 색 따름) */
   title_color?: string | null;
   is_active: number;

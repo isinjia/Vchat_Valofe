@@ -66,9 +66,18 @@ export async function loadChatContext(characterId: number): Promise<ChatContext 
       characterId,
     ]),
     query<WorldAnniversary>(
-      // 세계관 공통(character_id NULL) + 이 캐릭터 개인 기념일
-      "SELECT * FROM world_anniversaries WHERE world_id = ? AND (character_id IS NULL OR character_id = ?) ORDER BY month, day",
-      [character.world_id, characterId]
+      // 세계관 공통(character_id NULL) + 이 캐릭터 개인 기념일.
+      // 공유 기념일은 캐릭터별 오버라이드를 적용: skip 은 제외, override 는 설명만 캐릭터 시점으로 교체
+      `SELECT a.id, a.world_id, a.character_id, a.preset_id, a.name, a.month, a.day,
+              a.notice_days, a.duration_days, a.created_at,
+              COALESCE(o.description, a.description) AS description
+       FROM world_anniversaries a
+       LEFT JOIN character_anniversary_overrides o
+         ON o.anniversary_id = a.id AND o.character_id = ?
+       WHERE a.world_id = ? AND (a.character_id IS NULL OR a.character_id = ?)
+         AND (o.mode IS NULL OR o.mode <> 'skip')
+       ORDER BY a.month, a.day`,
+      [characterId, character.world_id, characterId]
     ),
   ]);
   if (worlds.length === 0) return null;
