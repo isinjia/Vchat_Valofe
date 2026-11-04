@@ -34,6 +34,8 @@
   color: var(--text, #222);
   font-weight: 600;
 }
+.sbe-timg { display: inline-flex; align-items: center; gap: 2px; }
+.sbe-timg img { width: 34px; height: 34px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border, #ccc); }
 .sbe-badge {
   font-size: 12px;
   padding: 2px 8px;

@@ -27,9 +27,9 @@ import "./story-editor.css";
 
 export interface StoryEditorApi {
   /** 임시저장 */
-  saveDraft(title: string, board: StoryBoard): Promise<{ ok: boolean; error?: string }>;
+  saveDraft(title: string, board: StoryBoard, titleImageUrl: string | null): Promise<{ ok: boolean; error?: string }>;
   /** 공개 (호스트가 draft 저장 후 공개 API 호출). errors 가 있으면 공개 실패 사유 목록 */
-  publish(title: string, board: StoryBoard): Promise<{ ok: boolean; errors?: string[] }>;
+  publish(title: string, board: StoryBoard, titleImageUrl: string | null): Promise<{ ok: boolean; errors?: string[] }>;
   /** 비공개 전환 */
   unpublish?(): Promise<{ ok: boolean }>;
   /** 스토리 카드 텍스트 AI 생성 (서버가 앞 연결 스토리/선택지 → 없으면 캐릭터 프로필로 컨텍스트 구성) */
@@ -44,6 +44,8 @@ export interface StoryBoardEditorProps {
   initialTitle: string;
   initialBoard: StoryBoard;
   initialStatus: "draft" | "published";
+  /** 스토리 타이틀 이미지 (목록 카드 상단에 표시) */
+  initialTitleImage?: string | null;
   api: StoryEditorApi;
   /** AI 버튼 옆 비용 표기 (예: " (-50코인)") — 어드민은 생략 */
   genTextCostLabel?: string;
@@ -259,6 +261,7 @@ export function StoryBoardEditor({
   initialTitle,
   initialBoard,
   initialStatus,
+  initialTitleImage = null,
   api,
   genTextCostLabel = "",
   genImageCostLabel = "",
@@ -266,6 +269,7 @@ export function StoryBoardEditor({
   subtitle,
 }: StoryBoardEditorProps) {
   const [title, setTitle] = useState(initialTitle);
+  const [titleImage, setTitleImage] = useState<string | null>(initialTitleImage);
   const [board, setBoardRaw] = useState<StoryBoard>(initialBoard);
   const [status, setStatus] = useState<"draft" | "published">(initialStatus);
   const [dirty, setDirty] = useState(false);
@@ -575,7 +579,7 @@ export function StoryBoardEditor({
     setBusy("save");
     setPublishErrors([]);
     try {
-      const r = await api.saveDraft(title, board);
+      const r = await api.saveDraft(title, board, titleImage);
       if (r.ok) {
         setDirty(false);
         flashMsg("임시저장됨 ✓");
@@ -589,7 +593,7 @@ export function StoryBoardEditor({
     setBusy("publish");
     setPublishErrors([]);
     try {
-      const r = await api.publish(title, board);
+      const r = await api.publish(title, board, titleImage);
       if (r.ok) {
         setDirty(false);
         setStatus("published");
@@ -714,13 +718,19 @@ export function StoryBoardEditor({
           />
           <textarea
             rows={4}
-            placeholder="장면 설정 (플레이 시 이 설정을 바탕으로 AI 가 대화 장면을 생성)"
+            placeholder="배경설정 (플레이 시 이 설정을 바탕으로 AI 가 대화 장면을 생성)"
             value={node.text}
             onChange={(e) => updateNode(node.id, (n) => ({ ...(n as StoryCardNode), text: e.target.value }))}
           />
           {api.generateText && (
-            <button type="button" className="sbe-mini" disabled={busy != null} onClick={() => genText(node)}>
-              {busy === `gen:${node.id}` ? "생성 중..." : `AI 텍스트 생성${genTextCostLabel}`}
+            <button
+              type="button"
+              className="sbe-mini"
+              title="앞뒤로 연결된 카드들의 배경설정·선택지를 반영해 이 카드의 배경설정을 생성"
+              disabled={busy != null}
+              onClick={() => genText(node)}
+            >
+              {busy === `gen:${node.id}` ? "생성 중..." : `배경설정 AI 생성${genTextCostLabel}`}
             </button>
           )}
           {node.imageUrl ? (
@@ -947,6 +957,37 @@ export function StoryBoardEditor({
         {backHref && <a className="sbe-back" href={backHref}>← 목록</a>}
         {subtitle && <span className="sbe-subtitle" title={subtitle}>{subtitle}</span>}
         <input className="sbe-title" value={title} onChange={(e) => { setTitle(e.target.value); setDirty(true); }} placeholder="스토리 제목" />
+        {api.uploadImage &&
+          (titleImage ? (
+            <span className="sbe-timg" title="스토리 타이틀 이미지">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={titleImage} alt="" />
+              <button type="button" className="sbe-x" title="타이틀 이미지 제거" onClick={() => { setTitleImage(null); setDirty(true); }}>✕</button>
+            </span>
+          ) : (
+            <label className="sbe-btn sbe-filebtn" title="스토리 목록 카드에 표시될 타이틀 이미지">
+              {busy === "timg" ? "업로드 중..." : "타이틀 이미지"}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!f || !api.uploadImage) return;
+                  setBusy("timg");
+                  try {
+                    const r = await api.uploadImage(f);
+                    if (r.url) {
+                      setTitleImage(r.url);
+                      setDirty(true);
+                    } else if (r.error) flashMsg(r.error);
+                  } finally {
+                    setBusy(null);
+                  }
+                }}
+              />
+            </label>
+          ))}
         <span className={`sbe-badge ${status === "published" ? "sbe-badge-pub" : ""}`}>
           {status === "published" ? "공개됨" : "임시저장"}
         </span>

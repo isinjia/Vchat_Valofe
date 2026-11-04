@@ -1077,3 +1077,32 @@ a { color: inherit; text-decoration: none; }
 .bubble-row { display: flex; align-items: flex-end; max-width: 100%; }
 .bubble-row .bubble { max-width: 100%; }
 .bubble-row .msg-avatar { align-self: flex-end; }
+
+/* ===== 스토리 선택 팝업 (채팅창 위 모달) ===== */
+.story-modal-backdrop {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px 14px;
+}
+.story-modal {
+  width: 100%; max-width: 560px; max-height: 82vh; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px;
+}
+.story-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.story-modal-x { border: none; background: transparent; color: var(--muted); font-size: 15px; cursor: pointer; }
+.story-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.story-card {
+  display: flex; flex-direction: column; overflow: hidden;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--bg);
+}
+.story-card:hover { border-color: var(--accent); }
+.story-card-img { aspect-ratio: 16 / 9; background: var(--panel-hover); display: flex; align-items: center; justify-content: center; }
+.story-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.story-card-img-ph { font-size: 32px; opacity: 0.5; }
+.story-card-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
+.story-card-title { font-weight: 600; font-size: 14px; }
+.story-card-meta { font-size: 12px; color: var(--muted); }
+.story-card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.story-card-state { font-size: 11px; color: var(--muted); }

@@ -330,7 +330,7 @@ export function validateStoryBoard(board: StoryBoard): string[] {
     // 노드 자체 검사 (도달 가능한 노드만)
     if (node.type === "story") {
       if (!node.title.trim()) errors.push(`${nodeLabel(node)}: 타이틀을 입력하세요.`);
-      if (!node.text.trim()) errors.push(`${nodeLabel(node)}: 장면 설정을 입력하세요.`);
+      if (!node.text.trim()) errors.push(`${nodeLabel(node)}: 배경설정을 입력하세요.`);
       for (const op of node.varOps) {
         if (!varNames.has(op.var)) errors.push(`${nodeLabel(node)}: 없는 변수 "${op.var}" 를 조정합니다.`);
       }
@@ -630,15 +630,23 @@ export async function saveStorySceneCache(userId: number, storyId: number, nodeI
 /* ========== AI 생성 컨텍스트 ========== */
 
 /**
- * 스토리 카드 텍스트 AI 생성용 컨텍스트: 해당 카드로 들어오는 연결을 거슬러 올라가
- * 앞선 스토리 카드(최대 3개)와 직전 선택지 텍스트를 모은다.
- * 앞 연결이 없으면 빈 결과 → 호출부가 캐릭터 프로필로 대체한다.
+ * 스토리 카드 배경설정 AI 생성용 컨텍스트.
+ * - 뒤로(들어오는 연결): 앞선 스토리 카드(최대 3개) + 직전 선택지 텍스트
+ * - 앞으로(나가는 연결): 뒤에 이어질 스토리 카드 설정(최대 3개) + 바로 다음에 나올 선택지 텍스트들
+ * 앞 연결이 없으면 stories 가 비고 → 호출부가 캐릭터 프로필로 대체한다.
  */
 export function collectStoryGenContext(
   board: StoryBoard,
   nodeId: string
-): { stories: { title: string; text: string }[]; choiceText: string | null } {
+): {
+  stories: { title: string; text: string }[];
+  choiceText: string | null;
+  nextStories: { title: string; text: string }[];
+  nextChoices: string[];
+} {
   const nodeById = new Map(board.nodes.map((n) => [n.id, n]));
+
+  // 역방향: 앞선 장면들 + 직전 선택
   const stories: { title: string; text: string }[] = [];
   let choiceText: string | null = null;
   let cur = nodeId;
@@ -658,7 +666,38 @@ export function collectStoryGenContext(
     }
     cur = src.id;
   }
-  return { stories, choiceText };
+
+  // 정방향: 이 카드 뒤에 이어질 장면/선택지 (분기 포함 BFS, 과도하지 않게 제한)
+  const nextStories: { title: string; text: string }[] = [];
+  const nextChoices: string[] = [];
+  const fwdSeen = new Set<string>([nodeId]);
+  const queue: string[] = [nodeId];
+  while (queue.length > 0 && nextStories.length < 3) {
+    const id = queue.shift()!;
+    const node = nodeById.get(id);
+    if (!node) continue;
+    for (const port of outPortsOf(node)) {
+      const edge = board.edges.find((e) => e.from === id && e.fromPort === port);
+      if (!edge || fwdSeen.has(edge.to)) continue;
+      fwdSeen.add(edge.to);
+      const next = nodeById.get(edge.to);
+      if (!next) continue;
+      if (next.type === "story") {
+        if (nextStories.length < 3) nextStories.push({ title: next.title, text: next.text });
+        queue.push(next.id);
+      } else if (next.type === "choice") {
+        if (nextChoices.length === 0) {
+          for (const o of next.options) if (o.text.trim()) nextChoices.push(o.text.trim());
+        }
+        queue.push(next.id);
+      } else if (next.type === "branch") {
+        queue.push(next.id);
+      }
+      // end 는 수집할 것 없음
+    }
+  }
+
+  return { stories, choiceText, nextStories, nextChoices };
 }
 
 /* ========== DB ========== */
@@ -667,7 +706,9 @@ export interface CharacterStoryRow {
   id: number;
   character_id: number;
   title: string;
+  title_image_url: string | null;
   status: "draft" | "published";
+  like_count: number;
   draft_json: string;
   published_json: string | null;
   published_at: string | null;
@@ -678,7 +719,9 @@ export interface CharacterStoryRow {
 export interface CharacterStoryListItem {
   id: number;
   title: string;
+  title_image_url: string | null;
   status: "draft" | "published";
+  like_count: number;
   published_at: string | null;
   updated_at: string;
 }
@@ -697,7 +740,7 @@ export function emptyStoryBoard(): StoryBoard {
 
 export async function listCharacterStories(characterId: number): Promise<CharacterStoryListItem[]> {
   return query<CharacterStoryListItem>(
-    "SELECT id, title, status, published_at, updated_at FROM character_stories WHERE character_id = ? ORDER BY id DESC",
+    "SELECT id, title, title_image_url, status, like_count, published_at, updated_at FROM character_stories WHERE character_id = ? ORDER BY id DESC",
     [characterId]
   );
 }
@@ -715,9 +758,15 @@ export async function createCharacterStory(characterId: number, title: string): 
   return result.insertId;
 }
 
-export async function updateCharacterStoryDraft(storyId: number, title: string, board: StoryBoard): Promise<void> {
-  await execute("UPDATE character_stories SET title = ?, draft_json = ? WHERE id = ?", [
+export async function updateCharacterStoryDraft(
+  storyId: number,
+  title: string,
+  board: StoryBoard,
+  titleImageUrl?: string | null
+): Promise<void> {
+  await execute("UPDATE character_stories SET title = ?, title_image_url = ?, draft_json = ? WHERE id = ?", [
     title.slice(0, TITLE_MAX),
+    titleImageUrl ? String(titleImageUrl).slice(0, 600) : null,
     JSON.stringify(board),
     storyId,
   ]);
@@ -747,9 +796,11 @@ export async function deleteCharacterStory(storyId: number): Promise<void> {
 }
 
 /** 플레이 입장용: 공개 상태 스토리 목록 */
-export async function listPublishedStories(characterId: number): Promise<{ id: number; title: string }[]> {
-  return query<{ id: number; title: string }>(
-    "SELECT id, title FROM character_stories WHERE character_id = ? AND status = 'published' ORDER BY id",
+export async function listPublishedStories(
+  characterId: number
+): Promise<{ id: number; title: string; title_image_url: string | null; like_count: number }[]> {
+  return query<{ id: number; title: string; title_image_url: string | null; like_count: number }>(
+    "SELECT id, title, title_image_url, like_count FROM character_stories WHERE character_id = ? AND status = 'published' ORDER BY id",
     [characterId]
   );
 }

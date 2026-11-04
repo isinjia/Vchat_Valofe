@@ -113,6 +113,102 @@ function AiMessageBody({
   );
 }
 
+/** 스토리 팝업의 목록 항목 */
+interface StoryCardItem {
+  id: number;
+  title: string;
+  titleImageUrl: string | null;
+  likeCount: number;
+  liked: boolean;
+  runStatus: string | null;
+  finishedCount: number;
+}
+
+/** 채팅창 위에 뜨는 스토리 선택 팝업 — 타이틀 이미지 + 제목/제작자 카드 목록 + 좋아요 */
+function StoryListModal({
+  characterId,
+  shareKey,
+  fallbackImage,
+  onClose,
+}: {
+  characterId: number;
+  shareKey: string | null;
+  fallbackImage: string | null;
+  onClose: () => void;
+}) {
+  const [creator, setCreator] = useState("");
+  const [stories, setStories] = useState<StoryCardItem[] | null>(null);
+  const kq = shareKey ? `?k=${encodeURIComponent(shareKey)}` : "";
+
+  useEffect(() => {
+    fetch(`/api/stories/character/${characterId}${kq}`)
+      .then((r) => r.json())
+      .then((d) => {
+        setCreator(d.creator ?? "");
+        setStories(Array.isArray(d.stories) ? d.stories : []);
+      })
+      .catch(() => setStories([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [characterId]);
+
+  const toggleLike = async (s: StoryCardItem) => {
+    const r = await fetch(`/api/stories/${s.id}/like`, { method: "POST" });
+    if (!r.ok) return;
+    const d = await r.json();
+    setStories((prev) =>
+      prev ? prev.map((x) => (x.id === s.id ? { ...x, liked: !!d.liked, likeCount: Number(d.likeCount) } : x)) : prev
+    );
+  };
+
+  return (
+    <div className="story-modal-backdrop" onClick={onClose}>
+      <div className="story-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="story-modal-head">
+          <strong>📖 스토리</strong>
+          <button type="button" className="story-modal-x" onClick={onClose}>✕</button>
+        </div>
+        {stories == null && <p className="muted-center">불러오는 중...</p>}
+        {stories != null && stories.length === 0 && <p className="muted-center">공개된 스토리가 없습니다.</p>}
+        <div className="story-card-grid">
+          {(stories ?? []).map((s) => (
+            <Link key={s.id} href={`/chat/${characterId}/story/${s.id}${kq}`} className="story-card">
+              <div className="story-card-img">
+                {s.titleImageUrl || fallbackImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.titleImageUrl ?? fallbackImage ?? ""} alt="" />
+                ) : (
+                  <span className="story-card-img-ph">📖</span>
+                )}
+              </div>
+              <div className="story-card-body">
+                <div className="story-card-title">{s.title}</div>
+                <div className="story-card-meta">제작: {creator}</div>
+                <div className="story-card-foot">
+                  <button
+                    type="button"
+                    className={`like-btn${s.liked ? " liked" : ""}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleLike(s);
+                    }}
+                    title={s.liked ? "좋아요 취소" : "좋아요"}
+                  >
+                    {s.liked ? "❤️" : "🤍"} {s.likeCount.toLocaleString()}
+                  </button>
+                  <span className="story-card-state">
+                    {s.runStatus === "active" ? "진행 중" : s.finishedCount > 0 ? `완료 ${s.finishedCount}회` : "새로 시작"}
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** 프로필 아바타 구성: 원 안 레이어(배경→얼굴) + 원 밖까지 덮는 효과 오버레이 */
 interface ProfileVisual {
   layers: string[];
@@ -338,6 +434,7 @@ export default function ChatClient({
 }: Props) {
   const router = useRouter();
   const [infoOpen, setInfoOpen] = useState(false); // 세계관/캐릭터 소개 모달
+  const [storyOpen, setStoryOpen] = useState(false); // 스토리 선택 팝업
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [likeBusy, setLikeBusy] = useState(false);
@@ -859,14 +956,15 @@ export default function ChatClient({
               ⓘ 소개
             </button>
             {storyCount > 0 && (
-              <Link
-                href={`/chat/${characterId}/story${shareKey ? `?k=${encodeURIComponent(shareKey)}` : ""}`}
+              <button
+                type="button"
                 className="like-btn"
                 title="스토리 플레이"
                 style={{ marginLeft: 4 }}
+                onClick={() => setStoryOpen(true)}
               >
                 📖 스토리
-              </Link>
+              </button>
             )}
           </div>
           <div className="world">{worldName}</div>
@@ -987,6 +1085,15 @@ export default function ChatClient({
       </div>
 
       {streaming && <div className="typing">{characterName} 입력 중...</div>}
+
+      {storyOpen && (
+        <StoryListModal
+          characterId={characterId}
+          shareKey={shareKey}
+          fallbackImage={avatarUrl}
+          onClose={() => setStoryOpen(false)}
+        />
+      )}
 
       {showJump && (
         <button type="button" className="jump-bottom" onClick={jumpToBottom} title="맨 아래로">

@@ -90,10 +90,18 @@ export async function GET(req: NextRequest, { params }: Params) {
   if ("res" in g) return g.res;
 
   const run = await getStoryRun(userId, g.story.id);
-  if (!run) return NextResponse.json({ title: g.story.title, characterName: g.char.name, status: "idle", view: null });
+  if (!run)
+    return NextResponse.json({
+      title: g.story.title,
+      titleImageUrl: g.story.title_image_url,
+      characterName: g.char.name,
+      status: "idle",
+      view: null,
+    });
   const state = runRowToState(run);
   return NextResponse.json({
     title: g.story.title,
+    titleImageUrl: g.story.title_image_url,
     characterName: g.char.name,
     status: state.finished ? "finished" : "active",
     view: viewOfState(g.board, state),
@@ -232,6 +240,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   return NextResponse.json({
     title: story.title,
+    titleImageUrl: story.title_image_url,
     characterName: char.name,
     status: state!.finished ? "finished" : "active",
     view,
