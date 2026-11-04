@@ -21,6 +21,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   return NextResponse.json({
     id: s.id,
     title: s.title,
+    title_image_url: s.title_image_url,
     status: s.status,
     board: normalizeStoryBoard(JSON.parse(s.draft_json)),
     published_at: s.published_at,
@@ -36,7 +37,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const body = await req.json().catch(() => ({}));
   const title = typeof body.title === "string" ? body.title.trim() : "";
   if (!title) return bad("제목을 입력하세요.");
-  await updateCharacterStoryDraft(g.story.id, title, normalizeStoryBoard(body.board));
+  const titleImage = typeof body.title_image_url === "string" && body.title_image_url ? body.title_image_url : null;
+  await updateCharacterStoryDraft(g.story.id, title, normalizeStoryBoard(body.board), titleImage);
   return NextResponse.json({ ok: true });
 }
 

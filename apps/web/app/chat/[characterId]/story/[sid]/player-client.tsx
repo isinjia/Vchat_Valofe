@@ -70,6 +70,7 @@ interface PlayView {
 
 interface PlayState {
   title: string;
+  titleImageUrl?: string | null;
   characterName?: string;
   status: "idle" | "active" | "finished";
   view: PlayView | null;
@@ -256,7 +257,7 @@ export default function StoryPlayerClient({
       }
     >
       <header className="story-play-head">
-        <Link href={`/chat/${characterId}/story${kq}`} className="back">←</Link>
+        <Link href={`/chat/${characterId}${kq}`} className="back" title="채팅으로">←</Link>
         <AvatarStack visual={visual ?? { layers: [] }} fallbackUrl={avatarUrl} title={characterName} className="chat-avatar" />
         <div>
           {/* 현재 스토리 카드 타이틀 — 진행에 따라 실시간 변경 */}
@@ -280,6 +281,10 @@ export default function StoryPlayerClient({
       >
         {state.status === "idle" && (
           <div className="story-play-card story-play-center">
+            {state.titleImageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className="story-play-img" src={state.titleImageUrl} alt="" />
+            )}
             <h3>{state.title}</h3>
             <p className="muted">선택에 따라 이야기가 달라지는 스토리 모드입니다.</p>
             <button className="story-play-btn" disabled={busy} onClick={() => act("start")}>스토리 시작</button>

@@ -45,6 +45,9 @@ a { color: var(--accent); text-decoration: none; }
 }
 
 .main { flex: 1; padding: 28px; max-width: 1100px; }
+/* 스토리보드 에디터 페이지는 폭 제한 해제 — 창 크기만큼 보드가 커진다
+   (min-width:0 — flex 아이템이 캔버스 내용 폭만큼 커지지 않고 창 폭에 맞게 줄어들도록) */
+.main:has(.sbe-root) { max-width: none; min-width: 0; }
 .main h2 { margin-bottom: 18px; }
 .main h3 { margin: 22px 0 10px; }
 

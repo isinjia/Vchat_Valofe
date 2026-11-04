@@ -11,6 +11,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
   const base = `/api/studio/characters/${id}/stories/${sid}`;
   const [data, setData] = useState<{
     title: string;
+    title_image_url?: string | null;
     status: "draft" | "published";
     board: StoryBoard;
     character?: { name: string; world_name: string };
@@ -29,13 +30,13 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
 
   const api: StoryEditorApi = useMemo(
     () => ({
-      async saveDraft(title, board) {
-        const r = await studioFetch(base, jsonInit("PUT", { title, board }));
+      async saveDraft(title, board, titleImageUrl) {
+        const r = await studioFetch(base, jsonInit("PUT", { title, board, title_image_url: titleImageUrl }));
         const d = await r.json().catch(() => ({}));
         return { ok: r.ok, error: d.error };
       },
-      async publish(title, board) {
-        const s = await studioFetch(base, jsonInit("PUT", { title, board }));
+      async publish(title, board, titleImageUrl) {
+        const s = await studioFetch(base, jsonInit("PUT", { title, board, title_image_url: titleImageUrl }));
         if (!s.ok) {
           const d = await s.json().catch(() => ({}));
           return { ok: false, errors: [d.error ?? "저장 실패"] };
@@ -76,6 +77,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
     <div style={{ padding: "12px 16px" }}>
       <StoryBoardEditor
         initialTitle={data.title}
+        initialTitleImage={data.title_image_url ?? null}
         initialBoard={data.board}
         initialStatus={data.status}
         api={api}
