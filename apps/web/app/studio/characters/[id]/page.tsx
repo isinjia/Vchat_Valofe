@@ -35,6 +35,10 @@ interface Character {
   realtime_mode?: number;
   /** 1=크롬 내장 AI(무료 브라우저 레벨) 허용 */
   browser_llm_enabled?: number;
+  /** 1 = 19금 캐릭터 */
+  is_adult?: number;
+  /** 세계관의 19금 여부 (서버 계산) — 1 이면 캐릭터는 자동 19금 */
+  world_is_adult?: number;
   /** 브라우저 AI 프로필 상태 (서버 계산): ready | stale(재생성 필요) | missing */
   compact_status?: "ready" | "stale" | "missing";
   visibility: "private" | "open";
@@ -694,6 +698,22 @@ export default function StudioCharacterEditPage({ params }: { params: Promise<{ 
           켜면 현실 시간 기준으로 간간이 만나 대화하는 느낌이 됩니다 — 마지막 대화에서 6시간 이상 지나면
           이전 장면은 끝나고, 그 시각에 어울리는 새로운 장면에서 다시 만납니다. 끄면 TRPG처럼 현실 시간과
           무관하게 같은 장면을 계속 이어가고, 장소 이동은 캐릭터가 제안해 유저가 응했을 때만 합니다.
+        </div>
+
+        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <input
+            type="checkbox"
+            checked={char.world_is_adult === 1 || char.is_adult === 1}
+            disabled={char.world_is_adult === 1}
+            style={{ width: "auto", margin: 0 }}
+            onChange={(e) => set({ is_adult: e.target.checked ? 1 : 0 })}
+          />
+          🔞 19금 캐릭터
+          {char.world_is_adult === 1 && <span className="muted">(세계관이 19금이라 자동 적용)</span>}
+        </label>
+        <div className="notice">
+          19금으로 설정하면 이 캐릭터와의 대화·스토리에 성인용 수위가 허용됩니다. 소속 스토리도 자동으로
+          19금이 됩니다.
         </div>
 
         <label style={{ display: "flex", alignItems: "center", gap: 6 }}>

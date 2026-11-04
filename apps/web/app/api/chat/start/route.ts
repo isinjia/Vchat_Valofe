@@ -14,6 +14,7 @@ import {
   createAdapter,
   recordLlmUsage,
   isCharacterHidden,
+  isAdultContent,
   getUserChatBlockMessage,
   getUserTierRankInfo,
   type LlmChatMessage,
@@ -25,7 +26,7 @@ import {
   invalidateCachePattern,
   type ChatMessage,
 } from "@vchatbot/core";
-import { getUserId } from "@/lib/user";
+import { getUserId, isAdultUser, ADULT_BLOCK_MESSAGE } from "@/lib/user";
 
 export const runtime = "nodejs";
 
@@ -60,6 +61,10 @@ export async function POST(req: NextRequest) {
   }
   if (ctx.character.delete_scheduled_at || ctx.world.delete_scheduled_at) {
     return Response.json({ error: "삭제 대기 중인 캐릭터 또는 세계관입니다." }, { status: 403 });
+  }
+  // 19금 캐릭터/세계관 — 성인 확인된 유저만
+  if (isAdultContent(ctx.world, ctx.character) && !(await isAdultUser(userId))) {
+    return Response.json({ error: ADULT_BLOCK_MESSAGE }, { status: 403 });
   }
   // 오프닝은 신규 대화 — 제재(기간제 비공개) 캐릭터는 시작 불가 (기존 대화자는 /api/chat 로 계속 가능)
   if (await isCharacterHidden(ctx.character.id)) {

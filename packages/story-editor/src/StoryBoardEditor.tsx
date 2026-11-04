@@ -27,9 +27,9 @@ import "./story-editor.css";
 
 export interface StoryEditorApi {
   /** 임시저장 */
-  saveDraft(title: string, board: StoryBoard, titleImageUrl: string | null): Promise<{ ok: boolean; error?: string }>;
+  saveDraft(title: string, board: StoryBoard, titleImageUrl: string | null, isAdult: boolean): Promise<{ ok: boolean; error?: string }>;
   /** 공개 (호스트가 draft 저장 후 공개 API 호출). errors 가 있으면 공개 실패 사유 목록 */
-  publish(title: string, board: StoryBoard, titleImageUrl: string | null): Promise<{ ok: boolean; errors?: string[] }>;
+  publish(title: string, board: StoryBoard, titleImageUrl: string | null, isAdult: boolean): Promise<{ ok: boolean; errors?: string[] }>;
   /** 비공개 전환 */
   unpublish?(): Promise<{ ok: boolean }>;
   /** 스토리 카드 텍스트 AI 생성 (서버가 앞 연결 스토리/선택지 → 없으면 캐릭터 프로필로 컨텍스트 구성) */
@@ -46,6 +46,10 @@ export interface StoryBoardEditorProps {
   initialStatus: "draft" | "published";
   /** 스토리 타이틀 이미지 (목록 카드 상단에 표시) */
   initialTitleImage?: string | null;
+  /** 19금 스토리 여부 (상속 포함 유효값) */
+  initialAdult?: boolean;
+  /** 캐릭터/세계관이 19금이라 스토리가 자동 19금인지 (true 면 토글 잠금) */
+  inheritedAdult?: boolean;
   api: StoryEditorApi;
   /** AI 버튼 옆 비용 표기 (예: " (-50코인)") — 어드민은 생략 */
   genTextCostLabel?: string;
@@ -63,6 +67,80 @@ type Pending = { kind: "out"; nodeId: string; port: string } | { kind: "in"; nod
 
 const nid = () => `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 const oid = () => `o${Math.random().toString(36).slice(2, 9)}`;
+
+/**
+ * 가져오기 파일의 보드를 에디터가 안전하게 그릴 수 있는 형태로 정리한다.
+ * (서버 저장 시 normalizeStoryBoard 가 한 번 더 정규화하므로 여기서는 렌더 안전성만 확보)
+ */
+function sanitizeImportedBoard(raw: unknown): StoryBoard | null {
+  const container = raw as { board?: unknown } | null;
+  const src = (container && typeof container === "object" && container.board ? container.board : raw) as {
+    vars?: unknown;
+    nodes?: unknown;
+    edges?: unknown;
+  } | null;
+  if (!src || typeof src !== "object" || !Array.isArray(src.nodes) || !Array.isArray(src.edges)) return null;
+  const types = new Set(["start", "end", "story", "choice", "branch"]);
+  const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const nodes: StoryNode[] = [];
+  for (const n of src.nodes as Array<Record<string, unknown>>) {
+    if (!n || typeof n.id !== "string" || !n.id || !types.has(String(n.type))) continue;
+    const base = { id: n.id, x: num(n.x), y: num(n.y) };
+    if (n.type === "story") {
+      nodes.push({
+        ...base,
+        type: "story",
+        title: String(n.title ?? ""),
+        text: String(n.text ?? ""),
+        imageUrl: typeof n.imageUrl === "string" ? n.imageUrl : null,
+        varOps: Array.isArray(n.varOps) ? (n.varOps as StoryVarOp[]) : [],
+      });
+    } else if (n.type === "choice") {
+      const options = (Array.isArray(n.options) ? (n.options as Array<Record<string, unknown>>) : [])
+        .filter((o) => o && typeof o.id === "string" && o.id)
+        .map((o) => ({ id: String(o.id), text: String(o.text ?? ""), varOps: Array.isArray(o.varOps) ? (o.varOps as StoryVarOp[]) : [] }));
+      nodes.push({ ...base, type: "choice", options });
+    } else if (n.type === "branch") {
+      const rules = (Array.isArray(n.rules) ? (n.rules as Array<Record<string, unknown>>) : [])
+        .filter((r) => r && typeof r.id === "string" && r.id)
+        .map((r) => ({
+          id: String(r.id),
+          logic: r.logic === "or" ? ("or" as const) : ("and" as const),
+          terms: (Array.isArray(r.terms) ? (r.terms as Array<Record<string, unknown>>) : []).map((t) => ({
+            var: String(t.var ?? ""),
+            min: t.min == null ? null : num(t.min),
+            max: t.max == null ? null : num(t.max),
+          })),
+        }));
+      nodes.push({ ...base, type: "branch", rules });
+    } else {
+      nodes.push({ ...base, type: n.type as "start" | "end" });
+    }
+  }
+  // 시작/끝 카드는 하나씩만 (여분 제거, 없으면 추가)
+  const firstOf = (type: "start" | "end") => nodes.find((n) => n.type === type);
+  const start = firstOf("start");
+  const end = firstOf("end");
+  const filtered = nodes.filter((n) => (n.type !== "start" && n.type !== "end") || n === start || n === end);
+  if (!start) filtered.unshift({ id: nid(), type: "start", x: 40, y: 300 });
+  if (!end) filtered.push({ id: nid(), type: "end", x: 1200, y: 300 });
+  const ids = new Set(filtered.map((n) => n.id));
+  const seenPort = new Set<string>();
+  const edges = (src.edges as Array<Record<string, unknown>>)
+    .filter((e) => e && typeof e.from === "string" && typeof e.to === "string" && typeof e.fromPort === "string")
+    .filter((e) => ids.has(e.from as string) && ids.has(e.to as string))
+    .filter((e) => {
+      const key = `${e.from}:${e.fromPort}`;
+      if (seenPort.has(key)) return false;
+      seenPort.add(key);
+      return true;
+    })
+    .map((e) => ({ from: String(e.from), fromPort: String(e.fromPort), to: String(e.to) }));
+  const vars = (Array.isArray(src.vars) ? (src.vars as Array<Record<string, unknown>>) : [])
+    .filter((v) => v && typeof v.name === "string" && (v.name as string).trim())
+    .map((v) => ({ name: (v.name as string).trim().slice(0, 32), initial: num(v.initial) }));
+  return { vars, nodes: filtered, edges };
+}
 
 function outPortDir(node: StoryNode, port: string): "down" | "right" {
   if (node.type === "choice") return "right";
@@ -262,6 +340,8 @@ export function StoryBoardEditor({
   initialBoard,
   initialStatus,
   initialTitleImage = null,
+  initialAdult = false,
+  inheritedAdult = false,
   api,
   genTextCostLabel = "",
   genImageCostLabel = "",
@@ -270,6 +350,7 @@ export function StoryBoardEditor({
 }: StoryBoardEditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [titleImage, setTitleImage] = useState<string | null>(initialTitleImage);
+  const [adult, setAdult] = useState<boolean>(inheritedAdult || initialAdult);
   const [board, setBoardRaw] = useState<StoryBoard>(initialBoard);
   const [status, setStatus] = useState<"draft" | "published">(initialStatus);
   const [dirty, setDirty] = useState(false);
@@ -579,7 +660,7 @@ export function StoryBoardEditor({
     setBusy("save");
     setPublishErrors([]);
     try {
-      const r = await api.saveDraft(title, board, titleImage);
+      const r = await api.saveDraft(title, board, titleImage, adult);
       if (r.ok) {
         setDirty(false);
         flashMsg("임시저장됨 ✓");
@@ -593,7 +674,7 @@ export function StoryBoardEditor({
     setBusy("publish");
     setPublishErrors([]);
     try {
-      const r = await api.publish(title, board, titleImage);
+      const r = await api.publish(title, board, titleImage, adult);
       if (r.ok) {
         setDirty(false);
         setStatus("published");
@@ -618,6 +699,42 @@ export function StoryBoardEditor({
     } finally {
       setBusy(null);
     }
+  };
+
+  /* ---------- 내보내기 / 가져오기 ---------- */
+  const doExport = () => {
+    const data = { format: "vchatbot-story", version: 1, title, is_adult: adult, board };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(title.trim() || "story").replace(/[\\/:*?"<>|]/g, "_")}.story.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    flashMsg("내보내기 완료 ✓");
+  };
+
+  const doImport = async (file: File) => {
+    let raw: unknown;
+    try {
+      raw = JSON.parse(await file.text());
+    } catch {
+      flashMsg("JSON 파일이 아닙니다");
+      return;
+    }
+    const imported = sanitizeImportedBoard(raw);
+    if (!imported) {
+      flashMsg("스토리 보드 형식이 아닙니다");
+      return;
+    }
+    if (board.nodes.some((n) => n.type === "story" || n.type === "choice" || n.type === "branch")) {
+      if (!window.confirm("현재 보드를 가져온 내용으로 교체할까요? (저장 전에는 서버에 반영되지 않습니다)")) return;
+    }
+    const obj = raw as { title?: unknown; is_adult?: unknown };
+    if (typeof obj.title === "string" && obj.title.trim()) setTitle(obj.title.trim().slice(0, 100));
+    if (!inheritedAdult && typeof obj.is_adult === "boolean") setAdult(obj.is_adult);
+    setBoard(() => imported);
+    flashMsg("가져오기 완료 — 임시저장을 눌러야 반영됩니다");
   };
 
   /* ---------- AI / 이미지 ---------- */
@@ -988,6 +1105,18 @@ export function StoryBoardEditor({
               />
             </label>
           ))}
+        <label
+          className={`sbe-adult${adult ? " sbe-adult-on" : ""}${inheritedAdult ? " sbe-adult-locked" : ""}`}
+          title={inheritedAdult ? "세계관/캐릭터가 19금이라 자동으로 19금 스토리입니다" : "19금 스토리 — 성인용 대화·묘사 허용"}
+        >
+          <input
+            type="checkbox"
+            checked={adult}
+            disabled={inheritedAdult}
+            onChange={(e) => { setAdult(e.target.checked); setDirty(true); }}
+          />
+          🔞 19금
+        </label>
         <span className={`sbe-badge ${status === "published" ? "sbe-badge-pub" : ""}`}>
           {status === "published" ? "공개됨" : "임시저장"}
         </span>
@@ -1011,6 +1140,22 @@ export function StoryBoardEditor({
         >
           {overview ? "편집 보기" : "멀리보기"}
         </button>
+        <span className="sbe-sep" />
+        <button type="button" className="sbe-btn" title="스토리 보드를 JSON 파일로 저장" onClick={doExport}>
+          내보내기
+        </button>
+        <label className="sbe-btn sbe-filebtn" title="JSON 파일에서 스토리 보드 가져오기 (현재 보드 교체)">
+          가져오기
+          <input
+            type="file"
+            accept=".json,application/json"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) void doImport(f);
+            }}
+          />
+        </label>
         <span className="sbe-sep" />
         <button type="button" className="sbe-btn" disabled={busy != null} onClick={doSave}>
           {busy === "save" ? "저장 중..." : "임시저장"}

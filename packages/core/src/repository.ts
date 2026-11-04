@@ -110,7 +110,8 @@ export async function invalidateChatContext(characterId?: number): Promise<void>
       if (keys.length > 0) await redis.del(...keys);
     }
     // 메인 화면 목록 캐시도 함께 무효화 (공개/이름/이미지 변경 반영)
-    await redis.del("cache:web:worlds");
+    const worldKeys = await redis.keys("cache:web:worlds*");
+    if (worldKeys.length > 0) await redis.del(...worldKeys);
     const listKeys = await redis.keys("cache:web:chars:*");
     if (listKeys.length > 0) await redis.del(...listKeys);
   } catch {

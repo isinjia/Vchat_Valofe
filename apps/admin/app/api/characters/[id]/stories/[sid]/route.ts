@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query, normalizeStoryBoard, updateCharacterStoryDraft, deleteCharacterStory } from "@vchatbot/core";
+import { query, normalizeStoryBoard, updateCharacterStoryDraft, deleteCharacterStory, storyInheritedAdult } from "@vchatbot/core";
 import { storyOf } from "@/lib/stories";
 
 export const runtime = "nodejs";
@@ -18,11 +18,14 @@ export async function GET(_req: NextRequest, { params }: Params) {
     "SELECT c.name, w.name AS world_name FROM characters c LEFT JOIN worlds w ON w.id = c.world_id WHERE c.id = ?",
     [Number(id)]
   );
+  const inheritedAdult = await storyInheritedAdult(Number(id));
   return NextResponse.json({
     id: s.id,
     title: s.title,
     title_image_url: s.title_image_url,
     status: s.status,
+    is_adult: inheritedAdult || Number(s.is_adult) === 1,
+    inherited_adult: inheritedAdult,
     board: normalizeStoryBoard(JSON.parse(s.draft_json)),
     published_at: s.published_at,
     character: { name: chars[0]?.name ?? "", world_name: chars[0]?.world_name ?? "" },
@@ -38,7 +41,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const title = typeof body.title === "string" ? body.title.trim() : "";
   if (!title) return bad("제목을 입력하세요.");
   const titleImage = typeof body.title_image_url === "string" && body.title_image_url ? body.title_image_url : null;
-  await updateCharacterStoryDraft(g.story.id, title, normalizeStoryBoard(body.board), titleImage);
+  // 캐릭터/세계관이 19금이면 스토리도 강제 19금
+  const isAdult = (await storyInheritedAdult(Number(id))) || body.is_adult === true;
+  await updateCharacterStoryDraft(g.story.id, title, normalizeStoryBoard(body.board), titleImage, isAdult);
   return NextResponse.json({ ok: true });
 }
 

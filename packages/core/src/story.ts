@@ -420,10 +420,25 @@ export function validateStoryBoard(board: StoryBoard): string[] {
 
 /* ========== 플레이 엔진 ========== */
 
+/**
+ * 플레이 로그 한 항목 — 재접속 시 지나온 장면/선택을 그대로 복원하기 위한 경로 기록.
+ * story = 스토리 카드 진입, pick = 선택지에서 고른 답 (내부 변수값은 기록하지 않는다)
+ */
+export type StoryLogEntry = { t: "story"; nodeId: string } | { t: "pick"; text: string };
+
+/** 순환 보드에서 로그가 무한히 자라지 않게 오래된 항목부터 버리는 상한 */
+const MAX_LOG_ENTRIES = 500;
+
 export interface StoryRunState {
   nodeId: string;
   vars: Record<string, number>;
   finished: boolean;
+  log: StoryLogEntry[];
+}
+
+function pushLog(state: StoryRunState, entry: StoryLogEntry): void {
+  state.log.push(entry);
+  if (state.log.length > MAX_LOG_ENTRIES) state.log.splice(0, state.log.length - MAX_LOG_ENTRIES);
 }
 
 export interface StoryPlayView {
@@ -434,6 +449,11 @@ export interface StoryPlayView {
   text: string | null;
   imageUrl: string | null;
   options: { id: string; text: string }[] | null;
+  /**
+   * 스토리 카드 뷰에서만: "계속"했을 때 다음 멈춤점 종류.
+   * choice 면 클라이언트가 계속 버튼 없이 선택지를 바로 띄운다 (선택지 진입은 비용 없음).
+   */
+  next?: "story" | "choice" | "finished" | null;
 }
 
 export function initialVars(board: StoryBoard): Record<string, number> {
@@ -464,7 +484,15 @@ export function viewOfState(board: StoryBoard, state: StoryRunState): StoryPlayV
   const node = board.nodes.find((n) => n.id === state.nodeId);
   if (!node) return finishedView(state.nodeId);
   if (node.type === "story") {
-    return { status: "story", nodeId: node.id, title: node.title, text: node.text, imageUrl: node.imageUrl ?? null, options: null };
+    return {
+      status: "story",
+      nodeId: node.id,
+      title: node.title,
+      text: node.text,
+      imageUrl: node.imageUrl ?? null,
+      options: null,
+      next: peekNextStopType(board, state),
+    };
   }
   if (node.type === "choice") {
     return {
@@ -480,6 +508,45 @@ export function viewOfState(board: StoryBoard, state: StoryRunState): StoryPlayV
 }
 
 const MAX_HOPS = 200;
+
+/** 분기점에서 현재 변수값으로 나갈 포트를 고른다 (첫 일치 규칙, 없으면 else) */
+function pickBranchPort(node: StoryBranchNode, vars: Record<string, number>): string {
+  const termOk = (t: StoryBranchTerm) => {
+    const v = i32(vars[t.var] ?? 0);
+    return (t.min == null || v >= t.min) && (t.max == null || v <= t.max);
+  };
+  for (const r of node.rules) {
+    const ok = r.terms.length > 0 && (r.logic === "or" ? r.terms.some(termOk) : r.terms.every(termOk));
+    if (ok) return r.id;
+  }
+  return "else";
+}
+
+/**
+ * 현재 스토리 카드에서 "계속"했을 때 멈출 다음 지점의 종류를 미리 본다 (상태 변경 없음).
+ * 스토리 카드와 다음 멈춤점 사이에는 분기점만 있을 수 있고 분기점은 변수를 바꾸지 않으므로,
+ * 현재 변수값으로 평가한 결과가 실제 진행과 일치한다.
+ */
+export function peekNextStopType(board: StoryBoard, state: StoryRunState): "story" | "choice" | "finished" | null {
+  if (state.finished) return null;
+  const node = board.nodes.find((n) => n.id === state.nodeId);
+  if (!node || node.type !== "story") return null;
+  const edgeByPort = new Map(board.edges.map((e) => [`${e.from}:${e.fromPort}`, e]));
+  let cur = edgeByPort.get(`${node.id}:out`)?.to;
+  for (let hop = 0; hop < MAX_HOPS && cur; hop++) {
+    const n = board.nodes.find((x) => x.id === cur);
+    if (!n) break;
+    if (n.type === "story") return "story";
+    if (n.type === "choice") return "choice";
+    if (n.type === "end") return "finished";
+    if (n.type === "branch") {
+      cur = edgeByPort.get(`${n.id}:${pickBranchPort(n, state.vars)}`)?.to;
+      continue;
+    }
+    cur = edgeByPort.get(`${n.id}:out`)?.to; // start 등
+  }
+  return "finished"; // 연결 끊김 — enterNode 의 종료 처리와 동일
+}
 
 /**
  * nodeId 부터 그래프를 따라가며 다음 "멈추는 지점"(스토리/선택지/끝)까지 진행한다.
@@ -501,6 +568,7 @@ function enterNode(board: StoryBoard, state: StoryRunState, startNodeId: string)
     if (node.type === "story") {
       applyVarOps(state.vars, node.varOps);
       state.nodeId = node.id;
+      pushLog(state, { t: "story", nodeId: node.id });
       return viewOfState(board, state);
     }
     if (node.type === "choice") {
@@ -508,19 +576,7 @@ function enterNode(board: StoryBoard, state: StoryRunState, startNodeId: string)
       return viewOfState(board, state);
     }
     if (node.type === "branch") {
-      const termOk = (t: StoryBranchTerm) => {
-        const v = i32(state.vars[t.var] ?? 0);
-        return (t.min == null || v >= t.min) && (t.max == null || v <= t.max);
-      };
-      let port = "else";
-      for (const r of node.rules) {
-        const ok = r.terms.length > 0 && (r.logic === "or" ? r.terms.some(termOk) : r.terms.every(termOk));
-        if (ok) {
-          port = r.id;
-          break;
-        }
-      }
-      const edge = edgeByPort.get(`${node.id}:${port}`);
+      const edge = edgeByPort.get(`${node.id}:${pickBranchPort(node, state.vars)}`);
       if (!edge) break;
       nodeId = edge.to;
       continue;
@@ -539,7 +595,7 @@ function enterNode(board: StoryBoard, state: StoryRunState, startNodeId: string)
 /** 런 시작(또는 재시작): 시작 카드부터 첫 멈춤 지점까지 진행 */
 export function startStoryRun(board: StoryBoard): { state: StoryRunState; view: StoryPlayView } {
   const start = board.nodes.find((n) => n.type === "start");
-  const state: StoryRunState = { nodeId: start?.id ?? "start", vars: initialVars(board), finished: false };
+  const state: StoryRunState = { nodeId: start?.id ?? "start", vars: initialVars(board), finished: false, log: [] };
   const view = start ? enterNode(board, state, start.id) : finishedView(state.nodeId);
   return { state, view };
 }
@@ -570,6 +626,7 @@ export function chooseStoryOption(board: StoryBoard, state: StoryRunState, optio
     return finishedView(state.nodeId);
   }
   applyVarOps(state.vars, option.varOps);
+  pushLog(state, { t: "pick", text: option.text });
   return enterNode(board, state, edge.to);
 }
 
@@ -625,6 +682,22 @@ export async function saveStorySceneCache(userId: number, storyId: number, nodeI
      ON DUPLICATE KEY UPDATE content = VALUES(content)`,
     [userId, storyId, nodeId, content]
   );
+}
+
+/** 한 런의 장면 캐시 전체 (nodeId → 대본) — 플레이 로그 복원용 */
+export async function getStorySceneCacheMap(userId: number, storyId: number): Promise<Record<string, string>> {
+  const rows = await query<{ node_id: string; content: string }>(
+    "SELECT node_id, content FROM user_story_scenes WHERE user_id = ? AND story_id = ?",
+    [userId, storyId]
+  );
+  const map: Record<string, string> = {};
+  for (const r of rows) map[r.node_id] = r.content;
+  return map;
+}
+
+/** 다시 시작 시 장면 캐시 삭제 — 새 런에서는 장면을 AI 가 새로 생성한다 */
+export async function clearStorySceneCache(userId: number, storyId: number): Promise<void> {
+  await execute("DELETE FROM user_story_scenes WHERE user_id = ? AND story_id = ?", [userId, storyId]);
 }
 
 /* ========== AI 생성 컨텍스트 ========== */
@@ -709,6 +782,8 @@ export interface CharacterStoryRow {
   title_image_url: string | null;
   status: "draft" | "published";
   like_count: number;
+  /** 1 = 19금 스토리 (캐릭터/세계관이 19금이면 자동 19금 — 유효값은 OR) */
+  is_adult: number;
   draft_json: string;
   published_json: string | null;
   published_at: string | null;
@@ -722,6 +797,7 @@ export interface CharacterStoryListItem {
   title_image_url: string | null;
   status: "draft" | "published";
   like_count: number;
+  is_adult: number;
   published_at: string | null;
   updated_at: string;
 }
@@ -740,9 +816,18 @@ export function emptyStoryBoard(): StoryBoard {
 
 export async function listCharacterStories(characterId: number): Promise<CharacterStoryListItem[]> {
   return query<CharacterStoryListItem>(
-    "SELECT id, title, title_image_url, status, like_count, published_at, updated_at FROM character_stories WHERE character_id = ? ORDER BY id DESC",
+    "SELECT id, title, title_image_url, status, like_count, is_adult, published_at, updated_at FROM character_stories WHERE character_id = ? ORDER BY id DESC",
     [characterId]
   );
+}
+
+/** 스토리가 캐릭터/세계관에서 상속받는 19금 여부 (캐릭터 또는 세계관이 19금이면 true — 스토리 설정과 무관하게 강제) */
+export async function storyInheritedAdult(characterId: number): Promise<boolean> {
+  const rows = await query<{ a: number }>(
+    "SELECT (c.is_adult = 1 OR w.is_adult = 1) AS a FROM characters c JOIN worlds w ON w.id = c.world_id WHERE c.id = ?",
+    [characterId]
+  );
+  return Number(rows[0]?.a ?? 0) === 1;
 }
 
 export async function getCharacterStory(storyId: number): Promise<CharacterStoryRow | null> {
@@ -762,14 +847,19 @@ export async function updateCharacterStoryDraft(
   storyId: number,
   title: string,
   board: StoryBoard,
-  titleImageUrl?: string | null
+  titleImageUrl?: string | null,
+  isAdult?: boolean
 ): Promise<void> {
-  await execute("UPDATE character_stories SET title = ?, title_image_url = ?, draft_json = ? WHERE id = ?", [
-    title.slice(0, TITLE_MAX),
-    titleImageUrl ? String(titleImageUrl).slice(0, 600) : null,
-    JSON.stringify(board),
-    storyId,
-  ]);
+  await execute(
+    "UPDATE character_stories SET title = ?, title_image_url = ?, is_adult = ?, draft_json = ? WHERE id = ?",
+    [
+      title.slice(0, TITLE_MAX),
+      titleImageUrl ? String(titleImageUrl).slice(0, 600) : null,
+      isAdult ? 1 : 0,
+      JSON.stringify(board),
+      storyId,
+    ]
+  );
 }
 
 /** 공개: 검증 통과 시 draft 를 published 로 복사. 실패하면 에러 목록 반환 */
@@ -798,9 +888,9 @@ export async function deleteCharacterStory(storyId: number): Promise<void> {
 /** 플레이 입장용: 공개 상태 스토리 목록 */
 export async function listPublishedStories(
   characterId: number
-): Promise<{ id: number; title: string; title_image_url: string | null; like_count: number }[]> {
-  return query<{ id: number; title: string; title_image_url: string | null; like_count: number }>(
-    "SELECT id, title, title_image_url, like_count FROM character_stories WHERE character_id = ? AND status = 'published' ORDER BY id",
+): Promise<{ id: number; title: string; title_image_url: string | null; like_count: number; is_adult: number }[]> {
+  return query<{ id: number; title: string; title_image_url: string | null; like_count: number; is_adult: number }>(
+    "SELECT id, title, title_image_url, like_count, is_adult FROM character_stories WHERE character_id = ? AND status = 'published' ORDER BY id",
     [characterId]
   );
 }
@@ -813,6 +903,7 @@ export interface StoryRunRow {
   status: "active" | "finished";
   node_id: string;
   vars_json: string;
+  log_json: string | null;
   finished_count: number;
 }
 
@@ -831,13 +922,13 @@ export async function saveStoryRun(
   state: StoryRunState
 ): Promise<void> {
   await execute(
-    `INSERT INTO user_story_runs (user_id, story_id, character_id, status, node_id, vars_json, finished_count)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO user_story_runs (user_id, story_id, character_id, status, node_id, vars_json, log_json, finished_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
-       status = VALUES(status), node_id = VALUES(node_id), vars_json = VALUES(vars_json),
+       status = VALUES(status), node_id = VALUES(node_id), vars_json = VALUES(vars_json), log_json = VALUES(log_json),
        finished_count = finished_count + IF(VALUES(status) = 'finished' AND status = 'active', 1, 0),
        finished_at = IF(VALUES(status) = 'finished', NOW(), finished_at)`,
-    [userId, storyId, characterId, state.finished ? "finished" : "active", state.nodeId, JSON.stringify(state.vars), 0]
+    [userId, storyId, characterId, state.finished ? "finished" : "active", state.nodeId, JSON.stringify(state.vars), JSON.stringify(state.log), 0]
   );
 }
 
@@ -851,5 +942,18 @@ export function runRowToState(row: StoryRunRow): StoryRunState {
   } catch {
     vars = {};
   }
-  return { nodeId: row.node_id, vars, finished: row.status === "finished" };
+  let log: StoryLogEntry[] = [];
+  try {
+    const parsed = row.log_json ? JSON.parse(row.log_json) : [];
+    if (Array.isArray(parsed)) {
+      log = parsed.filter(
+        (e): e is StoryLogEntry =>
+          !!e &&
+          ((e.t === "story" && typeof e.nodeId === "string") || (e.t === "pick" && typeof e.text === "string"))
+      );
+    }
+  } catch {
+    log = [];
+  }
+  return { nodeId: row.node_id, vars, finished: row.status === "finished", log };
 }

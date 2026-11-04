@@ -20,6 +20,7 @@ interface World {
   ai_prompt: string;
   visibility: "private" | "open";
   open_scope?: "all" | "dict_person";
+  is_adult?: number;
   title_image_url?: string | null;
   title_color?: string | null;
   delete_scheduled_at?: string | null;
@@ -358,6 +359,16 @@ export default function StudioWorldEditPage({ params }: { params: Promise<{ id: 
           세계관을 공유하면 다른 유저가 이 세계관으로 자신의 캐릭터를 만들 수 있습니다. 공개한 세계관의 캐릭터가
           대화에 쓰이면 세계관 제작자에게 수수료가 지급됩니다.
         </div>
+
+        <label title="체크하면 이 세계관의 모든 캐릭터·스토리가 자동으로 19금이 되고, AI 대화에 성인용 수위가 허용됩니다">
+          <input
+            type="checkbox"
+            checked={world.is_adult === 1}
+            onChange={(e) => setWorld({ ...world, is_adult: e.target.checked ? 1 : 0 })}
+            style={{ width: "auto", marginRight: 6 }}
+          />
+          🔞 19금 세계관 (소속 캐릭터·스토리 자동 19금)
+        </label>
 
         <button onClick={save}>{saved ? "저장됨 ✓" : "저장"}</button>
       </div>

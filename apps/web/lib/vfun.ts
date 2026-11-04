@@ -50,6 +50,23 @@ export interface VfunUser {
   userId: string;
   nickname: string;
   profileImage: string | null;
+  /** YYYY-MM-DD (scope 에 birthday 포함 — 응답에 없으면 null = 성인 여부 미확인) */
+  birthday: string | null;
+}
+
+/**
+ * vfun 응답의 생일 값을 YYYY-MM-DD 로 정규화.
+ * "1990-01-02", "19900102", "1990.01.02" 등 숫자 8자리로 해석 가능한 형식을 허용한다.
+ */
+export function normalizeBirthday(v: unknown): string | null {
+  if (v == null) return null;
+  const digits = String(v).replace(/\D/g, "");
+  if (digits.length !== 8) return null;
+  const y = Number(digits.slice(0, 4));
+  const m = Number(digits.slice(4, 6));
+  const d = Number(digits.slice(6, 8));
+  if (y < 1900 || y > new Date().getFullYear() || m < 1 || m > 12 || d < 1 || d > 31) return null;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
 }
 
 /** 토큰 엔드포인트 공통 호출 (토큰/비밀번호는 로그에 남기지 않는다) */
@@ -134,6 +151,8 @@ export async function fetchVfunUser(accessToken: string): Promise<VfunUser | nul
       userId,
       nickname: String(d.nickname || userId || `user${uNo}`).slice(0, 64),
       profileImage: d.profile_image ? String(d.profile_image) : null,
+      // 생일 (성인 판정용). 키 이름이 환경에 따라 다를 수 있어 알려진 후보를 순서대로 본다
+      birthday: normalizeBirthday(d.birthday ?? d.birth_day ?? d.birthdate ?? d.birth),
     };
   } catch {
     return null;

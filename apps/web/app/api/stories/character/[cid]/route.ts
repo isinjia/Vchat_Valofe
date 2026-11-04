@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@vchatbot/core";
-import { getUserId } from "@/lib/user";
+import { getUserId, isAdultUser, ADULT_BLOCK_MESSAGE } from "@/lib/user";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,9 +25,13 @@ export async function GET(req: NextRequest, { params }: Params) {
     visibility: string;
     share_key: string | null;
     owner_nickname: string | null;
+    char_adult: number;
   }>(
-    `SELECT c.id, c.owner_user_id, c.visibility, c.share_key, u.nickname AS owner_nickname
-     FROM characters c LEFT JOIN users u ON u.id = c.owner_user_id WHERE c.id = ?`,
+    `SELECT c.id, c.owner_user_id, c.visibility, c.share_key, u.nickname AS owner_nickname,
+            (c.is_adult = 1 OR w.is_adult = 1) AS char_adult
+     FROM characters c
+     JOIN worlds w ON w.id = c.world_id
+     LEFT JOIN users u ON u.id = c.owner_user_id WHERE c.id = ?`,
     [characterId]
   );
   const c = chars[0];
@@ -35,6 +39,11 @@ export async function GET(req: NextRequest, { params }: Params) {
   const k = req.nextUrl.searchParams.get("k");
   if (c.visibility === "private" && c.owner_user_id !== userId && (!c.share_key || k !== c.share_key)) {
     return NextResponse.json({ error: "비공개 캐릭터입니다." }, { status: 403 });
+  }
+  // 19금 접근 제어: 캐릭터/세계관이 19금이면 전체 차단, 아니면 19금 스토리만 숨김
+  const adultViewer = await isAdultUser(userId);
+  if (Number(c.char_adult) === 1 && !adultViewer) {
+    return NextResponse.json({ error: ADULT_BLOCK_MESSAGE }, { status: 403 });
   }
 
   const stories = await query<{
@@ -45,13 +54,15 @@ export async function GET(req: NextRequest, { params }: Params) {
     run_status: string | null;
     finished_count: number | null;
     liked: number;
+    is_adult: number;
   }>(
-    `SELECT s.id, s.title, s.title_image_url, s.like_count,
+    `SELECT s.id, s.title, s.title_image_url, s.like_count, s.is_adult,
             r.status AS run_status, r.finished_count,
             EXISTS(SELECT 1 FROM story_likes l WHERE l.story_id = s.id AND l.user_id = ?) AS liked
      FROM character_stories s
      LEFT JOIN user_story_runs r ON r.story_id = s.id AND r.user_id = ?
-     WHERE s.character_id = ? AND s.status = 'published' ORDER BY s.id`,
+     WHERE s.character_id = ? AND s.status = 'published'${adultViewer ? "" : " AND s.is_adult = 0"}
+     ORDER BY s.id`,
     [userId, userId, characterId]
   );
 
@@ -63,6 +74,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       titleImageUrl: s.title_image_url,
       likeCount: Number(s.like_count),
       liked: !!Number(s.liked),
+      isAdult: Number(c.char_adult) === 1 || Number(s.is_adult) === 1,
       runStatus: s.run_status,
       finishedCount: Number(s.finished_count ?? 0),
     })),

@@ -31,8 +31,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
       ? body.title_color.trim().toLowerCase()
       : null;
   await execute(
-    "UPDATE worlds SET name = ?, description = ?, ai_prompt = ?, visibility = ?, open_scope = ?, title_color = ? WHERE id = ? AND owner_user_id = ?",
-    [name, String(body.description ?? ""), String(body.ai_prompt ?? ""), visibilityOf(body.visibility), body.open_scope === "dict_person" ? "dict_person" : "all", titleColor, Number(id), auth.userId]
+    "UPDATE worlds SET name = ?, description = ?, ai_prompt = ?, visibility = ?, open_scope = ?, title_color = ?, is_adult = ? WHERE id = ? AND owner_user_id = ?",
+    [name, String(body.description ?? ""), String(body.ai_prompt ?? ""), visibilityOf(body.visibility), body.open_scope === "dict_person" ? "dict_person" : "all", titleColor, body.is_adult === true || body.is_adult === 1 ? 1 : 0, Number(id), auth.userId]
   );
   await invalidateChatContext();
   return NextResponse.json({ ok: true });

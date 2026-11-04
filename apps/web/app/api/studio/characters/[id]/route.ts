@@ -29,8 +29,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
      ORDER BY ends_at DESC LIMIT 1`,
     [Number(id)]
   );
+  const wAdult = await query<{ is_adult: number }>("SELECT is_adult FROM worlds WHERE id = ?", [Number(own.row.world_id)]);
   return NextResponse.json({
     ...own.row,
+    world_is_adult: Number(wAdult[0]?.is_adult ?? 0),
     affinity_prompts: parseAffinityPrompts(own.row.affinity_prompts),
     // 비어 있는 구간의 placeholder 로 보여줄 전역 기본값 (관리자 설정 반영)
     affinity_prompt_defaults: await getAffinityPromptDefaults(),
@@ -71,7 +73,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   await execute(
     `UPDATE characters
      SET name = ?, profile = ?, personality = ?, speech_style = ?, ai_prompt = ?,
-         scenario = ?, greeting = ?, affinity_prompts = ?, realtime_mode = ?, browser_llm_enabled = ?, visibility = ?, title_color = ?
+         scenario = ?, greeting = ?, affinity_prompts = ?, realtime_mode = ?, browser_llm_enabled = ?, visibility = ?, title_color = ?, is_adult = ?
      WHERE id = ? AND owner_user_id = ?`,
     [
       name,
@@ -86,6 +88,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       b.browser_llm_enabled ? 1 : 0,
       visibilityOf(b.visibility),
       titleColor,
+      b.is_adult === true || b.is_adult === 1 ? 1 : 0,
       Number(id),
       auth.userId,
     ]

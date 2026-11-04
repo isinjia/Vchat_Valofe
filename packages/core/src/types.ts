@@ -8,6 +8,8 @@ export interface World {
   /** 타이틀 컬러(#rrggbb) — 캐릭터 카드 테두리/배경 톤 */
   title_color?: string | null;
   is_active: number;
+  /** 1 = 19금 세계관 — 소속 캐릭터/스토리도 자동 19금 */
+  is_adult?: number;
   owner_user_id: number | null;
   /** UI 용어는 '공유' — open = 다른 유저가 이 세계관으로 캐릭터를 만들 수 있음 */
   visibility: "private" | "open";
@@ -63,6 +65,8 @@ export interface CharacterPersona {
   /** 타이틀 컬러(#rrggbb) — 카드 테두리/채팅 배경 톤 (null = 세계관 색 따름) */
   title_color?: string | null;
   is_active: number;
+  /** 1 = 19금 캐릭터 (세계관이 19금이면 자동 19금). 유효값은 world.is_adult 와 OR */
+  is_adult?: number;
   owner_user_id: number | null;
   visibility: "private" | "open";
   /** 비공개 링크 공유용 랜덤 키 (?k= 로 입장, '공유 링크 복사' 시 지연 생성) */

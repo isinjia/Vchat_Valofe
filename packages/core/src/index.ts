@@ -32,3 +32,4 @@ export * from "./profile-sets";
 export * from "./gifts";
 export * from "./transfer";
 export * from "./story";
+export * from "./player-persona";

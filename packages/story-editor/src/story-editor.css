@@ -36,6 +36,24 @@
 }
 .sbe-timg { display: inline-flex; align-items: center; gap: 2px; }
 .sbe-timg img { width: 34px; height: 34px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border, #ccc); }
+.sbe-adult {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+  color: var(--muted, #777);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+.sbe-adult input { margin: 0; cursor: pointer; }
+.sbe-adult-on { border-color: #d64545; color: #d64545; background: rgba(214, 69, 69, 0.08); }
+.sbe-adult-locked { opacity: 0.75; cursor: default; }
+.sbe-adult-locked input { cursor: default; }
 .sbe-badge {
   font-size: 12px;
   padding: 2px 8px;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, cached, sweepScheduledDeletions } from "@vchatbot/core";
+import { getUserId, isAdultUser } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,11 @@ export async function GET(req: NextRequest) {
        WHERE s.target_type = 'character' AND s.target_id = c.id AND s.kind = 'hide'
          AND s.revoked_at IS NULL AND s.ends_at > NOW())`,
   ];
+  // 19금 캐릭터/세계관: 성인 확인된 유저에게만 노출 (비로그인·미확인·미성년 숨김)
+  const adultViewer = await isAdultUser(await getUserId());
+  if (!adultViewer) {
+    where.push("c.is_adult = 0", "w.is_adult = 0");
+  }
   const params: (string | number)[] = [];
   const worldIdRaw = sp.get("worldId");
   if (worldIdRaw) {
@@ -67,11 +73,12 @@ export async function GET(req: NextRequest) {
             : "c.id DESC";
 
   // 필터/정렬/페이지 조합별 영구 캐시 — 캐릭터/세계관 변경과 chat_count 증가 시에만 무효화
-  const cacheKey = `cache:web:chars:${worldIdRaw ?? "all"}:${sort}:${offset}:${lim}`;
+  const cacheKey = `cache:web:chars:${worldIdRaw ?? "all"}:${sort}:${offset}:${lim}:${adultViewer ? "a" : "g"}`;
   const result = await cached(cacheKey, 0, async () => {
     // LIMIT/OFFSET 은 위에서 정수 검증을 마쳤으므로 문자열로 삽입 (hasMore 판정용 +1)
     const rows = await query<Record<string, unknown>>(
       `SELECT c.id, c.name, c.world_id, w.name AS world_name, COALESCE(c.title_color, w.title_color) AS title_color, c.title_image_url, c.like_count,
+              (c.is_adult = 1 OR w.is_adult = 1) AS is_adult,
               uo.nickname AS owner_name,
               (SELECT COALESCE(SUM(u.price), 0) FROM item_uses u WHERE u.character_id = c.id) AS gift_amount,
               (SELECT url FROM illustrations i

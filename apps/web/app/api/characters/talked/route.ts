@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, chatMessages } from "@vchatbot/core";
-import { getUserId } from "@/lib/user";
+import { getUserId, isAdultUser } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +33,11 @@ export async function GET(req: NextRequest) {
        WHERE s.target_type = 'character' AND s.target_id = c.id AND s.kind = 'hide'
          AND s.revoked_at IS NULL AND s.ends_at > NOW())`,
   ];
+  // 19금 캐릭터/세계관: 성인 확인된 유저에게만 노출
+  const adultViewer = await isAdultUser(userId);
+  if (!adultViewer) {
+    where.push("c.is_adult = 0", "w.is_adult = 0");
+  }
   const params: (string | number)[] = [...ids];
   const worldIdRaw = req.nextUrl.searchParams.get("worldId");
   if (worldIdRaw) {
@@ -46,6 +51,7 @@ export async function GET(req: NextRequest) {
 
   const rows = await query<{ id: number } & Record<string, unknown>>(
     `SELECT c.id, c.name, c.world_id, w.name AS world_name, COALESCE(c.title_color, w.title_color) AS title_color, c.title_image_url, c.like_count,
+            (c.is_adult = 1 OR w.is_adult = 1) AS is_adult,
             uo.nickname AS owner_name,
             (SELECT url FROM illustrations i
              WHERE i.character_id = c.id AND i.kind = 'basic'
