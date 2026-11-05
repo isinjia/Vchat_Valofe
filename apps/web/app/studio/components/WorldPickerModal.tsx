@@ -11,6 +11,7 @@ export interface PickedWorld {
   title_color?: string | null;
   owner_nickname?: string | null;
   open_scope?: "all" | "dict_person";
+  is_adult?: number;
   mine: boolean;
 }
 
@@ -27,6 +28,7 @@ export function WorldMini({ world }: { world: PickedWorld }) {
       <div>
         <div className="world-picker-name">{world.name}</div>
         <span className={`badge ${world.mine ? "" : "open"}`}>{world.mine ? "내 세계관" : "공유"}</span>
+        {world.is_adult === 1 && <span className="badge" style={{ marginLeft: 4 }}>🔞 19금</span>}
         {!world.mine && world.open_scope === "dict_person" && (
           <span className="badge" style={{ marginLeft: 4 }}>사전 인물만</span>
         )}
@@ -59,14 +61,15 @@ export default function WorldPickerModal({ open, onClose, onSelect }: Props) {
     ]).then(([mineRaw, openRaw]) => {
       if (!alive) return;
       const mine: PickedWorld[] = mineRaw.map((w: PickedWorld) => ({
-        id: w.id, name: w.name, title_image_url: w.title_image_url ?? null, title_color: w.title_color ?? null, mine: true,
+        id: w.id, name: w.name, title_image_url: w.title_image_url ?? null, title_color: w.title_color ?? null,
+        is_adult: w.is_adult ?? 0, mine: true,
       }));
       const myIds = new Set(mine.map((w) => w.id));
       const others: PickedWorld[] = openRaw
         .filter((w: PickedWorld) => !myIds.has(w.id))
         .map((w: PickedWorld) => ({
           id: w.id, name: w.name, title_image_url: w.title_image_url ?? null, title_color: w.title_color ?? null,
-          owner_nickname: w.owner_nickname ?? null, open_scope: w.open_scope ?? "all", mine: false,
+          owner_nickname: w.owner_nickname ?? null, open_scope: w.open_scope ?? "all", is_adult: w.is_adult ?? 0, mine: false,
         }));
       setWorlds([...mine, ...others]);
       setLoading(false);
@@ -110,7 +113,7 @@ export default function WorldPickerModal({ open, onClose, onSelect }: Props) {
           ) : (
             <div className="title-img placeholder" />
           )}
-          <div className="world-picker-name">{w.name}</div>
+          <div className="world-picker-name">{w.is_adult === 1 ? "🔞 " : ""}{w.name}</div>
           {!w.mine && w.owner_nickname && <div className="world-picker-owner">by {w.owner_nickname}</div>}
           {!w.mine && w.open_scope === "dict_person" && <div className="world-picker-owner">사전 인물만</div>}
         </button>

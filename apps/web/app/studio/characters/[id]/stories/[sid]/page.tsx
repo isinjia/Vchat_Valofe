@@ -15,6 +15,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
     status: "draft" | "published";
     is_adult?: boolean;
     inherited_adult?: boolean;
+    viewer_is_adult?: boolean;
     board: StoryBoard;
     character?: { name: string; world_name: string };
   } | null>(null);
@@ -82,6 +83,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
         initialTitleImage={data.title_image_url ?? null}
         initialAdult={data.is_adult === true}
         inheritedAdult={data.inherited_adult === true}
+        adultDisabled={data.viewer_is_adult !== true}
         initialBoard={data.board}
         initialStatus={data.status}
         api={api}

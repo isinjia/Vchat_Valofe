@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, execute, evaluateTierPromotions, sweepScheduledDeletions } from "@vchatbot/core";
 import { requireUser, bad, canUseWorld, checkWorldNameScope } from "@/lib/studio";
+import { isAdultUser } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,11 @@ export async function POST(req: NextRequest) {
   if (!body.world_id || !name) return bad("world_id, name 은 필수입니다.");
   if (!(await canUseWorld(body.world_id, auth.userId))) {
     return bad("사용할 수 없는 세계관입니다.", 403);
+  }
+  // 19금 세계관은 성인 인증된 유저만 캐릭터 생성 가능 (미성년·미확인 차단)
+  const wAdult = await query<{ is_adult: number }>("SELECT is_adult FROM worlds WHERE id = ?", [Number(body.world_id)]);
+  if (Number(wAdult[0]?.is_adult ?? 0) === 1 && !(await isAdultUser(auth.userId))) {
+    return bad("19금 세계관은 성인 인증된 계정만 사용할 수 있습니다.", 403);
   }
   const scopeErr = await checkWorldNameScope(body.world_id, auth.userId, name);
   if (scopeErr) return bad(scopeErr);
