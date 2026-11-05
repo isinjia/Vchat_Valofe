@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import SanctionPanel from "../../components/SanctionPanel";
+import { getPlayerPersonalityType } from "@vchatbot/core/src/player-persona";
 
 interface Detail {
   user: {
@@ -13,6 +14,7 @@ interface Detail {
     coins: number;
     status: "active" | "banned";
     admin_role: "user_admin" | "system_admin" | null;
+    personality_type: string | null;
     tier_id: number | null;
     creator_tier_id: number | null;
     ai_level_id: number | null;
@@ -121,6 +123,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
           <div><label>vfun ID</label><div>{user.vfun_user_id ?? "-"}</div></div>
           <div><label>가입일</label><div>{new Date(user.created_at).toLocaleString()}</div></div>
           <div><label>잔액</label><div>{fmt(user.coins)}</div></div>
+          <div>
+            <label>성격 타입</label>
+            <div title={getPlayerPersonalityType(user.personality_type)?.desc ?? "가입 시 아직 선택하지 않음"}>
+              {getPlayerPersonalityType(user.personality_type)?.label ?? <span className="muted">미선택</span>}
+            </div>
+          </div>
         </div>
         <div className="row" style={{ marginTop: 14 }}>
           <div>

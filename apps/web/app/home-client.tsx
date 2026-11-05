@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import SiteHeader from "./components/SiteHeader";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { tintBackground } from "@/lib/tint";
+import { PLAYER_PERSONALITY_TYPES } from "@vchatbot/core/src/player-persona";
 
 interface WorldItem {
   id: number;
@@ -14,6 +15,8 @@ interface WorldItem {
   like_count?: number;
   /** 제작 유저 닉네임 (운영 제작이면 null — 표시하지 않음) */
   owner_name: string | null;
+  /** 19금 세계관 (성인 확인 유저에게만 내려오고 배지로 표시) */
+  is_adult?: number;
 }
 
 interface CharItem {
@@ -27,6 +30,8 @@ interface CharItem {
   like_count?: number;
   /** 제작 유저 닉네임 (운영 제작이면 null — 표시하지 않음) */
   owner_name?: string | null;
+  /** 19금 (캐릭터 자체 또는 세계관 상속 — 성인 확인 유저에게만 내려옴) */
+  is_adult?: number;
 }
 
 
@@ -54,7 +59,10 @@ function CharCard({ c, like }: { c: CharItem; like: LikeProps }) {
       ) : (
         <div className="title-img placeholder" />
       )}
-      <div className="char-card-name">{c.name}</div>
+      <div className="char-card-name">
+        {Number(c.is_adult) === 1 && <span className="adult-badge" title="19세 이상 전용">🔞</span>}
+        {c.name}
+      </div>
       <div className="char-card-world">
         {c.world_name}
         {c.owner_name && <span> · by {c.owner_name}</span>}
@@ -88,6 +96,10 @@ export default function HomeClient() {
   const [loaded, setLoaded] = useState(false);
   const [offset, setOffset] = useState(0);
   const [meReady, setMeReady] = useState(false);
+  // 플레이어 성격 타입 온보딩 — 로그인했는데 아직 미선택이면 선택 다이얼로그
+  const [personaAsk, setPersonaAsk] = useState(false);
+  const [personaSel, setPersonaSel] = useState<string | null>(null);
+  const [personaSaving, setPersonaSaving] = useState(false);
   // 내가 좋아요한 캐릭터 id 와 낙관적 갱신된 좋아요 수 (목록 캐시는 유저 무관하므로 분리 관리)
   const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
   const [likeCounts, setLikeCounts] = useState<Record<number, number>>({});
@@ -137,6 +149,22 @@ export default function HomeClient() {
       // 무시
     }
   };
+  /** 플레이어 성격 타입 저장 — 스토리 플레이에서 "나"의 말투를 고정하는 데 쓴다 */
+  const savePersona = async () => {
+    if (!personaSel || personaSaving) return;
+    setPersonaSaving(true);
+    try {
+      const r = await fetch("/api/me", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ personalityType: personaSel }),
+      });
+      if (r.ok) setPersonaAsk(false);
+    } finally {
+      setPersonaSaving(false);
+    }
+  };
+
   const likeProps = (c: CharItem): LikeProps => ({
     liked: likedIds.has(c.id),
     count: likeCounts[c.id] ?? c.like_count ?? 0,
@@ -169,8 +197,12 @@ export default function HomeClient() {
   // 최초 마운트: 세계관 목록 + 로그인 상태 확인
   useEffect(() => {
     fetch("/api/worlds").then((r) => r.json()).then(setWorlds).catch(() => {});
-    // 헤더(SiteHeader)도 /api/me 를 호출하므로 여기서는 준비 완료 신호만 사용
+    // 헤더(SiteHeader)도 /api/me 를 호출하므로 여기서는 준비 신호 + 성격 타입 미선택 확인에 사용
     fetch("/api/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && d.personalityType === null) setPersonaAsk(true);
+      })
       .catch(() => {})
       .finally(() => setMeReady(true));
     fetch("/api/characters/liked")
@@ -255,6 +287,39 @@ export default function HomeClient() {
       />
     )}
     <SiteHeader />
+
+    {/* 첫 로그인(가입) 성격 타입 선택 — 스토리 플레이에서 플레이어 대사의 말투 기준이 된다 */}
+    {personaAsk && (
+      <div className="modal-backdrop">
+        <div className="modal persona-modal">
+          <h3>당신은 어떤 타입인가요?</h3>
+          <p>
+            선택한 성격 타입에 맞춰 스토리 플레이에서 &quot;나&quot;의 대사 말투가 유지됩니다.
+            <br />
+            캐릭터와 나눈 실제 대화 말투도 함께 반영돼요.
+          </p>
+          <div className="persona-grid">
+            {PLAYER_PERSONALITY_TYPES.map((t) => (
+              <button
+                key={t.key}
+                className={`persona-option ${personaSel === t.key ? "active" : ""}`}
+                onClick={() => setPersonaSel(t.key)}
+              >
+                <strong>{t.label}</strong>
+                <span>{t.desc}</span>
+              </button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+            <button className="persona-later" onClick={() => setPersonaAsk(false)}>나중에 하기</button>
+            <button className="persona-save" disabled={!personaSel || personaSaving} onClick={savePersona}>
+              {personaSaving ? "저장 중..." : "이걸로 할게요"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     <div className="container">
       <h2 className="section-title">세계</h2>
       <div className="h-scroll">
@@ -283,7 +348,10 @@ export default function HomeClient() {
             ) : (
               <div className="title-img placeholder" />
             )}
-            <span>{w.name}</span>
+            <span>
+              {Number(w.is_adult) === 1 && <span className="adult-badge" title="19세 이상 전용">🔞</span>}
+              {w.name}
+            </span>
             {w.owner_name && <span className="world-card-owner">by {w.owner_name}</span>}
             <span
               className={`world-like${likedWorldIds.has(w.id) ? " liked" : ""}`}

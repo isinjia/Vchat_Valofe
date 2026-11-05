@@ -13,6 +13,8 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
     title: string;
     title_image_url?: string | null;
     status: "draft" | "published";
+    is_adult?: boolean;
+    inherited_adult?: boolean;
     board: StoryBoard;
     character?: { name: string; world_name: string };
   } | null>(null);
@@ -30,13 +32,13 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
 
   const api: StoryEditorApi = useMemo(
     () => ({
-      async saveDraft(title, board, titleImageUrl) {
-        const r = await studioFetch(base, jsonInit("PUT", { title, board, title_image_url: titleImageUrl }));
+      async saveDraft(title, board, titleImageUrl, isAdult) {
+        const r = await studioFetch(base, jsonInit("PUT", { title, board, title_image_url: titleImageUrl, is_adult: isAdult }));
         const d = await r.json().catch(() => ({}));
         return { ok: r.ok, error: d.error };
       },
-      async publish(title, board, titleImageUrl) {
-        const s = await studioFetch(base, jsonInit("PUT", { title, board, title_image_url: titleImageUrl }));
+      async publish(title, board, titleImageUrl, isAdult) {
+        const s = await studioFetch(base, jsonInit("PUT", { title, board, title_image_url: titleImageUrl, is_adult: isAdult }));
         if (!s.ok) {
           const d = await s.json().catch(() => ({}));
           return { ok: false, errors: [d.error ?? "저장 실패"] };
@@ -78,6 +80,8 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
       <StoryBoardEditor
         initialTitle={data.title}
         initialTitleImage={data.title_image_url ?? null}
+        initialAdult={data.is_adult === true}
+        inheritedAdult={data.inherited_adult === true}
         initialBoard={data.board}
         initialStatus={data.status}
         api={api}

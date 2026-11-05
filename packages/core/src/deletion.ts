@@ -74,7 +74,7 @@ async function invalidatePublicCaches(characterId?: number): Promise<void> {
   try {
     await invalidateChatContext(characterId);
     await invalidateCachePattern("cache:web:chars:*");
-    await invalidateCachePattern("cache:web:worlds");
+    await invalidateCachePattern("cache:web:worlds*");
   } catch {
     // 캐시 실패는 무시
   }

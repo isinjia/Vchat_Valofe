@@ -14,7 +14,8 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
   const rows = await query(
-    `SELECT c.*, u.nickname AS owner_nickname, u.vfun_user_id AS owner_vfun_id, u.vfun_u_no AS owner_u_no
+    `SELECT c.*, u.nickname AS owner_nickname, u.vfun_user_id AS owner_vfun_id, u.vfun_u_no AS owner_u_no,
+            (SELECT w.is_adult FROM worlds w WHERE w.id = c.world_id) AS world_is_adult
      FROM characters c LEFT JOIN users u ON u.id = c.owner_user_id WHERE c.id = ?`,
     [id]
   );
@@ -28,7 +29,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
 export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const { name, profile, personality, speech_style, ai_prompt, scenario, greeting, is_active, visibility, status, title_color, browser_llm_enabled } =
+  const { name, profile, personality, speech_style, ai_prompt, scenario, greeting, is_active, is_adult, visibility, status, title_color, browser_llm_enabled } =
     await req.json();
   // 타이틀 컬러: #rrggbb 또는 null (null = 세계관 색 따름)
   const titleColor = typeof title_color === "string" && /^#[0-9a-fA-F]{6}$/.test(title_color) ? title_color : null;
@@ -40,7 +41,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   try {
   await execute(
     `UPDATE characters
-     SET name = ?, profile = ?, personality = ?, speech_style = ?, ai_prompt = ?, scenario = ?, greeting = ?, is_active = ?,
+     SET name = ?, profile = ?, personality = ?, speech_style = ?, ai_prompt = ?, scenario = ?, greeting = ?, is_active = ?, is_adult = ?,
          visibility = ?, status = ?, title_color = ?, browser_llm_enabled = ?
      WHERE id = ?`,
     [
@@ -52,6 +53,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       scenario?.trim() ? scenario : null,
       greeting?.trim() ? greeting : null,
       is_active ? 1 : 0,
+      is_adult ? 1 : 0,
       visibility === "open" ? "open" : "private",
       status === "suspended" ? "suspended" : "active",
       titleColor,

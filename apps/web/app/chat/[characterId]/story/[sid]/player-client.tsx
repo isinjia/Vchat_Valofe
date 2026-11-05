@@ -66,7 +66,14 @@ interface PlayView {
   text: string | null;
   imageUrl: string | null;
   options: { id: string; text: string }[] | null;
+  /** 스토리 카드 뷰에서만: 다음 멈춤점 종류. choice 면 계속 버튼 없이 선택지를 바로 띄운다 */
+  next?: "story" | "choice" | "finished" | null;
 }
+
+/** 서버가 내려주는 플레이 로그 항목 — 지나온 장면(캐시 대본 포함)과 고른 선택지 */
+type PlayLogItem =
+  | { kind: "story"; nodeId: string; title: string | null; imageUrl: string | null; text: string | null; lines: SceneLine[] | null }
+  | { kind: "pick"; text: string };
 
 interface PlayState {
   title: string;
@@ -74,6 +81,8 @@ interface PlayState {
   characterName?: string;
   status: "idle" | "active" | "finished";
   view: PlayView | null;
+  /** 재접속 복원용 전체 로그 (GET 에서만 내려온다) */
+  log?: PlayLogItem[];
 }
 
 type Item =
@@ -115,6 +124,7 @@ export default function StoryPlayerClient({
   const [sceneLoading, setSceneLoading] = useState(false);
   const [headTitle, setHeadTitle] = useState("");
   const [busy, setBusy] = useState(false);
+  const [askRestart, setAskRestart] = useState(false); // 다시 시작 확인 다이얼로그
   const [error, setError] = useState("");
   const [coinBalance, setCoinBalance] = useState<number | null>(null);
   const [chargeUrl, setChargeUrl] = useState("");
@@ -137,16 +147,9 @@ export default function StoryPlayerClient({
     [base, shareKey]
   );
 
-  /** 스토리 카드 진입 → 장면(대화) 불러오기/생성 */
-  const openScene = useCallback(
+  /** 현재 스토리 카드의 장면(대화)을 불러오기/생성해 뒤에 붙인다 */
+  const fetchScene = useCallback(
     async (view: PlayView) => {
-      if (openedRef.current === view.nodeId) return;
-      openedRef.current = view.nodeId;
-      setItems((arr) => [
-        ...arr,
-        { kind: "title", text: view.title ?? "" },
-        ...(view.imageUrl ? [{ kind: "image", url: view.imageUrl } as Item] : []),
-      ]);
       setSceneLoading(true);
       const { ok, d } = await post({ action: "scene" });
       setSceneLoading(false);
@@ -168,6 +171,21 @@ export default function StoryPlayerClient({
     [post]
   );
 
+  /** 스토리 카드 진입 → 타이틀/이미지 붙이고 장면 불러오기 */
+  const openScene = useCallback(
+    async (view: PlayView) => {
+      if (openedRef.current === view.nodeId) return;
+      openedRef.current = view.nodeId;
+      setItems((arr) => [
+        ...arr,
+        { kind: "title", text: view.title ?? "" },
+        ...(view.imageUrl ? [{ kind: "image", url: view.imageUrl } as Item] : []),
+      ]);
+      await fetchScene(view);
+    },
+    [fetchScene]
+  );
+
   const apply = useCallback(
     (d: PlayState) => {
       setState(d);
@@ -181,10 +199,56 @@ export default function StoryPlayerClient({
     [openScene]
   );
 
+  /** 재접속/새로고침: 서버 로그로 지나온 장면·선택을 전부 복원 (로그 없으면 기존 동작) */
+  const restore = useCallback(
+    (d: PlayState) => {
+      const log = d.log ?? [];
+      if (log.length === 0) {
+        apply(d);
+        return;
+      }
+      const arr: Item[] = [];
+      let lastStoryTitle = "";
+      let currentScenePending = false;
+      for (const e of log) {
+        if (e.kind === "pick") {
+          arr.push({ kind: "line", line: { who: "player", text: e.text } });
+          continue;
+        }
+        lastStoryTitle = e.title ?? "";
+        arr.push({ kind: "title", text: e.title ?? "" });
+        if (e.imageUrl) arr.push({ kind: "image", url: e.imageUrl });
+        if (e.lines && e.lines.length > 0) {
+          arr.push(...e.lines.map((line) => ({ kind: "line", line }) as Item));
+        } else if (d.view?.status === "story" && d.view.nodeId === e.nodeId) {
+          currentScenePending = true; // 현재 카드인데 장면이 아직 없음 → 아래에서 생성 요청
+        } else if (e.text) {
+          // 장면이 생성되기 전에 지나간 카드 — 설정 텍스트를 지문으로
+          arr.push(
+            ...e.text
+              .split("\n")
+              .map((t) => t.trim())
+              .filter(Boolean)
+              .map((t) => ({ kind: "line", line: { who: "narr" as const, text: t } }) as Item)
+          );
+        }
+      }
+      setItems(arr);
+      setHidden(0); // 복원은 시간차 없이 즉시 표시
+      setState(d);
+      setHeadTitle(lastStoryTitle || d.title);
+      if (d.view?.status === "story") {
+        openedRef.current = d.view.nodeId; // 이미 로그로 표시됨 — openScene 중복 방지
+        if (currentScenePending) void fetchScene(d.view);
+      }
+    },
+    [apply, fetchScene]
+  );
+
   useEffect(() => {
     fetch(`${base}${kq}`)
       .then((r) => r.json())
-      .then((d) => (d.error ? setError(d.error) : apply(d)))
+      .then((d) => (d.error ? setError(d.error) : restore(d)))
       .catch(() => setError("불러오기 실패"));
     // 헤더 코인 잔액 (채팅창과 동일하게 /api/me)
     fetch("/api/me")
@@ -222,6 +286,17 @@ export default function StoryPlayerClient({
       setBusy(false);
     }
   };
+
+  /* 장면 뒤가 선택지면 "계속" 없이 자동 진행해 선택지를 바로 띄운다 (선택지 진입은 코인 소모 없음).
+     다음이 또 다른 장면이면 생성 비용이 들 수 있으므로 계속 버튼으로 유저가 직접 진행한다. */
+  useEffect(() => {
+    if (busy || sceneLoading || hidden > 0) return;
+    const v = state?.view;
+    if (state?.status === "active" && v?.status === "story" && v.next === "choice" && openedRef.current === v.nodeId) {
+      void act("continue");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, busy, sceneLoading, hidden]);
 
   const restart = async () => {
     setItems([]);
@@ -323,7 +398,7 @@ export default function StoryPlayerClient({
             <h3>— 끝 —</h3>
             <p className="muted">&quot;{state.title}&quot; 스토리를 끝까지 플레이했습니다.</p>
             <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-              <button className="story-play-btn" disabled={busy} onClick={restart}>다시 하기</button>
+              <button className="story-play-btn" disabled={busy} onClick={() => setAskRestart(true)}>다시 하기</button>
               <Link href={`/chat/${characterId}${kq}`} className="story-play-btn story-play-btn-sub">채팅으로</Link>
             </div>
           </div>
@@ -332,9 +407,36 @@ export default function StoryPlayerClient({
         {error && <p style={{ color: "#e07070", textAlign: "center" }}>{error}</p>}
       </main>
 
+      {/* 다시 시작 확인 다이얼로그 */}
+      {askRestart && (
+        <div className="modal-backdrop" onClick={() => setAskRestart(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>스토리를 다시 시작할까요?</h3>
+            <p>
+              기존 대화는 초기화되고 새로 시작합니다.
+              <br />
+              장면은 AI가 새로 만들기 때문에 이전과 다르게 전개될 수 있고, 장면 생성 비용도 다시 발생합니다.
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="story-play-btn story-play-btn-sub" onClick={() => setAskRestart(false)}>취소</button>
+              <button
+                className="story-play-btn"
+                disabled={busy}
+                onClick={() => {
+                  setAskRestart(false);
+                  void restart();
+                }}
+              >
+                다시 시작
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 하단 액션 바 — 입력창 대신 진행/선택 버튼 (플레이어 대사는 AI 가 쓴다) */}
       <footer className="story-play-actions">
-        {view?.status === "story" && state.status === "active" && (
+        {view?.status === "story" && state.status === "active" && view.next !== "choice" && (
           <button
             className="story-play-btn"
             style={{ alignSelf: "stretch", width: "100%" }}
@@ -342,6 +444,11 @@ export default function StoryPlayerClient({
             onClick={() => act("continue")}
           >
             {busy || sceneLoading ? "..." : revealing ? "장면 진행 중... (탭하면 빨리 보기)" : "계속 ▸"}
+          </button>
+        )}
+        {view?.status === "story" && state.status === "active" && view.next === "choice" && (sceneLoading || revealing || busy) && (
+          <button className="story-play-btn" style={{ alignSelf: "stretch", width: "100%" }} disabled>
+            {revealing ? "장면 진행 중... (탭하면 빨리 보기)" : "..."}
           </button>
         )}
         {view?.status === "choice" && !revealing && (

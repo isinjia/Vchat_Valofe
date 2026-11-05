@@ -122,6 +122,8 @@ interface StoryCardItem {
   liked: boolean;
   runStatus: string | null;
   finishedCount: number;
+  /** 19금 스토리 (성인 확인 유저에게만 내려옴 — 배지 표시용) */
+  isAdult?: boolean;
 }
 
 /** 채팅창 위에 뜨는 스토리 선택 팝업 — 타이틀 이미지 + 제목/제작자 카드 목록 + 좋아요 */
@@ -181,7 +183,10 @@ function StoryListModal({
                 )}
               </div>
               <div className="story-card-body">
-                <div className="story-card-title">{s.title}</div>
+                <div className="story-card-title">
+                  {s.isAdult && <span className="adult-badge" title="19세 이상 전용">🔞</span>}
+                  {s.title}
+                </div>
                 <div className="story-card-meta">제작: {creator}</div>
                 <div className="story-card-foot">
                   <button

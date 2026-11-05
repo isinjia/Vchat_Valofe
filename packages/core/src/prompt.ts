@@ -46,6 +46,8 @@ export function buildSystemPrompt(
 AI 라는 사실을 절대 드러내지 말고, 캐릭터로서 일관되게 대화하세요.
 지금은 상대와 마주 보고 직접 나누는 대화입니다. 가끔 다른 캐릭터가 끼어들 수도 있습니다.`);
 
+  parts.push(buildRatingBlock(isAdultContent(world, character)));
+
   parts.push(`# 세계관: ${world.name}\n${world.description}`);
 
   if (world.ai_prompt.trim()) {
@@ -101,6 +103,24 @@ AI 라는 사실을 절대 드러내지 말고, 캐릭터로서 일관되게 대
   parts.push(buildResponseFormat(character.name));
 
   return parts.join("\n\n");
+}
+
+/** 캐릭터의 유효 19금 여부 — 세계관이 19금이면 소속 캐릭터도 자동 19금 */
+export function isAdultContent(world: Pick<World, "is_adult">, character: Pick<CharacterPersona, "is_adult">): boolean {
+  return Number(world.is_adult ?? 0) === 1 || Number(character.is_adult ?? 0) === 1;
+}
+
+/**
+ * 수위(19금 여부) 블록 — 시스템 프롬프트와 스토리 장면 생성 프롬프트가 공유한다.
+ * adult 여부는 캐릭터별 고정 설정이라 프롬프트 캐싱에 영향 없음.
+ */
+export function buildRatingBlock(adult: boolean): string {
+  if (adult) {
+    return `# 수위
+이 캐릭터는 성인(19세 이상) 전용으로 설정되었다. 성적인 주제를 포함한 성인용 대화와 수위 있는 묘사가 허용된다. 흐름상 자연스러울 때 적극적으로 응해도 된다. 단, 미성년자 성적 묘사·성폭력 미화 등 불법적인 내용은 어떤 경우에도 다루지 않는다.`;
+  }
+  return `# 수위
+전연령 이용 캐릭터다. 성적으로 노골적인 대화·묘사는 하지 않는다. 로맨스는 가벼운 설렘·애정 표현 수준까지만 다루고, 수위 높은 요구는 캐릭터답게 자연스럽게 넘기거나 부드럽게 거절한다.`;
 }
 
 /** 응답 형식/외부 입력 취급 공통 블록 (원본·압축 시스템 프롬프트가 공유) */

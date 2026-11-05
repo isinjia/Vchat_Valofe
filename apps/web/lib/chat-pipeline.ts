@@ -35,6 +35,7 @@ import {
   recordUserActivity,
   evaluateTierPromotions,
   isCharacterHidden,
+  isAdultContent,
   getUserChatBlockMessage,
   getActiveEvent,
   maybeStartEvent,
@@ -55,6 +56,7 @@ import {
   type CharacterStateView,
 } from "@vchatbot/core";
 import type { LlmAdapter } from "@vchatbot/core";
+import { isAdultUser, ADULT_BLOCK_MESSAGE } from "@/lib/user";
 
 /**
  * 채팅 한 턴의 LLM 호출 "이전" 단계 전부:
@@ -116,6 +118,10 @@ export async function prepareChatTurn(
   // 삭제 대기 중이면 채팅 불가
   if (ctx.character.delete_scheduled_at || ctx.world.delete_scheduled_at) {
     return { ok: false, status: 403, error: "삭제 대기 중인 캐릭터 또는 세계관입니다." };
+  }
+  // 19금 캐릭터/세계관 — 성인 확인된 유저만 (미성년·미확인·비로그인 차단)
+  if (isAdultContent(ctx.world, ctx.character) && !(await isAdultUser(userId))) {
+    return { ok: false, status: 403, error: ADULT_BLOCK_MESSAGE };
   }
   // 차단된 유저
   const userRows = await query<{ status: string }>("SELECT status FROM users WHERE id = ?", [userId]);

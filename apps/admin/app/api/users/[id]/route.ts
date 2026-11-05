@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const users = await query(
     `SELECT u.id, u.username, u.nickname, u.vfun_user_id, u.coins, u.status,
-            u.admin_role,
+            u.admin_role, u.personality_type,
             u.tier_id, t.name AS tier_name, u.creator_tier_id, u.ai_level_id, u.created_at
      FROM users u LEFT JOIN chat_tiers t ON t.id = u.tier_id
      WHERE u.id = ?`,

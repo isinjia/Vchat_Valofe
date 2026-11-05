@@ -8,6 +8,7 @@ import {
   recordLlmUsage,
   normalizeStoryBoard,
   collectStoryGenContext,
+  buildRatingBlock,
   type World,
 } from "@vchatbot/core";
 import { storyOf } from "@/lib/stories";
@@ -39,6 +40,9 @@ export async function POST(req: NextRequest, { params }: Params) {
   const ws = await query<World>("SELECT * FROM worlds WHERE id = ?", [Number(c.world_id)]);
   const world = ws[0];
   const ctx = collectStoryGenContext(board, nodeId);
+  // 유효 19금: 스토리 플래그 ∨ 캐릭터 ∨ 세계관 — 배경설정의 수위도 이에 맞춘다
+  const adult = Number(g.story.is_adult) === 1 || Number(c.is_adult ?? 0) === 1 || Number(world?.is_adult ?? 0) === 1;
+  const systemPrompt = `${SYSTEM_PROMPT}\n\n${buildRatingBlock(adult)}`;
 
   const parts: string[] = [];
   if (world) parts.push(`# 세계관: ${world.name}\n${world.description}`);
@@ -79,7 +83,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (assist) {
       const adapter = await createAdapter(assist.provider, assist.account);
       const stream = adapter.streamChat({
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: [{ role: "user", content: userContent }],
         maxTokens: 1024,
       });
@@ -92,7 +96,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       const response = await new Anthropic().messages.create({
         model: llm.model,
         max_tokens: 1024,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: [{ role: "user", content: userContent }],
       });
       text = response.content

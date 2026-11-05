@@ -538,6 +538,8 @@ a { color: inherit; text-decoration: none; }
 }
 .char-card-name { margin-top: 6px; font-size: 14px; font-weight: 600; }
 .char-card-world { color: var(--muted); font-size: 12px; margin-top: 2px; }
+/* 19금 배지 — 성인 확인 유저에게만 내려오는 목록에 표시 */
+.adult-badge { margin-right: 4px; font-size: 12px; vertical-align: 1px; }
 
 .char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; }
 
@@ -731,6 +733,29 @@ a { color: inherit; text-decoration: none; }
 
 /* 세계관 선택 모달 */
 .modal.world-picker-modal { max-width: 720px; max-height: 80vh; overflow-y: auto; }
+
+/* 플레이어 성격 타입 선택 모달 (첫 로그인 온보딩) */
+.modal.persona-modal { max-width: 560px; max-height: 90vh; overflow-y: auto; }
+.persona-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 480px) { .persona-grid { grid-template-columns: 1fr; } }
+.persona-option {
+  display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; text-align: left;
+  background: var(--panel-hover); border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text); cursor: pointer;
+}
+.persona-option:hover { border-color: var(--accent); }
+.persona-option.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.persona-option strong { font-size: 14px; }
+.persona-option span { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.persona-later {
+  padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); cursor: pointer;
+}
+.persona-save {
+  padding: 8px 14px; border-radius: 8px; border: none;
+  background: var(--accent); color: #fff; cursor: pointer;
+}
+.persona-save:disabled { opacity: 0.5; cursor: default; }
 .world-picker-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 12px;
 }

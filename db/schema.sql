@@ -168,6 +168,8 @@ CREATE TABLE IF NOT EXISTS users (
   vfun_u_no     BIGINT UNSIGNED NULL,                  -- vfun 고유 회원번호
   vfun_user_id  VARCHAR(128) NULL,                     -- vfun 로그인 ID
   profile_image VARCHAR(1024) NULL,
+  birthday      DATE NULL,                             -- vfun /api/user birthday (성인 판정용)
+  is_adult      TINYINT(1) NULL,                       -- 성인 여부 (NULL = 미확인 — birthday 미제공)
   claude_api_key VARCHAR(255) NULL,                    -- 본인 Claude API 키 (스튜디오 AI 보조 BYOK)
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -304,6 +306,7 @@ CREATE TABLE IF NOT EXISTS worlds (
   title_color VARCHAR(7) NULL,                    -- 타이틀 컬러(#rrggbb) — 캐릭터 카드 테두리/배경 톤
   like_count  INT NOT NULL DEFAULT 0,             -- 좋아요 수 (world_likes 비정규화 집계)
   is_active   TINYINT(1)   NOT NULL DEFAULT 1,
+  is_adult    TINYINT(1)   NOT NULL DEFAULT 0,    -- 19금 세계관 (소속 캐릭터/스토리 자동 19금)
   owner_user_id BIGINT UNSIGNED NULL,             -- 제작 유저 (NULL = 운영 소유)
   visibility  ENUM('private','open') NOT NULL DEFAULT 'private',  -- UI 용어: 공유
   open_scope  ENUM('all','dict_person') NOT NULL DEFAULT 'all',   -- 공유 시 타 유저 캐릭터 작성 범위
@@ -371,6 +374,7 @@ CREATE TABLE IF NOT EXISTS characters (
   chat_count   BIGINT UNSIGNED NOT NULL DEFAULT 0, -- 누적 대화 수 (인기순 정렬용)
   like_count   INT NOT NULL DEFAULT 0,             -- 좋아요 수 (character_likes 비정규화 집계)
   is_active    TINYINT(1) NOT NULL DEFAULT 1,
+  is_adult     TINYINT(1) NOT NULL DEFAULT 0,      -- 19금 캐릭터 (세계관이 19금이면 자동 19금, 소속 스토리 자동 19금)
   owner_user_id  BIGINT UNSIGNED NULL,             -- 제작 유저 (NULL = 운영 소유)
   visibility  ENUM('private','open') NOT NULL DEFAULT 'private',
   share_key   VARCHAR(32) NULL,                     -- 비공개 링크 공유용 랜덤 키 (?k= 로 입장, 지연 생성)

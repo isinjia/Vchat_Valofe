@@ -26,6 +26,9 @@ interface Character {
   scenario?: string | null;
   greeting?: string | null;
   is_active: number;
+  is_adult?: number;
+  /** 세계관의 19금 여부 (서버 계산) — 1 이면 캐릭터는 자동 19금 */
+  world_is_adult?: number;
   visibility?: "private" | "open";
   status?: "active" | "suspended";
   /** 1=크롬 내장 AI(무료 브라우저 레벨) 허용 */
@@ -634,6 +637,23 @@ export default function CharacterEditPage({ params }: { params: Promise<{ id: st
             style={{ width: "auto", marginRight: 6 }}
           />
           활성화 (유저 화면에 노출)
+        </label>
+        <label
+          title={
+            char.world_is_adult === 1
+              ? "세계관이 19금이라 이 캐릭터는 자동으로 19금입니다"
+              : "체크하면 이 캐릭터와 소속 스토리에 성인용 대화 허용이 적용됩니다"
+          }
+        >
+          <input
+            type="checkbox"
+            checked={char.world_is_adult === 1 || char.is_adult === 1}
+            disabled={char.world_is_adult === 1}
+            onChange={(e) => setChar({ ...char, is_adult: e.target.checked ? 1 : 0 })}
+            style={{ width: "auto", marginRight: 6 }}
+          />
+          🔞 19금 캐릭터 (소속 스토리 자동 19금)
+          {char.world_is_adult === 1 && <span className="muted"> — 세계관이 19금이라 자동 적용</span>}
         </label>
         <label>
           <input
