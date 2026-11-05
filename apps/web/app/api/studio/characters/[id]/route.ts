@@ -11,6 +11,7 @@ import {
   type CharacterPersona,
 } from "@vchatbot/core";
 import { requireUser, ownedCharacter, bad, visibilityOf } from "@/lib/studio";
+import { isAdultUser } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
@@ -33,6 +34,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
   return NextResponse.json({
     ...own.row,
     world_is_adult: Number(wAdult[0]?.is_adult ?? 0),
+    // 제작자 본인의 성인 인증 여부 — 0 이면 19금 체크 UI 잠금
+    viewer_is_adult: (await isAdultUser(auth.userId)) ? 1 : 0,
     affinity_prompts: parseAffinityPrompts(own.row.affinity_prompts),
     // 비어 있는 구간의 placeholder 로 보여줄 전역 기본값 (관리자 설정 반영)
     affinity_prompt_defaults: await getAffinityPromptDefaults(),
@@ -62,6 +65,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (name !== own.row.name) {
     const dup = await query("SELECT id FROM characters WHERE world_id = ? AND name = ? AND id <> ? LIMIT 1", [worldId, name, Number(id)]);
     if (dup.length > 0) return bad("이 세계관에 같은 이름의 캐릭터가 이미 있습니다.");
+  }
+  // 19금 설정은 성인 인증된 제작자만 (미성년·미확인 계정 차단)
+  const wantAdult = b.is_adult === true || b.is_adult === 1;
+  if (wantAdult && Number(own.row.is_adult) !== 1 && !(await isAdultUser(auth.userId))) {
+    return bad("19금 설정은 성인 인증된 계정만 할 수 있습니다.", 403);
   }
   const s = (v: unknown) => String(v ?? "");
   // 타이틀 컬러: #rrggbb 또는 null (null = 세계관 색 따름)

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { loadChatContext, loadRecentMessages, isCharacterHidden, query, resolveProfileVisuals, listPublishedStories } from "@vchatbot/core";
-import { getUserId } from "@/lib/user";
+import { loadChatContext, loadRecentMessages, isCharacterHidden, query, resolveProfileVisuals, listPublishedStories, isAdultContent } from "@vchatbot/core";
+import { getUserId, isAdultUser, ADULT_BLOCK_MESSAGE } from "@/lib/user";
 import ChatClient from "./chat-client";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +36,15 @@ export default async function ChatPage({
     return (
       <div className="container">
         <p className="empty">비공개 캐릭터입니다. 제작자에게 공유 링크를 받아 접속해 주세요.</p>
+      </div>
+    );
+  }
+
+  // 19금 캐릭터/세계관: 성인 확인된 유저만 — 직접 링크 접근도 페이지 자체를 차단 (API 차단과 별개)
+  if (isAdultContent(ctx.world, ctx.character) && !(await isAdultUser(userId))) {
+    return (
+      <div className="container">
+        <p className="empty">{ADULT_BLOCK_MESSAGE}</p>
       </div>
     );
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, execute, invalidateChatContext, scheduleDeletion, cancelDeletion } from "@vchatbot/core";
 import { requireUser, ownedWorld, bad, visibilityOf } from "@/lib/studio";
+import { isAdultUser } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
@@ -11,7 +12,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
   const own = await ownedWorld(id, auth.userId);
   if ("res" in own) return own.res;
-  return NextResponse.json(own.row);
+  return NextResponse.json({
+    ...own.row,
+    // 제작자 본인의 성인 인증 여부 — 0 이면 19금 체크 UI 잠금
+    viewer_is_adult: (await isAdultUser(auth.userId)) ? 1 : 0,
+  });
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {
@@ -25,6 +30,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (!name) return bad("name 은 필수입니다.");
   const dup = await query("SELECT id FROM worlds WHERE name = ? AND id <> ? LIMIT 1", [name, Number(id)]);
   if (dup.length > 0) return bad("이미 존재하는 세계관 이름입니다.", 409);
+  // 19금 설정은 성인 인증된 제작자만 (미성년·미확인 계정 차단)
+  const wantAdult = body.is_adult === true || body.is_adult === 1;
+  if (wantAdult && Number(own.row.is_adult) !== 1 && !(await isAdultUser(auth.userId))) {
+    return bad("19금 설정은 성인 인증된 계정만 할 수 있습니다.", 403);
+  }
   // 타이틀 컬러: #rrggbb 형식만 허용, 그 외/빈 값은 NULL
   const titleColor =
     typeof body.title_color === "string" && /^#[0-9a-fA-F]{6}$/.test(body.title_color.trim())

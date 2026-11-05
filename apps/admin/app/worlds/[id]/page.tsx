@@ -376,6 +376,15 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
             </button>
           )}
         </div>
+        <label title="체크하면 이 세계관의 모든 캐릭터·스토리가 자동으로 19금이 되고, AI 프롬프트에 성인용 대화 허용이 반영됩니다">
+          <input
+            type="checkbox"
+            checked={world.is_adult === 1}
+            onChange={(e) => setWorld({ ...world, is_adult: e.target.checked ? 1 : 0 })}
+            style={{ width: "auto", marginRight: 6 }}
+          />
+          🔞 19금 세계관 (소속 캐릭터·스토리 자동 19금)
+        </label>
         <label>이름</label>
         <input value={world.name} onChange={(e) => setWorld({ ...world, name: e.target.value })} />
         <label>기본 세계관 설정</label>
@@ -400,15 +409,6 @@ export default function WorldEditPage({ params }: { params: Promise<{ id: string
             style={{ width: "auto", marginRight: 6 }}
           />
           활성화 (유저 화면에 노출)
-        </label>
-        <label title="체크하면 이 세계관의 모든 캐릭터·스토리가 자동으로 19금이 되고, AI 프롬프트에 성인용 대화 허용이 반영됩니다">
-          <input
-            type="checkbox"
-            checked={world.is_adult === 1}
-            onChange={(e) => setWorld({ ...world, is_adult: e.target.checked ? 1 : 0 })}
-            style={{ width: "auto", marginRight: 6 }}
-          />
-          🔞 19금 세계관 (소속 캐릭터·스토리 자동 19금)
         </label>
         <div className="row">
           <div>

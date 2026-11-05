@@ -50,6 +50,8 @@ export interface StoryBoardEditorProps {
   initialAdult?: boolean;
   /** 캐릭터/세계관이 19금이라 스토리가 자동 19금인지 (true 면 토글 잠금) */
   inheritedAdult?: boolean;
+  /** 성인 인증 안 된 계정 등 19금 설정이 허용되지 않는 경우 (true 면 토글 잠금 — 끔 상태 고정) */
+  adultDisabled?: boolean;
   api: StoryEditorApi;
   /** AI 버튼 옆 비용 표기 (예: " (-50코인)") — 어드민은 생략 */
   genTextCostLabel?: string;
@@ -342,6 +344,7 @@ export function StoryBoardEditor({
   initialTitleImage = null,
   initialAdult = false,
   inheritedAdult = false,
+  adultDisabled = false,
   api,
   genTextCostLabel = "",
   genImageCostLabel = "",
@@ -732,7 +735,7 @@ export function StoryBoardEditor({
     }
     const obj = raw as { title?: unknown; is_adult?: unknown };
     if (typeof obj.title === "string" && obj.title.trim()) setTitle(obj.title.trim().slice(0, 100));
-    if (!inheritedAdult && typeof obj.is_adult === "boolean") setAdult(obj.is_adult);
+    if (!inheritedAdult && !adultDisabled && typeof obj.is_adult === "boolean") setAdult(obj.is_adult);
     setBoard(() => imported);
     flashMsg("가져오기 완료 — 임시저장을 눌러야 반영됩니다");
   };
@@ -1106,13 +1109,19 @@ export function StoryBoardEditor({
             </label>
           ))}
         <label
-          className={`sbe-adult${adult ? " sbe-adult-on" : ""}${inheritedAdult ? " sbe-adult-locked" : ""}`}
-          title={inheritedAdult ? "세계관/캐릭터가 19금이라 자동으로 19금 스토리입니다" : "19금 스토리 — 성인용 대화·묘사 허용"}
+          className={`sbe-adult${adult ? " sbe-adult-on" : ""}${inheritedAdult || adultDisabled ? " sbe-adult-locked" : ""}`}
+          title={
+            inheritedAdult
+              ? "세계관/캐릭터가 19금이라 자동으로 19금 스토리입니다"
+              : adultDisabled
+                ? "성인 인증된 계정만 19금 스토리를 설정할 수 있습니다"
+                : "19금 스토리 — 성인용 대화·묘사 허용"
+          }
         >
           <input
             type="checkbox"
             checked={adult}
-            disabled={inheritedAdult}
+            disabled={inheritedAdult || adultDisabled}
             onChange={(e) => { setAdult(e.target.checked); setDirty(true); }}
           />
           🔞 19금
