@@ -44,9 +44,10 @@ interface LikeProps {
   onToggle: () => void;
 }
 
-/** 3D 방송 화면이 따로 있는 캐릭터 → 카드도 그 화면으로 보낸다 (소울워커 하루 에스티아 → /haru) */
+/** 방송 화면이 따로 있는 캐릭터 → 카드도 그 화면으로 보낸다 (하루 에스티아 → /haru, 블랙 리리스 → /blacklilith) */
 function chatHref(c: CharItem): string {
   if (c.name === "하루 에스티아" && c.world_name === "소울워커") return "/haru";
+  if (c.name === "블랙 리리스" && c.world_name === "라스트오리진") return "/blacklilith";
   return `/chat/${c.id}`;
 }
 
@@ -331,6 +332,13 @@ export default function HomeClient() {
         <span className="haru-live-badge">LIVE</span>
         <span className="haru-live-banner-text">
           <strong>하루 에스티아</strong> · 하루의 쉬는 시간 · 수다 방송
+        </span>
+        <span className="haru-live-banner-go">보러 가기 →</span>
+      </Link>
+      <Link href="/blacklilith" className="haru-live-banner" aria-label="블랙 리리스 방송 보러 가기">
+        <span className="haru-live-badge">LIVE</span>
+        <span className="haru-live-banner-text">
+          <strong>블랙 리리스</strong> · 블랙 리리스의 경호 대기실 · 수다 방송
         </span>
         <span className="haru-live-banner-go">보러 가기 →</span>
       </Link>
