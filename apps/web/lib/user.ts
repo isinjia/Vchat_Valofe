@@ -1,10 +1,21 @@
-import { execute, query } from "@vchatbot/core";
+import { env, execute, query } from "@vchatbot/core";
 import { getSessionUserId } from "@/lib/session";
 import type { VfunUser } from "@/lib/vfun";
 
-/** 세션 쿠키 기반 로그인 유저 ID (비로그인이면 null) */
+/**
+ * 개발 전용 자동 로그인 — .env 의 DEV_AUTO_LOGIN_UID 에 users.id 를 넣으면
+ * 세션 쿠키가 없어도 그 계정으로 로그인된 것으로 본다 (vfun 로그인 생략).
+ * production 빌드(next start)에서는 값이 있어도 무시되므로 스테이지/라이브에는 영향이 없다.
+ */
+export function devAutoLoginUid(): number {
+  if (process.env.NODE_ENV === "production") return 0;
+  const n = Number(env("DEV_AUTO_LOGIN_UID", "") || 0);
+  return Number.isInteger(n) && n > 0 ? n : 0;
+}
+
+/** 세션 쿠키 기반 로그인 유저 ID (비로그인이면 null; 개발 자동 로그인 설정 시 그 계정) */
 export async function getUserId(): Promise<number | null> {
-  return getSessionUserId();
+  return (await getSessionUserId()) ?? (devAutoLoginUid() || null);
 }
 
 /**

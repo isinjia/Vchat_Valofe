@@ -1,0 +1,2778 @@
+{
+ "back": [
+  {
+   "id": "PC_A_EQ_2022XmasTea_Back_10",
+   "name": "등 장식 2022XmasTea",
+   "icon": "items/PC_A_EQ_2022XmasTea_Back_10.png",
+   "file": "items/PC_A_EQ_2022XmasTea_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveArmour2_Back_10",
+   "name": "깨진 방패 가방",
+   "icon": "items/PC_A_EQ_AchieveArmour2_Back_10.png",
+   "file": "items/PC_A_EQ_AchieveArmour2_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveFatigue2_Back_10",
+   "name": "잠은 인형과 함께",
+   "icon": "items/PC_A_EQ_AchieveFatigue2_Back_10.png",
+   "file": "items/PC_A_EQ_AchieveFatigue2_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveMC2_Back_10",
+   "name": "탐험가의 가방",
+   "icon": "items/PC_A_EQ_AchieveMC2_Back_10.png",
+   "file": "items/PC_A_EQ_AchieveMC2_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveMake2_Back_10",
+   "name": "제니스의 만물 가방",
+   "icon": "items/PC_A_EQ_AchieveMake2_Back_10.png",
+   "file": "items/PC_A_EQ_AchieveMake2_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveRepair2_Back_10",
+   "name": "특대형 몽키 스패너",
+   "icon": "items/PC_A_EQ_AchieveRepair2_Back_10.png",
+   "file": "items/PC_A_EQ_AchieveRepair2_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveTime2_Back_10",
+   "name": "알람시계 가방",
+   "icon": "items/PC_A_EQ_AchieveTime2_Back_10.png",
+   "file": "items/PC_A_EQ_AchieveTime2_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_Assassin_Back_10",
+   "name": "[섀도우 위스퍼] 저격총",
+   "icon": "items/PC_A_EQ_Assassin_Back_10.png",
+   "file": "items/PC_A_EQ_Assassin_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_BackFish_Back_10",
+   "name": "펄떡펄떡 참치",
+   "icon": "items/PC_A_EQ_BackFish_Back_10.png",
+   "file": "items/PC_A_EQ_BackFish_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_BackHat_Back_10",
+   "name": "바다 밀짚모자",
+   "icon": "items/PC_A_EQ_BackHat_Back_10.png",
+   "file": "items/PC_A_EQ_BackHat_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_BackShell_Back_10",
+   "name": "거북 등껍질",
+   "icon": "items/PC_A_EQ_BackShell_Back_10.png",
+   "file": "items/PC_A_EQ_BackShell_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_BackSnowMan_Back_10",
+   "name": "행복한 눈사람 백팩",
+   "icon": "items/PC_A_EQ_BackSnowMan_Back_10.png",
+   "file": "items/PC_A_EQ_BackSnowMan_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_BackStick_Back_10",
+   "name": "낚싯대",
+   "icon": "items/PC_A_EQ_BackStick_Back_10.png",
+   "file": "items/PC_A_EQ_BackStick_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_BackTube_Back_10",
+   "name": "구조용 튜브",
+   "icon": "items/PC_A_EQ_BackTube_Back_10.png",
+   "file": "items/PC_A_EQ_BackTube_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_BlackRabbit_Back_10",
+   "name": "비비와 함께",
+   "icon": "items/PC_A_EQ_BlackRabbit_Back_10.png",
+   "file": "items/PC_A_EQ_BlackRabbit_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_CBT2Bonus_Back_10",
+   "name": "그루톤 백팩",
+   "icon": "items/PC_A_EQ_CBT2Bonus_Back_10.png",
+   "file": "items/PC_A_EQ_CBT2Bonus_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_CBTBonus_Back_10",
+   "name": "[산뜻한 새내기] 란도셀",
+   "icon": "items/PC_A_EQ_CBTBonus_Back_10.png",
+   "file": "items/PC_A_EQ_CBTBonus_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_ChiiBackPack_Back_10",
+   "name": "등 장식 ChiiBackPack",
+   "icon": "items/PC_A_EQ_ChiiBackPack_Back_10.png",
+   "file": "items/PC_A_EQ_ChiiBackPack_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_Child_Back_10",
+   "name": "[동심 가득 교복] 가방",
+   "icon": "items/PC_A_EQ_Child_Back_10.png",
+   "file": "items/PC_A_EQ_Child_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_Chloe_Back_10",
+   "name": "클로이 백팩",
+   "icon": "items/PC_A_EQ_Chloe_Back_10.png",
+   "file": "items/PC_A_EQ_Chloe_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_ChristmasBack_Back_10",
+   "name": "커다란 선물 주머니",
+   "icon": "items/PC_A_EQ_ChristmasBack_Back_10.png",
+   "file": "items/PC_A_EQ_ChristmasBack_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_DemonicFlame_back_10",
+   "name": "[검은 군세의 절망] 망토",
+   "icon": "items/PC_A_EQ_DemonicFlame_back_10.png",
+   "file": "items/PC_A_EQ_DemonicFlame_back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_EQMark_Back_10",
+   "name": "이퀄리브리엄 표식",
+   "icon": "items/PC_A_EQ_EQMark_Back_10.png",
+   "file": "items/PC_A_EQ_EQMark_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_EasterRabbitBag_Back_10",
+   "name": "행복한 토끼 가방",
+   "icon": "items/PC_A_EQ_EasterRabbitBag_Back_10.png",
+   "file": "items/PC_A_EQ_EasterRabbitBag_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_ElderKidLook_Back_10",
+   "name": "요정의 포옹",
+   "icon": "items/PC_A_EQ_ElderKidLook_Back_10.png",
+   "file": "items/PC_A_EQ_ElderKidLook_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_EnemyFesta2_Back_10",
+   "name": "포리너 콰르텟",
+   "icon": null,
+   "file": "items/PC_A_EQ_EnemyFesta2_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_ErwinBackpack_Back_10",
+   "name": "어윈 백팩",
+   "icon": "items/PC_A_EQ_ErwinBackpack_Back_10.png",
+   "file": "items/PC_A_EQ_ErwinBackpack_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_FireOfGod_Back_10",
+   "name": "신화의 형상",
+   "icon": "items/PC_A_EQ_FireOfGod_Back_10.png",
+   "file": "items/PC_A_EQ_FireOfGod_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_FlyingCat_Back_10",
+   "name": "로키와 함께",
+   "icon": "items/PC_A_EQ_FlyingCat_Back_10.png",
+   "file": "items/PC_A_EQ_FlyingCat_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_Grouton2_Back_10",
+   "name": "나른한 그루톤 백팩",
+   "icon": "items/PC_A_EQ_Grouton2_Back_10.png",
+   "file": "items/PC_A_EQ_Grouton2_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_Grouton2_Back_10",
+   "name": "나른한 그루톤 백팩",
+   "icon": "items/PC_A_EQ_Grouton2_Back_10.png",
+   "file": "items/PC_A_EQ_Grouton2_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_GunsNGirls_Back_10",
+   "name": "[스쿨 밴드] 가방",
+   "icon": "items/PC_A_EQ_GunsNGirls_Back_10.png",
+   "file": "items/PC_A_EQ_GunsNGirls_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_HangingGluton_Back_10",
+   "name": "등 장식 HangingGluton",
+   "icon": null,
+   "file": "items/PC_A_EQ_HangingGluton_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_HaruBackpack_Back_10",
+   "name": "하루 백팩",
+   "icon": "items/PC_A_EQ_HaruBackpack_Back_10.png",
+   "file": "items/PC_A_EQ_HaruBackpack_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_KonosubaMegumin_back_10",
+   "name": "[멋진 세계의 폭렬 마법사] 망토",
+   "icon": "items/PC_A_EQ_KonosubaMegumin_back_10.png",
+   "file": "items/PC_A_EQ_KonosubaMegumin_back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_LAOBP_Back_10",
+   "name": "라스트오리진",
+   "icon": "items/PC_A_EQ_LAOBP_Back_10.png",
+   "file": "items/PC_A_EQ_LAOBP_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_LAOMAY_Back_10",
+   "name": "[라스트오리진] 멸망의 메이 겉옷",
+   "icon": "items/PC_A_EQ_LAOMAY_Back_10.png",
+   "file": "items/PC_A_EQ_LAOMAY_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_LilyBackpack_Back_10",
+   "name": "릴리 백팩",
+   "icon": "items/PC_A_EQ_LilyBackpack_Back_10.png",
+   "file": "items/PC_A_EQ_LilyBackpack_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_Maidswimsuits_Ketchup_Back_10",
+   "name": "등 장식 Maidswimsuits",
+   "icon": null,
+   "file": "items/PC_A_EQ_Maidswimsuits_Ketchup_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_Maidswimsuits_Mayo_Back_10",
+   "name": "등 장식 Maidswimsuits",
+   "icon": null,
+   "file": "items/PC_A_EQ_Maidswimsuits_Mayo_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_Marchen_Back_10",
+   "name": "[동화 속의 소녀] 가방",
+   "icon": "items/PC_A_EQ_Marchen_Back_10.png",
+   "file": "items/PC_A_EQ_Marchen_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_NCImprove_Back_10",
+   "name": "[네드 개량 군복] 노트북 가방",
+   "icon": "items/PC_A_EQ_NCImprove_Back_10.png",
+   "file": "items/PC_A_EQ_NCImprove_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_NCImprove_Back_10",
+   "name": "[네드 개량 군복] 노트북 가방",
+   "icon": "items/PC_A_EQ_NCImprove_Back_10.png",
+   "file": "items/PC_A_EQ_NCImprove_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_NabiBackpack_Back_10",
+   "name": "나비 백팩",
+   "icon": "items/PC_A_EQ_NabiBackpack_Back_10.png",
+   "file": "items/PC_A_EQ_NabiBackpack_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_Newbie2_Back_10",
+   "name": "[활기찬 새내기] 란도셀",
+   "icon": "items/PC_A_EQ_Newbie2_Back_10.png",
+   "file": "items/PC_A_EQ_Newbie2_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_Nightmare_Back_10",
+   "name": "[서큐버스 인 나이트메어] 날개",
+   "icon": "items/PC_A_EQ_Nightmare_Back_10.png",
+   "file": "items/PC_A_EQ_Nightmare_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_NiheelCosplay_Back_10",
+   "name": "[니힐킹덤 나이츠] 의장검",
+   "icon": "items/PC_A_EQ_NiheelCosplay_Back_10.png",
+   "file": "items/PC_A_EQ_NiheelCosplay_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_RedMoon_back_10",
+   "name": "붉은 달의 전야제",
+   "icon": "items/PC_A_EQ_RedMoon_back_10.png",
+   "file": "items/PC_A_EQ_RedMoon_back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_RugmanCos_Back_10",
+   "name": "[오르카의 아이돌] 케이블",
+   "icon": "items/PC_A_EQ_RugmanCos_Back_10.png",
+   "file": "items/PC_A_EQ_RugmanCos_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_RugmanCos_Back_10",
+   "name": "[오르카의 아이돌] 케이블",
+   "icon": "items/PC_A_EQ_RugmanCos_Back_10.png",
+   "file": "items/PC_A_EQ_RugmanCos_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_RuinReward_Back_10",
+   "name": "등 장식 RuinReward",
+   "icon": "items/PC_A_EQ_RuinReward_Back_10.png",
+   "file": "items/PC_A_EQ_RuinReward_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_Rumble_Back_10",
+   "name": "집착하는 수달",
+   "icon": "items/PC_A_EQ_Rumble_Back_10.png",
+   "file": "items/PC_A_EQ_Rumble_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_SFregular_back_10",
+   "name": "별숲리그 정규군복",
+   "icon": "items/PC_A_EQ_SFregular_back_10.png",
+   "file": "items/PC_A_EQ_SFregular_back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_SportyLook2_Back_10",
+   "name": "[어나더 스포티 룩] 가방",
+   "icon": "items/PC_A_EQ_SportyLook2_Back_10.png",
+   "file": "items/PC_A_EQ_SportyLook2_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_SportyLook_Back_10",
+   "name": "[스포티 룩] 가방",
+   "icon": "items/PC_A_EQ_SportyLook_Back_10.png",
+   "file": "items/PC_A_EQ_SportyLook_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_SpringCasual1_Back_10",
+   "name": "뷰티풀 홀리데이",
+   "icon": "items/PC_A_EQ_SpringCasual1_Back_10.png",
+   "file": "items/PC_A_EQ_SpringCasual1_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_SpringCasual3_Back_10",
+   "name": "뷰티풀 홀리데이 어나더",
+   "icon": "items/PC_A_EQ_SpringCasual3_Back_10.png",
+   "file": "items/PC_A_EQ_SpringCasual3_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_SpringCody_Back_10",
+   "name": "[미니멀 스프링 코디] 가방",
+   "icon": "items/PC_A_EQ_SpringCody_Back_10.png",
+   "file": "items/PC_A_EQ_SpringCody_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_StellaBackpack_Back_10",
+   "name": "스텔라 백팩",
+   "icon": "items/PC_A_EQ_StellaBackpack_Back_10.png",
+   "file": "items/PC_A_EQ_StellaBackpack_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_Vampire_Back_10",
+   "name": "창백한 밤의 귀족",
+   "icon": "items/PC_A_EQ_Vampire_Back_10.png",
+   "file": "items/PC_A_EQ_Vampire_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_WhiteAngel_Back_10",
+   "name": "등 장식 WhiteAngel",
+   "icon": "items/PC_A_EQ_WhiteAngel_Back_10.png",
+   "file": "items/PC_A_EQ_WhiteAngel_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_WingOfAbyss_Back_10",
+   "name": "암야의 증명",
+   "icon": "items/PC_A_EQ_WingOfAbyss_Back_10.png",
+   "file": "items/PC_A_EQ_WingOfAbyss_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_WingOfBurnning_Back_10",
+   "name": "성화의 증명",
+   "icon": "items/PC_A_EQ_WingOfBurnning_Back_10.png",
+   "file": "items/PC_A_EQ_WingOfBurnning_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_WingOfDarkness_Back_10",
+   "name": "칠흑의 형상",
+   "icon": "items/PC_A_EQ_WingOfDarkness_Back_10.png",
+   "file": "items/PC_A_EQ_WingOfDarkness_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_WingOfPureWhite_Back_10",
+   "name": "등 장식 WingOfPureWhite",
+   "icon": "items/PC_A_EQ_WingOfPureWhite_Back_10.png",
+   "file": "items/PC_A_EQ_WingOfPureWhite_Back_10.glb"
+  },
+  {
+   "id": "PC_A_EQ_WingOfWhiteBlue_Back_10",
+   "name": "천공의 증명",
+   "icon": "items/PC_A_EQ_WingOfWhiteBlue_Back_10.png",
+   "file": "items/PC_A_EQ_WingOfWhiteBlue_Back_10.glb"
+  }
+ ],
+ "ear": [
+  {
+   "id": "PC_A_EQ_2022XMasEar_EarAcc_92",
+   "name": "오로라 이어링",
+   "icon": "items/PC_A_EQ_2022XMasEar_EarAcc_92.png",
+   "file": "items/PC_A_EQ_2022XMasEar_EarAcc_92.glb"
+  },
+  {
+   "id": "PC_A_EQ_CandyCane_EarAcc_92",
+   "name": "캔디 이어링",
+   "icon": "items/PC_A_EQ_CandyCane_EarAcc_92.png",
+   "file": "items/PC_A_EQ_CandyCane_EarAcc_92.glb"
+  },
+  {
+   "id": "PC_A_EQ_CircleEarRing_EarAcc_92",
+   "name": "서클 이어 링",
+   "icon": "items/PC_A_EQ_CircleEarRing_EarAcc_92.png",
+   "file": "items/PC_A_EQ_CircleEarRing_EarAcc_92.glb"
+  },
+  {
+   "id": "PC_A_EQ_HeartEarRing_EarAcc_92",
+   "name": "하트 이어 링",
+   "icon": "items/PC_A_EQ_HeartEarRing_EarAcc_92.png",
+   "file": "items/PC_A_EQ_HeartEarRing_EarAcc_92.glb"
+  },
+  {
+   "id": "PC_A_EQ_SakuraEarRing_EarAcc_92",
+   "name": "사쿠라 이어 링",
+   "icon": "items/PC_A_EQ_SakuraEarRing_EarAcc_92.png",
+   "file": "items/PC_A_EQ_SakuraEarRing_EarAcc_92.glb"
+  },
+  {
+   "id": "PC_A_EQ_StarEarRing_EarAcc_92",
+   "name": "스타 이어 링",
+   "icon": "items/PC_A_EQ_StarEarRing_EarAcc_92.png",
+   "file": "items/PC_A_EQ_StarEarRing_EarAcc_92.glb"
+  },
+  {
+   "id": "PC_A_EQ_ZippHood_EarAcc_92",
+   "name": "바리케이드 라인 헤드셋",
+   "icon": "items/PC_A_EQ_ZippHood_EarAcc_92.png",
+   "file": "items/PC_A_EQ_ZippHood_EarAcc_92.glb"
+  }
+ ],
+ "eye": [
+  {
+   "id": "PC_A_EQ_8bitSunglasses_EyeAcc01_03",
+   "name": "8비트 픽셀 선글라스",
+   "icon": "items/PC_A_EQ_8bitSunglasses_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_8bitSunglasses_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveEther2_EyeAcc01_03",
+   "name": "에텔 모양 안경",
+   "icon": "items/PC_A_EQ_AchieveEther2_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_AchieveEther2_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveNS_EyeAcc01_03",
+   "name": "라반의 선글라스",
+   "icon": "items/PC_A_EQ_AchieveNS_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_AchieveNS_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveRF1_EyeAcc01_03",
+   "name": "트리샤의 해킹 고글",
+   "icon": "items/PC_A_EQ_AchieveRF1_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_AchieveRF1_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveRF1_EyeAcc_03",
+   "name": "눈 장식 AchieveRF1",
+   "icon": null,
+   "file": "items/PC_A_EQ_AchieveRF1_EyeAcc_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_BadSunGlass_EyeAcc01_03",
+   "name": "불량한 선글라스",
+   "icon": "items/PC_A_EQ_BadSunGlass_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_BadSunGlass_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_BlackSuit_EyeAcc01_03",
+   "name": "[인텔리블랙 정장] 선글라스",
+   "icon": "items/PC_A_EQ_BlackSuit_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_BlackSuit_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_ButterflyMask_EyeAcc01_03",
+   "name": "무도회 가면",
+   "icon": "items/PC_A_EQ_ButterflyMask_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_ButterflyMask_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_DarkVeninEyePatch_EyeAcc01_03",
+   "name": "붉은 베시의 안대",
+   "icon": "items/PC_A_EQ_DarkVeninEyePatch_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_DarkVeninEyePatch_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_Gothic_Eyepatch_34",
+   "name": "[고스트 생츄어리] 얼굴 악세서리",
+   "icon": "items/PC_A_EQ_Gothic_Eyepatch_34.png",
+   "file": "items/PC_A_EQ_Gothic_Eyepatch_34.glb"
+  },
+  {
+   "id": "PC_A_EQ_KonosubaMegumin_eyepatch_34",
+   "name": "멋진 세계의 폭렬 마법사",
+   "icon": null,
+   "file": "items/PC_A_EQ_KonosubaMegumin_eyepatch_34.glb"
+  },
+  {
+   "id": "PC_A_EQ_LAOBP_Eyepatch_34",
+   "name": "라스트오리진",
+   "icon": null,
+   "file": "items/PC_A_EQ_LAOBP_Eyepatch_34.glb"
+  },
+  {
+   "id": "PC_A_EQ_LaceMask_EyeAcc01_03",
+   "name": "엔틱 레이스",
+   "icon": "items/PC_A_EQ_LaceMask_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_LaceMask_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_LordsGlasses_EyeAcc01_03",
+   "name": "로드의 안경",
+   "icon": "items/PC_A_EQ_LordsGlasses_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_LordsGlasses_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_Maid_EyeAcc01_03",
+   "name": "[러블리 메이드] 안경",
+   "icon": "items/PC_A_EQ_Maid_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_Maid_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_MasBootsGlass_EyeAcc01_03",
+   "name": "마스부츠 글라스",
+   "icon": "items/PC_A_EQ_MasBootsGlass_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_MasBootsGlass_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_ModernCasual_EyeAcc01_03",
+   "name": "[모던 캐쥬얼] 뿔테 안경",
+   "icon": "items/PC_A_EQ_ModernCasual_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_ModernCasual_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_NCImprove_EyeAcc01_03",
+   "name": "[네드 개량 군복] 통신 안경",
+   "icon": "items/PC_A_EQ_NCImprove_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_NCImprove_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_NCImprove_EyeAcc01_03",
+   "name": "[네드 개량 군복] 통신 안경",
+   "icon": "items/PC_A_EQ_NCImprove_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_NCImprove_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_NCmercenary_EyeAcc01_03",
+   "name": "[네드 컴퍼니 용병복] 고글",
+   "icon": "items/PC_A_EQ_NCmercenary_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_NCmercenary_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalEyes1_EyeAcc01_03",
+   "name": "하트 모양 안경",
+   "icon": "items/PC_A_EQ_NormalEyes1_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_NormalEyes1_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalEyes2_EyeAcc01_03",
+   "name": "별 모양 안경",
+   "icon": "items/PC_A_EQ_NormalEyes2_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_NormalEyes2_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalEyes3_EyeAcc01_03",
+   "name": "음모를 꾸미는 안경",
+   "icon": "items/PC_A_EQ_NormalEyes3_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_NormalEyes3_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalEyes4_EyeAcc01_03",
+   "name": "직각 네모 안경",
+   "icon": "items/PC_A_EQ_NormalEyes4_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_NormalEyes4_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalEyes5_EyeAcc01_03",
+   "name": "코주부 안경",
+   "icon": "items/PC_A_EQ_NormalEyes5_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_NormalEyes5_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_SFregular_EyeAcc01_03",
+   "name": "[별숲리그 정규군복] 장교안경",
+   "icon": "items/PC_A_EQ_SFregular_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_SFregular_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_SportyLook2_EyeAcc01_03",
+   "name": "[어나더 스포티 룩] 형광 안경",
+   "icon": "items/PC_A_EQ_SportyLook2_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_SportyLook2_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_SportyLook_EyeAcc01_03",
+   "name": "[스포티 룩] 형광 안경",
+   "icon": "items/PC_A_EQ_SportyLook_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_SportyLook_EyeAcc01_03.glb"
+  },
+  {
+   "id": "PC_A_EQ_ToothMask_EyeAcc01_03",
+   "name": "네온 마스크",
+   "icon": "items/PC_A_EQ_ToothMask_EyeAcc01_03.png",
+   "file": "items/PC_A_EQ_ToothMask_EyeAcc01_03.glb"
+  }
+ ],
+ "face": [
+  {
+   "id": "PC_A_EQ_CashFace01_Face_02",
+   "name": "얼굴 1",
+   "icon": "items/PC_A_EQ_CashFace01_Face_02.png",
+   "file": "items/PC_A_EQ_CashFace01_Face_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashFace02_Face_02",
+   "name": "얼굴 2",
+   "icon": "items/PC_A_EQ_CashFace02_Face_02.png",
+   "file": "items/PC_A_EQ_CashFace02_Face_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashFace03_Face_02",
+   "name": "얼굴 3",
+   "icon": "items/PC_A_EQ_CashFace03_Face_02.png",
+   "file": "items/PC_A_EQ_CashFace03_Face_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashFace08_face_02",
+   "name": "얼굴 8",
+   "icon": "items/PC_A_EQ_CashFace08_face_02.png",
+   "file": "items/PC_A_EQ_CashFace08_face_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashFace09_face_02",
+   "name": "얼굴 9",
+   "icon": "items/PC_A_EQ_CashFace09_face_02.png",
+   "file": "items/PC_A_EQ_CashFace09_face_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashFace10_face_02",
+   "name": "얼굴 10",
+   "icon": "items/PC_A_EQ_CashFace10_face_02.png",
+   "file": "items/PC_A_EQ_CashFace10_face_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashFace11_Face_02",
+   "name": "얼굴 11",
+   "icon": "items/PC_A_EQ_CashFace11_Face_02.png",
+   "file": "items/PC_A_EQ_CashFace11_Face_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Cashface04_face_02",
+   "name": "홍조 : 하루",
+   "icon": "items/PC_A_EQ_Cashface04_face_02.png",
+   "file": "items/PC_A_EQ_Cashface04_face_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Cashface05_face_02",
+   "name": "다크서클 : 하루",
+   "icon": "items/PC_A_EQ_Cashface05_face_02.png",
+   "file": "items/PC_A_EQ_Cashface05_face_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Cashface06_face_02",
+   "name": "메구밍의 안대 : 하루",
+   "icon": "items/PC_A_EQ_Cashface06_face_02.png",
+   "file": "items/PC_A_EQ_Cashface06_face_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Cashface07_face_02",
+   "name": "긴 속눈썹 : 하루",
+   "icon": "items/PC_A_EQ_Cashface07_face_02.png",
+   "file": "items/PC_A_EQ_Cashface07_face_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Cashface12_face_02",
+   "name": "스마일 스티커 : 하루",
+   "icon": "items/PC_A_EQ_Cashface12_face_02.png",
+   "file": "items/PC_A_EQ_Cashface12_face_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Vampire_Face",
+   "name": "창백한 밤의 귀족",
+   "icon": null,
+   "file": "items/PC_A_EQ_Vampire_Face.glb"
+  }
+ ],
+ "faceAcc": [
+  {
+   "id": "PC_A_EQ_AchieveDoll_EyeMouth_18",
+   "name": "퍼펫 머리 가면",
+   "icon": "items/PC_A_EQ_AchieveDoll_EyeMouth_18.png",
+   "file": "items/PC_A_EQ_AchieveDoll_EyeMouth_18.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveMake1_EyeMouth_18",
+   "name": "제니스의 고양이 가면",
+   "icon": "items/PC_A_EQ_AchieveMake1_EyeMouth_18.png",
+   "file": "items/PC_A_EQ_AchieveMake1_EyeMouth_18.glb"
+  },
+  {
+   "id": "PC_A_EQ_CasualRaid01_EyeMouth_18",
+   "name": "얼굴 장식 CasualRaid01",
+   "icon": null,
+   "file": "items/PC_A_EQ_CasualRaid01_EyeMouth_18.glb"
+  },
+  {
+   "id": "PC_A_EQ_CasualRaid02_EyeMouth_18",
+   "name": "얼굴 장식 CasualRaid02",
+   "icon": null,
+   "file": "items/PC_A_EQ_CasualRaid02_EyeMouth_18.glb"
+  },
+  {
+   "id": "PC_A_EQ_CasualRaid03_EyeMouth_18",
+   "name": "얼굴 장식 CasualRaid03",
+   "icon": null,
+   "file": "items/PC_A_EQ_CasualRaid03_EyeMouth_18.glb"
+  },
+  {
+   "id": "PC_A_EQ_CasualRaid04_EyeMouth_18",
+   "name": "얼굴 장식 CasualRaid04",
+   "icon": null,
+   "file": "items/PC_A_EQ_CasualRaid04_EyeMouth_18.glb"
+  },
+  {
+   "id": "PC_A_EQ_ClownMask_EyeMouth_18",
+   "name": "얼굴 장식 ClownMask",
+   "icon": null,
+   "file": "items/PC_A_EQ_ClownMask_EyeMouth_18.glb"
+  },
+  {
+   "id": "PC_A_EQ_GG01_EyeMouth_18",
+   "name": "[유노의 천칭] 마스크",
+   "icon": "items/PC_A_EQ_GG01_EyeMouth_18.png",
+   "file": "items/PC_A_EQ_GG01_EyeMouth_18.glb"
+  },
+  {
+   "id": "PC_A_EQ_Onmyoji_EyeMouth_18",
+   "name": "[음양의 기운] 가면",
+   "icon": "items/PC_A_EQ_Onmyoji_EyeMouth_18.png",
+   "file": "items/PC_A_EQ_Onmyoji_EyeMouth_18.glb"
+  },
+  {
+   "id": "PC_A_EQ_Rumble_EyeMouth_18",
+   "name": "스노클링 마스크",
+   "icon": "items/PC_A_EQ_Rumble_EyeMouth_18.png",
+   "file": "items/PC_A_EQ_Rumble_EyeMouth_18.glb"
+  }
+ ],
+ "hair": [
+  {
+   "id": "PC_A_EQ_CashHair01_Hair_29",
+   "name": "러블리 숏 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair01_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair01_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair02_Hair_29",
+   "name": "보이쉬 숏 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair02_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair02_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair03_Hair_29",
+   "name": "뷰티풀 숏 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair03_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair03_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair04_Hair_29",
+   "name": "헤어 CashHair04",
+   "icon": null,
+   "file": "items/PC_A_EQ_CashHair04_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair05_Hair_29",
+   "name": "스트레이트 롱 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair05_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair05_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair06_Hair_29",
+   "name": "큐티 롱 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair06_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair06_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair07_Hair_29",
+   "name": "와일드 롱 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair07_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair07_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair08_Hair_29",
+   "name": "언밸런스 롱 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair08_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair08_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair09_Hair_29",
+   "name": "네츄럴 롱 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair09_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair09_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair10_Hair_29",
+   "name": "네츄럴 롱 웨이브 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair10_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair10_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair11_Hair_29",
+   "name": "세미 컬 바인드 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair11_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair11_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair12_Hair_29",
+   "name": "네츄럴 숏 블렌드 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair12_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair12_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair12_Hair_32",
+   "name": "헤어 CashHair12",
+   "icon": null,
+   "file": "items/PC_A_EQ_CashHair12_Hair_32.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair13_Hair_29",
+   "name": "스포티 로우 포니테일 : 하루",
+   "icon": "items/PC_A_EQ_CashHair13_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair13_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair14_Hair_29",
+   "name": "세미 롱 네츄럴 숏 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair14_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair14_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair15_Hair_29",
+   "name": "아이즈 스트레이트 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair15_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair15_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair16_Hair_29",
+   "name": "내추럴 브레이드 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair16_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair16_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair17_Hair_29",
+   "name": "애슬레틱 사이드 테일 : 하루",
+   "icon": "items/PC_A_EQ_CashHair17_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair17_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair18_Hair_29",
+   "name": "블룸 스트레이트 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair18_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair18_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair18_Hair_32",
+   "name": "블룸 스트레이트 블렌드 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair18_Hair_32.png",
+   "file": "items/PC_A_EQ_CashHair18_Hair_32.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair19_Hair_29",
+   "name": "언밸런스 브라이드 롱 스트레이트 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair19_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair19_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair20_Hair_29",
+   "name": "언 밸런스드 웨이브 숏 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair20_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair20_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair21_Hair_29",
+   "name": "헤어 CashHair21",
+   "icon": null,
+   "file": "items/PC_A_EQ_CashHair21_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair21_Hair_32",
+   "name": "헤어 CashHair21",
+   "icon": null,
+   "file": "items/PC_A_EQ_CashHair21_Hair_32.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair22_Hair_32",
+   "name": "틴트 소프트 보브컷 : 하루",
+   "icon": "items/PC_A_EQ_CashHair22_Hair_32.png",
+   "file": "items/PC_A_EQ_CashHair22_Hair_32.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair23_Hair_29",
+   "name": "아쿠아 롱 스트레이트 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair23_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair23_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair24_Hair_29",
+   "name": "메구밍 언밸런스 숏 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair24_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair24_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair25_Hair_29",
+   "name": "융융 브라이드 트윈 테일 : 하루",
+   "icon": "items/PC_A_EQ_CashHair25_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair25_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair26_Hair_29",
+   "name": "모이스트 볼륨 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair26_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair26_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair27_Hair_29",
+   "name": "큐트 로우 테일 : 하루",
+   "icon": "items/PC_A_EQ_CashHair27_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair27_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair28_Hair_32",
+   "name": "심플 스트레이트 블렌드 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair28_Hair_32.png",
+   "file": "items/PC_A_EQ_CashHair28_Hair_32.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair29_Hair_29",
+   "name": "헤어 CashHair29",
+   "icon": null,
+   "file": "items/PC_A_EQ_CashHair29_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair30_Hair_29",
+   "name": "로우 웨이브 트윈 테일 : 하루",
+   "icon": "items/PC_A_EQ_CashHair30_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair30_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair31_Hair_29",
+   "name": "데모닉 롱 스트레이트 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair31_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair31_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair33_Hair_29",
+   "name": "바캉스 롱 포니테일 : 하루",
+   "icon": "items/PC_A_EQ_CashHair33_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair33_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair34_Hair_32",
+   "name": "아델 스트레이트 블렌드 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair34_Hair_32.png",
+   "file": "items/PC_A_EQ_CashHair34_Hair_32.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair35_Hair_29",
+   "name": "하프 콤마 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair35_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair35_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair36_Hair_29",
+   "name": "그리드 걸 포니 테일 : 하루",
+   "icon": "items/PC_A_EQ_CashHair36_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair36_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair37_Hair_29",
+   "name": "로열티 스타일 헤어 : 하루",
+   "icon": "items/PC_A_EQ_CashHair37_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair37_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair38_Hair_29",
+   "name": "[백은의 신뢰] 카이 : 하루",
+   "icon": "items/PC_A_EQ_CashHair38_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair38_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair39_Hair_32",
+   "name": "[유노의 천칭] 잭 오 : 하루",
+   "icon": "items/PC_A_EQ_CashHair39_Hair_32.png",
+   "file": "items/PC_A_EQ_CashHair39_Hair_32.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair40_Hair_29",
+   "name": "다크니스 머더 롱헤어: 하루",
+   "icon": "items/PC_A_EQ_CashHair40_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair40_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair41_Hair_29",
+   "name": "오션 사이드 테일 로망스 : 하루",
+   "icon": "items/PC_A_EQ_CashHair41_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair41_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair42_Hair_29",
+   "name": "오션 레게 반다나 로망스 : 하루",
+   "icon": "items/PC_A_EQ_CashHair42_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair42_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair43_Hair_29",
+   "name": "블레스 윈터 숏헤어: 하루",
+   "icon": "items/PC_A_EQ_CashHair43_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair43_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair45_Hair_29",
+   "name": "롱 쉬림프 트윈테일 : 하루",
+   "icon": "items/PC_A_EQ_CashHair45_Hair_29.png",
+   "file": "items/PC_A_EQ_CashHair45_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair46_Hair_29",
+   "name": "헤어 CashHair46",
+   "icon": null,
+   "file": "items/PC_A_EQ_CashHair46_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair47_Hair_29",
+   "name": "헤어 CashHair47",
+   "icon": null,
+   "file": "items/PC_A_EQ_CashHair47_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair49_Hair_32",
+   "name": "헤어 CashHair49",
+   "icon": null,
+   "file": "items/PC_A_EQ_CashHair49_Hair_32.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair50_Hair_01",
+   "name": "헤어 CashHair50",
+   "icon": null,
+   "file": "items/PC_A_EQ_CashHair50_Hair_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_CashHair_48_Hair_32",
+   "name": "헤어 CashHair",
+   "icon": null,
+   "file": "items/PC_A_EQ_CashHair_48_Hair_32.glb"
+  },
+  {
+   "id": "PC_A_EQ_ForestKeeper_Hair_29",
+   "name": "프리티 비즈 헤어 : 하루",
+   "icon": "items/PC_A_EQ_ForestKeeper_Hair_29.png",
+   "file": "items/PC_A_EQ_ForestKeeper_Hair_29.glb"
+  },
+  {
+   "id": "PC_A_Parts_Default_Hair_02",
+   "name": "기본 머리 2",
+   "icon": null,
+   "file": "items/PC_A_Parts_Default_Hair_02.glb"
+  },
+  {
+   "id": "PC_A_Parts_Default_Hair_03",
+   "name": "기본 머리 3",
+   "icon": null,
+   "file": "items/PC_A_Parts_Default_Hair_03.glb"
+  }
+ ],
+ "hairAcc": [
+  {
+   "id": "PC_A_EQ_2022XMasBand_HairAcc01",
+   "name": "크리스마스 라이트 머리띠",
+   "icon": "items/PC_A_EQ_2022XMasBand_HairAcc01.png",
+   "file": "items/PC_A_EQ_2022XMasBand_HairAcc01.glb"
+  },
+  {
+   "id": "PC_A_EQ_2022XMasHorn_HairAcc01",
+   "name": "루돌프 뿔 머리띠",
+   "icon": "items/PC_A_EQ_2022XMasHorn_HairAcc01.png",
+   "file": "items/PC_A_EQ_2022XMasHorn_HairAcc01.glb"
+  },
+  {
+   "id": "PC_A_EQ_2022XMasTree_HairAcc01",
+   "name": "크리스마스 트리",
+   "icon": "items/PC_A_EQ_2022XMasTree_HairAcc01.png",
+   "file": "items/PC_A_EQ_2022XMasTree_HairAcc01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Achieve3Min1_HairAcc01_01",
+   "name": "식지 않은 술잔",
+   "icon": "items/PC_A_EQ_Achieve3Min1_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Achieve3Min1_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Achieve3Min2_HairAcc01_01",
+   "name": "식지 않은 카레 라이스",
+   "icon": "items/PC_A_EQ_Achieve3Min2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Achieve3Min2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveCombo_HairAcc01_01",
+   "name": "Combo 아이콘",
+   "icon": "items/PC_A_EQ_AchieveCombo_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveCombo_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveDeath2_HairAcc01_01",
+   "name": "엔젤 링",
+   "icon": "items/PC_A_EQ_AchieveDeath2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveDeath2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveDropJ2_HairAcc01_01",
+   "name": "돼지 저금통 모자",
+   "icon": "items/PC_A_EQ_AchieveDropJ2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveDropJ2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveFatigue1_HairAcc01_01",
+   "name": "꿈나라로 향하는 모자",
+   "icon": "items/PC_A_EQ_AchieveFatigue1_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveFatigue1_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveFclear1_HairAcc01_01",
+   "name": "머리 장식 AchieveFclear1",
+   "icon": "items/PC_A_EQ_AchieveFclear1_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveFclear1_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveFclear2_HairAcc01_01",
+   "name": "머리 장식 AchieveFclear2",
+   "icon": "items/PC_A_EQ_AchieveFclear2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveFclear2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveIF_HairAcc01_01",
+   "name": "머리 위의 드론",
+   "icon": "items/PC_A_EQ_AchieveIF_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveIF_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveRF_HairAcc01_01",
+   "name": "레피드 플레임의 뿔",
+   "icon": "items/PC_A_EQ_AchieveRF_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveRF_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveSJ_HairAcc01_01",
+   "name": "정크 나이트의 모자",
+   "icon": "items/PC_A_EQ_AchieveSJ_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveSJ_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveSPclear1_HairAcc01_01",
+   "name": "머리 장식 AchieveSPclear1",
+   "icon": null,
+   "file": "items/PC_A_EQ_AchieveSPclear1_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveSPclear2_HairAcc01_01",
+   "name": "머리 장식 AchieveSPclear2",
+   "icon": null,
+   "file": "items/PC_A_EQ_AchieveSPclear2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveSQ1_HairAcc01_01",
+   "name": "파란 물음표 아이콘",
+   "icon": "items/PC_A_EQ_AchieveSQ1_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveSQ1_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveSQ2_HairAcc01_01",
+   "name": "파란 느낌표 아이콘",
+   "icon": "items/PC_A_EQ_AchieveSQ2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveSQ2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveSSclear1_HairAcc01_01",
+   "name": "SS 아이콘",
+   "icon": "items/PC_A_EQ_AchieveSSclear1_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveSSclear1_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveSSclear2_HairAcc01_01",
+   "name": "프리미엄 SS 아이콘",
+   "icon": "items/PC_A_EQ_AchieveSSclear2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveSSclear2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveShop1_HairAcc01_01",
+   "name": "돈 보따리 모자",
+   "icon": "items/PC_A_EQ_AchieveShop1_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveShop1_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveShop2_HairAcc01_01",
+   "name": "VVIP 아이콘",
+   "icon": "items/PC_A_EQ_AchieveShop2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AchieveShop2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Adela_HairAcc01_01",
+   "name": "머리 장식 Adela",
+   "icon": null,
+   "file": "items/PC_A_EQ_Adela_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Angel_HairAcc01_01",
+   "name": "[낙원의 구도자] 헤일로",
+   "icon": "items/PC_A_EQ_Angel_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Angel_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_ApcalypseRaid01_HairAcc01_01",
+   "name": "머리 장식 ApcalypseRaid01",
+   "icon": null,
+   "file": "items/PC_A_EQ_ApcalypseRaid01_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_AprilFools_HairAcc01_01",
+   "name": "[에이프릴 판타지] 모자",
+   "icon": "items/PC_A_EQ_AprilFools_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_AprilFools_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_BCatCosplay_HairAcc01_01",
+   "name": "검은 고양이 귀 머리띠",
+   "icon": "items/PC_A_EQ_BCatCosplay_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_BCatCosplay_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_BeautySchool2_HairAcc01_01",
+   "name": "[어나더 뷰티 스쿨 룩] 모자",
+   "icon": "items/PC_A_EQ_BeautySchool2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_BeautySchool2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_BeautySchool_HairAcc01_01",
+   "name": "[뷰티 스쿨 룩] 모자",
+   "icon": "items/PC_A_EQ_BeautySchool_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_BeautySchool_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_BlackCatHat_HairAcc01",
+   "name": "꿈꾸는 로키",
+   "icon": "items/PC_A_EQ_BlackCatHat_HairAcc01.png",
+   "file": "items/PC_A_EQ_BlackCatHat_HairAcc01.glb"
+  },
+  {
+   "id": "PC_A_EQ_BlackDoctor_hairAcc01_01",
+   "name": "간호사복 어나더",
+   "icon": "items/PC_A_EQ_BlackDoctor_hairAcc01_01.png",
+   "file": "items/PC_A_EQ_BlackDoctor_hairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_BlackLingerie_HairAcc01_01",
+   "name": "블루밍 드레스",
+   "icon": "items/PC_A_EQ_BlackLingerie_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_BlackLingerie_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_BlackManekiNeko_HairAcc02_16",
+   "name": "머리 장식 BlackManekiNeko",
+   "icon": "items/PC_A_EQ_BlackManekiNeko_HairAcc02_16.png",
+   "file": "items/PC_A_EQ_BlackManekiNeko_HairAcc02_16.glb"
+  },
+  {
+   "id": "PC_A_EQ_BlackSilkHat_HairAcc01",
+   "name": "머리 장식 BlackSilkHat",
+   "icon": null,
+   "file": "items/PC_A_EQ_BlackSilkHat_HairAcc01.glb"
+  },
+  {
+   "id": "PC_A_EQ_BlissfulWinter_HairAcc01_01",
+   "name": "[조이풀 윈터 스키웨어] 모자",
+   "icon": "items/PC_A_EQ_BlissfulWinter_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_BlissfulWinter_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Bloomer_HairAcc01_01",
+   "name": "[봄의 운동회] 머리띠",
+   "icon": "items/PC_A_EQ_Bloomer_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Bloomer_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_BlueTiara_hairAcc01_01",
+   "name": "머리 장식 BlueTiara",
+   "icon": "items/PC_A_EQ_BlueTiara_hairAcc01_01.png",
+   "file": "items/PC_A_EQ_BlueTiara_hairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Bunny_HairAcc01_01",
+   "name": "[트윙클 바니걸] 귀",
+   "icon": "items/PC_A_EQ_Bunny_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Bunny_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_CBTBonus_hairAcc01_01",
+   "name": "머리 장식 CBTBonus",
+   "icon": "items/PC_A_EQ_CBTBonus_hairAcc01_01.png",
+   "file": "items/PC_A_EQ_CBTBonus_hairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_CatCosplay_HairAcc01_01",
+   "name": "고양이 귀 머리띠",
+   "icon": "items/PC_A_EQ_CatCosplay_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_CatCosplay_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Child_HairAcc01_01",
+   "name": "동심 가득 교복",
+   "icon": "items/PC_A_EQ_Child_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Child_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_ChloeHead_HairAcc01_01",
+   "name": "[PC방] 머리 위의 클로이",
+   "icon": "items/PC_A_EQ_ChloeHead_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_ChloeHead_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Christmas2_HairAcc01_01",
+   "name": "러블리 크리스마스",
+   "icon": "items/PC_A_EQ_Christmas2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Christmas2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Christmas_HairAcc01_01",
+   "name": "[크리스마스 룩] 모자",
+   "icon": "items/PC_A_EQ_Christmas_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Christmas_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_CowDots_HairAcc01_01",
+   "name": "얼룩 소 머리띠",
+   "icon": "items/PC_A_EQ_CowDots_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_CowDots_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_CowWhite_HairAcc01_01",
+   "name": "하얀 소 머리띠",
+   "icon": "items/PC_A_EQ_CowWhite_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_CowWhite_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_CupCake2_HairAcc01_01",
+   "name": "2주년 컵케익",
+   "icon": "items/PC_A_EQ_CupCake2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_CupCake2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_CupCake_HairAcc01_01",
+   "name": "1주년 컵케익 모자",
+   "icon": "items/PC_A_EQ_CupCake_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_CupCake_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_DanmachiCosplay_HairAcc01_01",
+   "name": "[오라리오의 방문자] 모험가의 머리장식",
+   "icon": "items/PC_A_EQ_DanmachiCosplay_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_DanmachiCosplay_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_DanmachiHestia_HairAcc01_01",
+   "name": "[여신 헤스티아] 여신님 머리장식",
+   "icon": "items/PC_A_EQ_DanmachiHestia_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_DanmachiHestia_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_DealerUnion_HairAcc01_01",
+   "name": "[상인연합 유니폼] 캡모자",
+   "icon": "items/PC_A_EQ_DealerUnion_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_DealerUnion_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_DemonicFlame_HairAcc01_01",
+   "name": "[검은 군세의 절망] 왕관",
+   "icon": "items/PC_A_EQ_DemonicFlame_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_DemonicFlame_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Detective_HairAcc01_01",
+   "name": "[탐정 학원 교복] 빵모자",
+   "icon": "items/PC_A_EQ_Detective_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Detective_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Doctor_hairAcc01_01",
+   "name": "간호사복",
+   "icon": "items/PC_A_EQ_Doctor_hairAcc01_01.png",
+   "file": "items/PC_A_EQ_Doctor_hairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_ElderKidLook_HairAcc01_01",
+   "name": "[요정의 포옹] 머리 장식",
+   "icon": "items/PC_A_EQ_ElderKidLook_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_ElderKidLook_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_EnemyFesta2_HairAcc01_01",
+   "name": "[포리너 콰르텟] 티아라",
+   "icon": "items/PC_A_EQ_EnemyFesta2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_EnemyFesta2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_FairyTale_HairAcc01_01",
+   "name": "[고! 프린스 앤 프린세스] 왕관",
+   "icon": "items/PC_A_EQ_FairyTale_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_FairyTale_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Fenrir_HairAcc01_01",
+   "name": "라스트오리진",
+   "icon": null,
+   "file": "items/PC_A_EQ_Fenrir_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_FineGraffiti_HairAcc01_01",
+   "name": "[파인 그래피티] 고글",
+   "icon": "items/PC_A_EQ_FineGraffiti_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_FineGraffiti_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_FlowerTiara_hairAcc01_01",
+   "name": "머리 장식 FlowerTiara",
+   "icon": "items/PC_A_EQ_FlowerTiara_hairAcc01_01.png",
+   "file": "items/PC_A_EQ_FlowerTiara_hairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Flowerbend_HairAcc01_01",
+   "name": "센시티브 마롱 리본",
+   "icon": "items/PC_A_EQ_Flowerbend_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Flowerbend_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_ForestKeeper_HairAcc01_01",
+   "name": "[포레스트 키퍼] 모자",
+   "icon": "items/PC_A_EQ_ForestKeeper_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_ForestKeeper_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_FrankenBolt_HairAcc01_01",
+   "name": "실험용 볼트",
+   "icon": "items/PC_A_EQ_FrankenBolt_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_FrankenBolt_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_GhostHat_HairAcc01",
+   "name": "머리 장식 GhostHat",
+   "icon": null,
+   "file": "items/PC_A_EQ_GhostHat_HairAcc01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Glouton_HairAcc01_01",
+   "name": "[그루그루 그루톤] 너구리 귀",
+   "icon": "items/PC_A_EQ_Glouton_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Glouton_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_GlutonHat_HairAcc01_01",
+   "name": "그루톤 모자",
+   "icon": "items/PC_A_EQ_GlutonHat_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_GlutonHat_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_GoldenPanel_100_HairAcc01_01",
+   "name": "100일 머리띠",
+   "icon": "items/PC_A_EQ_GoldenPanel_100_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_GoldenPanel_100_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_GoldenPanel_HairAcc01_01",
+   "name": "골든 패널",
+   "icon": "items/PC_A_EQ_GoldenPanel_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_GoldenPanel_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Gothic_HairAcc01_01",
+   "name": "[고스트 생츄어리] 모자",
+   "icon": "items/PC_A_EQ_Gothic_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Gothic_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_GunsNGirls_HairAcc01_01",
+   "name": "스쿨 밴드",
+   "icon": null,
+   "file": "items/PC_A_EQ_GunsNGirls_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_HairCrab_HairAcc01_01",
+   "name": "머리위의 꽃게",
+   "icon": "items/PC_A_EQ_HairCrab_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_HairCrab_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_HairStarfish_HairAcc01_01",
+   "name": "머리위의 불가사리",
+   "icon": "items/PC_A_EQ_HairStarfish_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_HairStarfish_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_HalloPumpkin_HairAcc01_01",
+   "name": "머리 장식 HalloPumpkin",
+   "icon": "items/PC_A_EQ_HalloPumpkin_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_HalloPumpkin_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_HanBok3_HairAcc01_01",
+   "name": "[한가위 한복] 머리 장식",
+   "icon": "items/PC_A_EQ_HanBok3_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_HanBok3_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_HanBokHat_HairAcc01_01",
+   "name": "머리 장식 HanBokHat",
+   "icon": "items/PC_A_EQ_HanBokHat_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_HanBokHat_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_HanBok_HairAcc01_01",
+   "name": "[정유년 한복] 족두리",
+   "icon": "items/PC_A_EQ_HanBok_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_HanBok_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Harvest01_HairAcc01_01",
+   "name": "머리 장식 Harvest01",
+   "icon": null,
+   "file": "items/PC_A_EQ_Harvest01_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Harvest02_HairAcc01_01",
+   "name": "머리 장식 Harvest02",
+   "icon": null,
+   "file": "items/PC_A_EQ_Harvest02_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_HeadAxe_HairAcc01_01",
+   "name": "장식용 도끼",
+   "icon": "items/PC_A_EQ_HeadAxe_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_HeadAxe_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_HeadKnife_HairAcc01_01",
+   "name": "장식용 칼",
+   "icon": "items/PC_A_EQ_HeadKnife_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_HeadKnife_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Hero_HairAcc01_01",
+   "name": "기적의 마법",
+   "icon": "items/PC_A_EQ_Hero_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Hero_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_HotSpring_HairAcc01_01",
+   "name": "[하얀 증기의 노천온천] 젖은 수건",
+   "icon": "items/PC_A_EQ_HotSpring_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_HotSpring_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_JackORing_HairAcc02_16",
+   "name": "머리 장식 JackORing",
+   "icon": null,
+   "file": "items/PC_A_EQ_JackORing_HairAcc02_16.glb"
+  },
+  {
+   "id": "PC_A_EQ_KingHat_HairAcc01_01",
+   "name": "궁중모",
+   "icon": "items/PC_A_EQ_KingHat_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_KingHat_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Knight_HairAcc01_01",
+   "name": "은빛의 기사단",
+   "icon": "items/PC_A_EQ_Knight_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Knight_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_KonosubaAqua_HairAcc01_01",
+   "name": "[멋진 세계의 여신] 헤어 액세서리",
+   "icon": "items/PC_A_EQ_KonosubaAqua_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_KonosubaAqua_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_KonosubaMegumin_HairAcc01_01",
+   "name": "[멋진 세계의 폭렬 마법사] 모자",
+   "icon": "items/PC_A_EQ_KonosubaMegumin_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_KonosubaMegumin_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_LAOBP_HairAcc01_01",
+   "name": "[라스트오리진] 블라인드 프린세스 장식",
+   "icon": "items/PC_A_EQ_LAOBP_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_LAOBP_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_LAOMAY_HairAcc01_01",
+   "name": "[라스트오리진] 멸망의 메이 트윈 혼",
+   "icon": "items/PC_A_EQ_LAOMAY_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_LAOMAY_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_LovelyDate_HairAcc01_01",
+   "name": "[러블리 데이트 룩] 모자",
+   "icon": "items/PC_A_EQ_LovelyDate_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_LovelyDate_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_LuxuryUniform_HairAcc01_01",
+   "name": "[엘리트 사립 교복] 머리장식",
+   "icon": "items/PC_A_EQ_LuxuryUniform_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_LuxuryUniform_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Maidswimsuits_HairAcc01_01",
+   "name": "머리 장식 Maidswimsuits",
+   "icon": null,
+   "file": "items/PC_A_EQ_Maidswimsuits_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Marchen_HairAcc01_01",
+   "name": "[동화 속의 소녀] 리본",
+   "icon": "items/PC_A_EQ_Marchen_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Marchen_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Marine_HairAcc01_01",
+   "name": "[마린 걸] 모자",
+   "icon": "items/PC_A_EQ_Marine_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Marine_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_MilkCowOutfit_HairAcc01_01",
+   "name": "[밀크 카우 아웃핏] 머리띠",
+   "icon": "items/PC_A_EQ_MilkCowOutfit_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_MilkCowOutfit_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_MobCosplay_HairAcc01_01",
+   "name": "[에너미 페스타] 머리 장신구",
+   "icon": "items/PC_A_EQ_MobCosplay_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_MobCosplay_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Moonrabbit_HairAcc02_16",
+   "name": "머리 장식 Moonrabbit",
+   "icon": "items/PC_A_EQ_Moonrabbit_HairAcc02_16.png",
+   "file": "items/PC_A_EQ_Moonrabbit_HairAcc02_16.glb"
+  },
+  {
+   "id": "PC_A_EQ_Motor_HairAcc01_01",
+   "name": "[영광의 레이서] 리본",
+   "icon": "items/PC_A_EQ_Motor_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Motor_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_NCImprove_HairAcc01_01",
+   "name": "[네드 개량 군복] 제식 모자",
+   "icon": "items/PC_A_EQ_NCImprove_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_NCImprove_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_NCImprove_HairAcc01_01",
+   "name": "[네드 개량 군복] 제식 모자",
+   "icon": "items/PC_A_EQ_NCImprove_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_NCImprove_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_NCImprove_HairAcc02_16",
+   "name": "[네드 개량 군복] 헤드셋",
+   "icon": "items/PC_A_EQ_NCImprove_HairAcc02_16.png",
+   "file": "items/PC_A_EQ_NCImprove_HairAcc02_16.glb"
+  },
+  {
+   "id": "PC_A_EQ_NCImprove_HairAcc02_16",
+   "name": "[네드 개량 군복] 헤드셋",
+   "icon": "items/PC_A_EQ_NCImprove_HairAcc02_16.png",
+   "file": "items/PC_A_EQ_NCImprove_HairAcc02_16.glb"
+  },
+  {
+   "id": "PC_A_EQ_Newbie2_HairAcc01_01",
+   "name": "[활기찬 새내기] 모자",
+   "icon": "items/PC_A_EQ_Newbie2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Newbie2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Nightmare_HairAcc01_01",
+   "name": "[서큐버스 인 나이트메어] 뿔",
+   "icon": "items/PC_A_EQ_Nightmare_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Nightmare_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_NiheelCosplay_HairAcc01_01",
+   "name": "[니힐킹덤 나이츠] 머리 장신구",
+   "icon": "items/PC_A_EQ_NiheelCosplay_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_NiheelCosplay_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_NomalHairAcc3_HairAcc01_01",
+   "name": "머리 장식 NomalHairAcc3",
+   "icon": null,
+   "file": "items/PC_A_EQ_NomalHairAcc3_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalHairAcc1_HairAcc01_01",
+   "name": "초록 새싹",
+   "icon": "items/PC_A_EQ_NormalHairAcc1_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_NormalHairAcc1_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalHairAcc2_HairAcc01_01",
+   "name": "별 머리띠",
+   "icon": "items/PC_A_EQ_NormalHairAcc2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_NormalHairAcc2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalHairAcc3_HairAcc01_01",
+   "name": "민들레 꽃",
+   "icon": "items/PC_A_EQ_NormalHairAcc3_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_NormalHairAcc3_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalHairAcc4_HairAcc01_01",
+   "name": "미니 우산",
+   "icon": "items/PC_A_EQ_NormalHairAcc4_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_NormalHairAcc4_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalHairAcc5_HairAcc01_01",
+   "name": "왕 리본",
+   "icon": "items/PC_A_EQ_NormalHairAcc5_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_NormalHairAcc5_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Northern_HairAcc01_01",
+   "name": "[서리의 지배자] 모자",
+   "icon": "items/PC_A_EQ_Northern_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Northern_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Onmyoji_HairAcc01_01",
+   "name": "[음양의 기운] 머리장식",
+   "icon": "items/PC_A_EQ_Onmyoji_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Onmyoji_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Pirate_HairAcc01_01",
+   "name": "[바다의 로망] 해적 모자",
+   "icon": "items/PC_A_EQ_Pirate_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Pirate_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Plant01_HairAcc01_01",
+   "name": "머리 장식 Plant01",
+   "icon": null,
+   "file": "items/PC_A_EQ_Plant01_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Plant02_HairAcc01_01",
+   "name": "머리 장식 Plant02",
+   "icon": null,
+   "file": "items/PC_A_EQ_Plant02_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_PointManekiNeko_HairAcc02_16",
+   "name": "머리 장식 PointManekiNeko",
+   "icon": "items/PC_A_EQ_PointManekiNeko_HairAcc02_16.png",
+   "file": "items/PC_A_EQ_PointManekiNeko_HairAcc02_16.glb"
+  },
+  {
+   "id": "PC_A_EQ_PremiumIdolEarring_HairAcc02_16",
+   "name": "[스테이지 온 스테리 라이트] 귀걸이",
+   "icon": "items/PC_A_EQ_PremiumIdolEarring_HairAcc02_16.png",
+   "file": "items/PC_A_EQ_PremiumIdolEarring_HairAcc02_16.glb"
+  },
+  {
+   "id": "PC_A_EQ_PyeongChang_HairAcc01_01",
+   "name": "[빙상의 요정] 크라운",
+   "icon": "items/PC_A_EQ_PyeongChang_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_PyeongChang_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_RapidFlameEarring_HairAcc02_16",
+   "name": "[붉은 나비의 춤사위] 귀걸이",
+   "icon": "items/PC_A_EQ_RapidFlameEarring_HairAcc02_16.png",
+   "file": "items/PC_A_EQ_RapidFlameEarring_HairAcc02_16.glb"
+  },
+  {
+   "id": "PC_A_EQ_RapidFlameHorn_HairAcc01_01",
+   "name": "머리 장식 RapidFlameHorn",
+   "icon": null,
+   "file": "items/PC_A_EQ_RapidFlameHorn_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_RedHorn_HairAcc01_01",
+   "name": "붉은색 사슴뿔",
+   "icon": "items/PC_A_EQ_RedHorn_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_RedHorn_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_RedMoon_HairAcc01_01",
+   "name": "[붉은 달의 전야제] 모자",
+   "icon": "items/PC_A_EQ_RedMoon_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_RedMoon_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_RedSilkHat_HairAcc01",
+   "name": "머리 장식 RedSilkHat",
+   "icon": null,
+   "file": "items/PC_A_EQ_RedSilkHat_HairAcc01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Redband_HairAcc01_01",
+   "name": "붉은 악단",
+   "icon": "items/PC_A_EQ_Redband_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Redband_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_RiceSoup_HairAcc01_01",
+   "name": "떡국 머리띠",
+   "icon": "items/PC_A_EQ_RiceSoup_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_RiceSoup_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Rotten01_HairAcc01_01",
+   "name": "머리 장식 Rotten01",
+   "icon": null,
+   "file": "items/PC_A_EQ_Rotten01_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_RugmanCos_HairAcc01_01",
+   "name": "[오르카의 아이돌] 머리 장식",
+   "icon": "items/PC_A_EQ_RugmanCos_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_RugmanCos_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_RugmanCos_HairAcc01_01",
+   "name": "[오르카의 아이돌] 머리 장식",
+   "icon": "items/PC_A_EQ_RugmanCos_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_RugmanCos_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_RuinReward_HairAcc01_01",
+   "name": "통신부대원의 모자",
+   "icon": "items/PC_A_EQ_RuinReward_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_RuinReward_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SDAruaAcc_HairAcc01_01",
+   "name": "기운찬 아루아",
+   "icon": "items/PC_A_EQ_SDAruaAcc_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SDAruaAcc_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SDChiiAcc_HairAcc01_01",
+   "name": "기운찬 치이",
+   "icon": "items/PC_A_EQ_SDChiiAcc_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SDChiiAcc_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SDEphnelAcc_HairAcc01_01",
+   "name": "기운찬 에프넬",
+   "icon": "items/PC_A_EQ_SDEphnelAcc_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SDEphnelAcc_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SDErwinAcc_HairAcc01_01",
+   "name": "기운찬 어윈",
+   "icon": "items/PC_A_EQ_SDErwinAcc_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SDErwinAcc_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SDHaruAcc_HairAcc01_01",
+   "name": "기운찬 하루",
+   "icon": "items/PC_A_EQ_SDHaruAcc_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SDHaruAcc_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SDIrisAcc_HairAcc01_01",
+   "name": "기운찬 이리스",
+   "icon": "items/PC_A_EQ_SDIrisAcc_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SDIrisAcc_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SDJinAcc_HairAcc01_01",
+   "name": "기운찬 진",
+   "icon": "items/PC_A_EQ_SDJinAcc_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SDJinAcc_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SDLeeNaviAcc_HairAcc01_01",
+   "name": "기운찬 나비",
+   "icon": "items/PC_A_EQ_SDLeeNaviAcc_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SDLeeNaviAcc_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SDLilyAcc_HairAcc01_01",
+   "name": "기운찬 릴리",
+   "icon": "items/PC_A_EQ_SDLilyAcc_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SDLilyAcc_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SDStellaAcc_HairAcc01_01",
+   "name": "기운찬 스텔라",
+   "icon": "items/PC_A_EQ_SDStellaAcc_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SDStellaAcc_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SFregular_HairAcc01_01",
+   "name": "[별숲리그 정규군복] 제식모자",
+   "icon": "items/PC_A_EQ_SFregular_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SFregular_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SFregular_HairAcc02_16",
+   "name": "[별숲리그 정규군복] 장교 모자",
+   "icon": "items/PC_A_EQ_SFregular_HairAcc02_16.png",
+   "file": "items/PC_A_EQ_SFregular_HairAcc02_16.glb"
+  },
+  {
+   "id": "PC_A_EQ_SailorSuit_HairAcc01_01",
+   "name": "[한여름의 세일러] 모자",
+   "icon": "items/PC_A_EQ_SailorSuit_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SailorSuit_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Sakura_HairAcc01_01",
+   "name": "[큐티 사쿠라] 머리핀",
+   "icon": "items/PC_A_EQ_Sakura_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Sakura_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SecretHospital_HairAcc01_01",
+   "name": "[비밀 병동] 모자",
+   "icon": "items/PC_A_EQ_SecretHospital_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SecretHospital_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Servant_HairAcc01_01",
+   "name": "[메이드 인 카페] 머리띠",
+   "icon": "items/PC_A_EQ_Servant_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Servant_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Silkhat_HairAcc01",
+   "name": "머리 장식 Silkhat",
+   "icon": null,
+   "file": "items/PC_A_EQ_Silkhat_HairAcc01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SilverTiara_hairAcc01_01",
+   "name": "머리 장식 SilverTiara",
+   "icon": "items/PC_A_EQ_SilverTiara_hairAcc01_01.png",
+   "file": "items/PC_A_EQ_SilverTiara_hairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SimpleSwim_HairAcc01_01",
+   "name": "[핫썸머 수영복] 모자",
+   "icon": "items/PC_A_EQ_SimpleSwim_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SimpleSwim_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SnowEarring_HairAcc02_16",
+   "name": "눈결정 귀걸이",
+   "icon": "items/PC_A_EQ_SnowEarring_HairAcc02_16.png",
+   "file": "items/PC_A_EQ_SnowEarring_HairAcc02_16.glb"
+  },
+  {
+   "id": "PC_A_EQ_SoccerGloutonG_Hairacc01_01",
+   "name": "골든볼 트래핑 그루톤",
+   "icon": "items/PC_A_EQ_SoccerGloutonG_Hairacc01_01.png",
+   "file": "items/PC_A_EQ_SoccerGloutonG_Hairacc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SoccerGloutonN_Hairacc01_01",
+   "name": "볼 트래핑 그루톤",
+   "icon": "items/PC_A_EQ_SoccerGloutonN_Hairacc01_01.png",
+   "file": "items/PC_A_EQ_SoccerGloutonN_Hairacc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SophinaLook_HairAcc01_01",
+   "name": "[스타 리리컬] 헤어 악세서리",
+   "icon": "items/PC_A_EQ_SophinaLook_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SophinaLook_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SparkleSporty_HairAcc01_01",
+   "name": "[스트릿 러너즈] 헤드셋",
+   "icon": "items/PC_A_EQ_SparkleSporty_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SparkleSporty_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Spiral_HairAcc01_01",
+   "name": "[스파이럴 캣츠] 베어 카추샤",
+   "icon": "items/PC_A_EQ_Spiral_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Spiral_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SpringCasual2_HairAcc01_01",
+   "name": "[스프링 피크닉] 머리띠",
+   "icon": "items/PC_A_EQ_SpringCasual2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SpringCasual2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SquirrelEar_HairAcc01_01",
+   "name": "동글동글 다람쥐 머리띠",
+   "icon": "items/PC_A_EQ_SquirrelEar_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SquirrelEar_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SteamPunk_HairAcc01_01",
+   "name": "[스팀펑크 룩] 모자",
+   "icon": "items/PC_A_EQ_SteamPunk_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SteamPunk_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_SummerVacance_HairAcc01_01",
+   "name": "[여름빛 추억] 모자",
+   "icon": "items/PC_A_EQ_SummerVacance_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_SummerVacance_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Swimming2_HairAcc01_01",
+   "name": "[브라이트 선샤인] 선글라스",
+   "icon": "items/PC_A_EQ_Swimming2_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Swimming2_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Swimming3_HairAcc01_01",
+   "name": "바다내음 수영복",
+   "icon": "items/PC_A_EQ_Swimming3_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Swimming3_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Swimming4_HairAcc01_01",
+   "name": "[하얀 모래의 바닷가] 밀짚모자",
+   "icon": "items/PC_A_EQ_Swimming4_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Swimming4_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Swimming5_HairAcc01_01",
+   "name": "[해피 서머 베케이션] 선글라스",
+   "icon": "items/PC_A_EQ_Swimming5_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Swimming5_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Swimming_HairAcc01_01",
+   "name": "[이터널 선샤인] 꽃 장식",
+   "icon": "items/PC_A_EQ_Swimming_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Swimming_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Tenkan_HairAcc01",
+   "name": "머리 장식 Tenkan",
+   "icon": null,
+   "file": "items/PC_A_EQ_Tenkan_HairAcc01.glb"
+  },
+  {
+   "id": "PC_A_EQ_TwinkleSnow_HairAcc01_01",
+   "name": "[겨울 바람] 모자",
+   "icon": "items/PC_A_EQ_TwinkleSnow_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_TwinkleSnow_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_VacuumFollower_HairAcc01_01",
+   "name": "공백의 추종자",
+   "icon": "items/PC_A_EQ_VacuumFollower_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_VacuumFollower_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Vampire_HairAcc01_01",
+   "name": "[창백한 밤의 귀족] 머리 장식",
+   "icon": "items/PC_A_EQ_Vampire_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Vampire_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_WeddingSwimsuit_HairAcc01_01",
+   "name": "[코랄 베일] 꽃 머리띠",
+   "icon": "items/PC_A_EQ_WeddingSwimsuit_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_WeddingSwimsuit_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_WhiteManekiNeko_HairAcc02_16",
+   "name": "머리 장식 WhiteManekiNeko",
+   "icon": "items/PC_A_EQ_WhiteManekiNeko_HairAcc02_16.png",
+   "file": "items/PC_A_EQ_WhiteManekiNeko_HairAcc02_16.glb"
+  },
+  {
+   "id": "PC_A_EQ_Wilt01_HairAcc01_01",
+   "name": "머리 장식 Wilt01",
+   "icon": null,
+   "file": "items/PC_A_EQ_Wilt01_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Winghat_HairAcc01_01",
+   "name": "노란 날개모자",
+   "icon": "items/PC_A_EQ_Winghat_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Winghat_HairAcc01_01.glb"
+  },
+  {
+   "id": "PC_A_EQ_Winter_HairAcc01_01",
+   "name": "[윈터 캐쥬얼] 모자",
+   "icon": "items/PC_A_EQ_Winter_HairAcc01_01.png",
+   "file": "items/PC_A_EQ_Winter_HairAcc01_01.glb"
+  }
+ ],
+ "hat": [
+  {
+   "id": "PC_A_EQ_AnimalPajama_HairCap_02",
+   "name": "[파자마 파티] 모자",
+   "icon": "items/PC_A_EQ_AnimalPajama_HairCap_02.png",
+   "file": "items/PC_A_EQ_AnimalPajama_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Bearhat_HairCap_02",
+   "name": "모자 Bearhat",
+   "icon": "items/PC_A_EQ_Bearhat_HairCap_02.png",
+   "file": "items/PC_A_EQ_Bearhat_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_BigCat_HairCap_02",
+   "name": "[빅 캣] 인형 탈",
+   "icon": "items/PC_A_EQ_BigCat_HairCap_02.png",
+   "file": "items/PC_A_EQ_BigCat_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Bigbunny_HairCap_02",
+   "name": "[빅 바니] 인형 탈",
+   "icon": "items/PC_A_EQ_Bigbunny_HairCap_02.png",
+   "file": "items/PC_A_EQ_Bigbunny_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Chipao_HairCap_02",
+   "name": "[치파오] 헤어",
+   "icon": "items/PC_A_EQ_Chipao_HairCap_02.png",
+   "file": "items/PC_A_EQ_Chipao_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Default2_HairCap_02",
+   "name": "[나아가는 투지의 칼날] 헤어",
+   "icon": "items/PC_A_EQ_Default2_HairCap_02.png",
+   "file": "items/PC_A_EQ_Default2_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Desire_HairCap_02",
+   "name": "[복수의 데자이어 워커] 모자",
+   "icon": "items/PC_A_EQ_Desire_HairCap_02.png",
+   "file": "items/PC_A_EQ_Desire_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_DistrictRaid01_HatMask_31",
+   "name": "모자 DistrictRaid01",
+   "icon": null,
+   "file": "items/PC_A_EQ_DistrictRaid01_HatMask_31.glb"
+  },
+  {
+   "id": "PC_A_EQ_GG01_HairCap_02",
+   "name": "[유노의 천칭] 헤일로",
+   "icon": "items/PC_A_EQ_GG01_HairCap_02.png",
+   "file": "items/PC_A_EQ_GG01_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_GG02_HairCap_02",
+   "name": "백은의 신뢰",
+   "icon": null,
+   "file": "items/PC_A_EQ_GG02_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Halloween2_HairCap_02",
+   "name": "[트릭 오어 트리트] 안면붕대",
+   "icon": "items/PC_A_EQ_Halloween2_HairCap_02.png",
+   "file": "items/PC_A_EQ_Halloween2_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_HotSpring_HairCap_02",
+   "name": "[하얀 증기의 노천온천] 헤어 밴드",
+   "icon": "items/PC_A_EQ_HotSpring_HairCap_02.png",
+   "file": "items/PC_A_EQ_HotSpring_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Idol_HairCap_02",
+   "name": "[아이돌 오브 드림] 헤어",
+   "icon": "items/PC_A_EQ_Idol_HairCap_02.png",
+   "file": "items/PC_A_EQ_Idol_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_LAOBP_HairCap_02",
+   "name": "[라스트오리진] 블라인드 프린세스 월계관",
+   "icon": "items/PC_A_EQ_LAOBP_HairCap_02.png",
+   "file": "items/PC_A_EQ_LAOBP_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_LAOMAY_HairCap_02",
+   "name": "[라스트오리진] 멸망의 메이 머리핀",
+   "icon": "items/PC_A_EQ_LAOMAY_HairCap_02.png",
+   "file": "items/PC_A_EQ_LAOMAY_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Maid_HairCap_02",
+   "name": "[러블리 메이드] 헤어",
+   "icon": "items/PC_A_EQ_Maid_HairCap_02.png",
+   "file": "items/PC_A_EQ_Maid_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Miner_HairCap_02",
+   "name": "[광부복] 안전모",
+   "icon": "items/PC_A_EQ_Miner_HairCap_02.png",
+   "file": "items/PC_A_EQ_Miner_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_RabbitHood_HairCap_02",
+   "name": "[눈꽃의 소원] 후드",
+   "icon": "items/PC_A_EQ_RabbitHood_HairCap_02.png",
+   "file": "items/PC_A_EQ_RabbitHood_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Saint_HairCap_02",
+   "name": "[성스러운 심판] 베일",
+   "icon": "items/PC_A_EQ_Saint_HairCap_02.png",
+   "file": "items/PC_A_EQ_Saint_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_SportClub_HairCap_02",
+   "name": "[땀과 청춘] 모자",
+   "icon": "items/PC_A_EQ_SportClub_HairCap_02.png",
+   "file": "items/PC_A_EQ_SportClub_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_SportyLook2_HairCap_02",
+   "name": "[어나더 스포티 룩] 캡모자",
+   "icon": "items/PC_A_EQ_SportyLook2_HairCap_02.png",
+   "file": "items/PC_A_EQ_SportyLook2_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_SportyLook_HairCap_02",
+   "name": "[스포티 룩] 캡모자",
+   "icon": "items/PC_A_EQ_SportyLook_HairCap_02.png",
+   "file": "items/PC_A_EQ_SportyLook_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_TeneCloth_HairCap_02",
+   "name": "뒤틀린 정의",
+   "icon": "items/PC_A_EQ_TeneCloth_HairCap_02.png",
+   "file": "items/PC_A_EQ_TeneCloth_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Watcher_HatMask_31",
+   "name": "감시자의 눈",
+   "icon": "items/PC_A_EQ_Watcher_HatMask_31.png",
+   "file": "items/PC_A_EQ_Watcher_HatMask_31.glb"
+  },
+  {
+   "id": "PC_A_EQ_Wedding_HairCap_02",
+   "name": "로맨스 앤 프리지아",
+   "icon": "items/PC_A_EQ_Wedding_HairCap_02.png",
+   "file": "items/PC_A_EQ_Wedding_HairCap_02.glb"
+  },
+  {
+   "id": "PC_A_EQ_Yukata_HairCap_02",
+   "name": "[축제의 소녀B] 머리핀",
+   "icon": "items/PC_A_EQ_Yukata_HairCap_02.png",
+   "file": "items/PC_A_EQ_Yukata_HairCap_02.glb"
+  }
+ ],
+ "mask": [
+  {
+   "id": "PC_A_EQ_2ndStellaMask2_HairCapEye_19",
+   "name": "울먹이는 스텔라 인형탈",
+   "icon": "items/PC_A_EQ_2ndStellaMask2_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_2ndStellaMask2_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_2ndStellaMask_HairCapEye_19",
+   "name": "누군가의 인형탈",
+   "icon": "items/PC_A_EQ_2ndStellaMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_2ndStellaMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_AquaMask2_HairCapEye_19",
+   "name": "잉여신 아쿠아 인형탈",
+   "icon": "items/PC_A_EQ_AquaMask2_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_AquaMask2_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_AquaMask_HairCapEye_19",
+   "name": "여신 아쿠아 인형탈",
+   "icon": "items/PC_A_EQ_AquaMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_AquaMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_AruaMask_HairCapEye_19",
+   "name": "아루아 인형탈",
+   "icon": "items/PC_A_EQ_AruaMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_AruaMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_Bridget_HairCapEye_19",
+   "name": "인형탈 Bridget",
+   "icon": null,
+   "file": "items/PC_A_EQ_Bridget_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_ChiiMask_HairCapEye_19",
+   "name": "치이 인형탈",
+   "icon": "items/PC_A_EQ_ChiiMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_ChiiMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_ChloeMask_HairCapEye_19",
+   "name": "클로이 인형탈",
+   "icon": "items/PC_A_EQ_ChloeMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_ChloeMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_DarkArbiter_HairCapEye_19",
+   "name": "다크 아비터 헤드기어",
+   "icon": "items/PC_A_EQ_DarkArbiter_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_DarkArbiter_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_DarknessMask2_HairCapEye_19",
+   "name": "부끄러운 다크니스 인형탈",
+   "icon": "items/PC_A_EQ_DarknessMask2_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_DarknessMask2_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_DarknessMask_HairCapEye_19",
+   "name": "여기사 다크니스 인형탈",
+   "icon": "items/PC_A_EQ_DarknessMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_DarknessMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_DhanaMask_HairCapEye_19",
+   "name": "다나 인형탈",
+   "icon": "items/PC_A_EQ_DhanaMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_DhanaMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_EphneMask_HairCapEye_19",
+   "name": "에프넬 인형탈",
+   "icon": "items/PC_A_EQ_EphneMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_EphneMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_ErwinMask_HairCapEye_19",
+   "name": "어윈 인형탈",
+   "icon": "items/PC_A_EQ_ErwinMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_ErwinMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_Faust_HairCapEye_19",
+   "name": "파우스트 인형탈",
+   "icon": "items/PC_A_EQ_Faust_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_Faust_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_GlutonMask_HairCapEye_19",
+   "name": "그루톤 인형탈",
+   "icon": "items/PC_A_EQ_GlutonMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_GlutonMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_GoldArbiter_HairCapEye_19",
+   "name": "골든 아비터 헤드기어",
+   "icon": "items/PC_A_EQ_GoldArbiter_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_GoldArbiter_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_HaruMask_HairCapEye_19",
+   "name": "하루 인형탈",
+   "icon": "items/PC_A_EQ_HaruMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_HaruMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_Helmet_HairCapEye_19",
+   "name": "바이크 헬멧",
+   "icon": "items/PC_A_EQ_Helmet_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_Helmet_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_HennyMask_HairCapEye_19",
+   "name": "헨리 인형탈",
+   "icon": "items/PC_A_EQ_HennyMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_HennyMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_IrisMask_HairCapEye_19",
+   "name": "이리스 인형탈",
+   "icon": "items/PC_A_EQ_IrisMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_IrisMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_JackOMask_HairCapEye_19",
+   "name": "인형탈 JackOMask",
+   "icon": null,
+   "file": "items/PC_A_EQ_JackOMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_JinMask_HairCapEye_19",
+   "name": "진 인형탈",
+   "icon": "items/PC_A_EQ_JinMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_JinMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_KY_HairCapEye_19",
+   "name": "카이 인형탈",
+   "icon": "items/PC_A_EQ_KY_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_KY_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_KazumaMask2_HairCapEye_19",
+   "name": "조롱하는 카즈마 인형탈",
+   "icon": "items/PC_A_EQ_KazumaMask2_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_KazumaMask2_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_KazumaMask_HairCapEye_19",
+   "name": "모험가 카즈마 인형탈",
+   "icon": "items/PC_A_EQ_KazumaMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_KazumaMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_LilyMask_HairCapEye_19",
+   "name": "릴리 인형탈",
+   "icon": "items/PC_A_EQ_LilyMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_LilyMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_May_HairCapEye_19",
+   "name": "메이 인형탈",
+   "icon": "items/PC_A_EQ_May_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_May_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_MeguminMask2_HairCapEye_19",
+   "name": "수줍은 메구밍 인형탈",
+   "icon": "items/PC_A_EQ_MeguminMask2_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_MeguminMask2_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_MeguminMask_HairCapEye_19",
+   "name": "폭렬★마법 메구밍 인형탈",
+   "icon": "items/PC_A_EQ_MeguminMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_MeguminMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_Millia_HairCapEye_19",
+   "name": "밀리아 인형탈",
+   "icon": "items/PC_A_EQ_Millia_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_Millia_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_NabiMask_HairCapEye_19",
+   "name": "나비 인형탈",
+   "icon": "items/PC_A_EQ_NabiMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_NabiMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_PlatinumArbiter_HairCapEye_19",
+   "name": "플래티넘 아비터 헤드기어",
+   "icon": "items/PC_A_EQ_PlatinumArbiter_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_PlatinumArbiter_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_Potemkin_HairCapEye_19",
+   "name": "포템킨 인형탈",
+   "icon": "items/PC_A_EQ_Potemkin_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_Potemkin_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_Ramlethal_HairCapEye_19",
+   "name": "렘리썰 인형탈",
+   "icon": "items/PC_A_EQ_Ramlethal_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_Ramlethal_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_ReaperMask_HairCapEye_19",
+   "name": "인형탈 ReaperMask",
+   "icon": null,
+   "file": "items/PC_A_EQ_ReaperMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_SleepyChloeMask_HairCapEye_19",
+   "name": "졸고 있는 클로이 인형탈",
+   "icon": "items/PC_A_EQ_SleepyChloeMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_SleepyChloeMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_SophinaMask_HairCapEye_19",
+   "name": "소피나 인형탈",
+   "icon": "items/PC_A_EQ_SophinaMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_SophinaMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_StellaMask_HairCapEye_19",
+   "name": "스텔라 인형탈",
+   "icon": "items/PC_A_EQ_StellaMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_StellaMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_YorhakaMask_HairCapEye_19",
+   "name": "요르하카 인형탈",
+   "icon": "items/PC_A_EQ_YorhakaMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_YorhakaMask_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_YunyunMask2_HairCapEye_19",
+   "name": "울먹이는 융융 인형탈",
+   "icon": "items/PC_A_EQ_YunyunMask2_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_YunyunMask2_HairCapEye_19.glb"
+  },
+  {
+   "id": "PC_A_EQ_YunyunMask_HairCapEye_19",
+   "name": "정상인 융융 인형탈",
+   "icon": "items/PC_A_EQ_YunyunMask_HairCapEye_19.png",
+   "file": "items/PC_A_EQ_YunyunMask_HairCapEye_19.glb"
+  }
+ ],
+ "mouth": [
+  {
+   "id": "PC_A_EQ_Angel_MouthACC_04",
+   "name": "낙원의 구도자",
+   "icon": "items/PC_A_EQ_Angel_MouthACC_04.png",
+   "file": "items/PC_A_EQ_Angel_MouthACC_04.glb"
+  },
+  {
+   "id": "PC_A_EQ_Assassin_MouthAcc_04",
+   "name": "[섀도우 위스퍼] 마스크",
+   "icon": "items/PC_A_EQ_Assassin_MouthAcc_04.png",
+   "file": "items/PC_A_EQ_Assassin_MouthAcc_04.glb"
+  },
+  {
+   "id": "PC_A_EQ_BlackBeltChocker_MouthAcc_04",
+   "name": "블랙 밸트 쵸커",
+   "icon": "items/PC_A_EQ_BlackBeltChocker_MouthAcc_04.png",
+   "file": "items/PC_A_EQ_BlackBeltChocker_MouthAcc_04.glb"
+  },
+  {
+   "id": "PC_A_EQ_BlackBeltChocker_MouthAcc_04_1",
+   "name": "입 장식 BlackBeltChocker",
+   "icon": null,
+   "file": "items/PC_A_EQ_BlackBeltChocker_MouthAcc_04_1.glb"
+  },
+  {
+   "id": "PC_A_EQ_FakeNipples_MouthAcc_04",
+   "name": "공갈 젖꼭지",
+   "icon": "items/PC_A_EQ_FakeNipples_MouthAcc_04.png",
+   "file": "items/PC_A_EQ_FakeNipples_MouthAcc_04.glb"
+  },
+  {
+   "id": "PC_A_EQ_FineGraffiti_MouthAcc_04",
+   "name": "[파인 그래피티] 방독면",
+   "icon": "items/PC_A_EQ_FineGraffiti_MouthAcc_04.png",
+   "file": "items/PC_A_EQ_FineGraffiti_MouthAcc_04.glb"
+  },
+  {
+   "id": "PC_A_EQ_GoldBell_MouthAcc_04",
+   "name": "골드 벨 쵸커",
+   "icon": "items/PC_A_EQ_GoldBell_MouthAcc_04.png",
+   "file": "items/PC_A_EQ_GoldBell_MouthAcc_04.glb"
+  },
+  {
+   "id": "PC_A_EQ_MilkCowOutfit_MouthAcc_04",
+   "name": "[밀크 카우 아웃핏] 쵸커",
+   "icon": "items/PC_A_EQ_MilkCowOutfit_MouthAcc_04.png",
+   "file": "items/PC_A_EQ_MilkCowOutfit_MouthAcc_04.glb"
+  },
+  {
+   "id": "PC_A_EQ_Miner_MouthAcc_04",
+   "name": "[광부복] 방진 마스크",
+   "icon": "items/PC_A_EQ_Miner_MouthAcc_04.png",
+   "file": "items/PC_A_EQ_Miner_MouthAcc_04.glb"
+  },
+  {
+   "id": "PC_A_EQ_NCmercenary_MouthAcc_04",
+   "name": "[네드 컴퍼니 용병복] 마스크",
+   "icon": "items/PC_A_EQ_NCmercenary_MouthAcc_04.png",
+   "file": "items/PC_A_EQ_NCmercenary_MouthAcc_04.glb"
+  },
+  {
+   "id": "PC_A_EQ_RapidFlameVeil_MouthAcc_04",
+   "name": "입 장식 RapidFlameVeil",
+   "icon": null,
+   "file": "items/PC_A_EQ_RapidFlameVeil_MouthAcc_04.glb"
+  },
+  {
+   "id": "PC_A_EQ_RedVelvetChocker_MouthAcc_04",
+   "name": "레드 밸벳 쵸커",
+   "icon": "items/PC_A_EQ_RedVelvetChocker_MouthAcc_04.png",
+   "file": "items/PC_A_EQ_RedVelvetChocker_MouthAcc_04.glb"
+  },
+  {
+   "id": "PC_A_EQ_SilverBell_MouthAcc_04",
+   "name": "실버 벨 쵸커",
+   "icon": "items/PC_A_EQ_SilverBell_MouthAcc_04.png",
+   "file": "items/PC_A_EQ_SilverBell_MouthAcc_04.glb"
+  },
+  {
+   "id": "PC_A_EQ_SilverRingChocker_MouthAcc_04",
+   "name": "실버 링 쵸커",
+   "icon": "items/PC_A_EQ_SilverRingChocker_MouthAcc_04.png",
+   "file": "items/PC_A_EQ_SilverRingChocker_MouthAcc_04.glb"
+  },
+  {
+   "id": "PC_A_EQ_SpringCody_MouthAcc_04",
+   "name": "[미니멀 스프링 코디] 쵸커",
+   "icon": "items/PC_A_EQ_SpringCody_MouthAcc_04.png",
+   "file": "items/PC_A_EQ_SpringCody_MouthAcc_04.glb"
+  },
+  {
+   "id": "PC_A_EQ_Swimming5_MouthAcc_04",
+   "name": "해피 서머 베케이션",
+   "icon": null,
+   "file": "items/PC_A_EQ_Swimming5_MouthAcc_04.glb"
+  }
+ ],
+ "tail": [
+  {
+   "id": "PC_A_EQ_AchieveItem2_Tail_13",
+   "name": "메디 박스 힙색",
+   "icon": "items/PC_A_EQ_AchieveItem2_Tail_13.png",
+   "file": "items/PC_A_EQ_AchieveItem2_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveRF2_Tail_13",
+   "name": "트리샤의 해킹 모듈",
+   "icon": "items/PC_A_EQ_AchieveRF2_Tail_13.png",
+   "file": "items/PC_A_EQ_AchieveRF2_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveRepair1_Tail_13",
+   "name": "나노 키트 힙색",
+   "icon": "items/PC_A_EQ_AchieveRepair1_Tail_13.png",
+   "file": "items/PC_A_EQ_AchieveRepair1_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_AchieveTime1_Tail_13",
+   "name": "모래시계 힙색",
+   "icon": "items/PC_A_EQ_AchieveTime1_Tail_13.png",
+   "file": "items/PC_A_EQ_AchieveTime1_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_AnimalPajama_Tail_13",
+   "name": "[파자마 파티] 꼬리",
+   "icon": "items/PC_A_EQ_AnimalPajama_Tail_13.png",
+   "file": "items/PC_A_EQ_AnimalPajama_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_AprilFools_Tail_13",
+   "name": "[에이프릴 판타지] 메이스",
+   "icon": "items/PC_A_EQ_AprilFools_Tail_13.png",
+   "file": "items/PC_A_EQ_AprilFools_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_BigCat_Tail_13",
+   "name": "[빅 캣] 꼬리",
+   "icon": "items/PC_A_EQ_BigCat_Tail_13.png",
+   "file": "items/PC_A_EQ_BigCat_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_EnemyFesta2_Tail_13",
+   "name": "[포리너 콰르텟] 장식용 검",
+   "icon": "items/PC_A_EQ_EnemyFesta2_Tail_13.png",
+   "file": "items/PC_A_EQ_EnemyFesta2_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_Fenrir_Tail_13",
+   "name": "라스트오리진",
+   "icon": "items/PC_A_EQ_Fenrir_Tail_13.png",
+   "file": "items/PC_A_EQ_Fenrir_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_GG02_Tail_13",
+   "name": "[백은의 신뢰] 소드 벨트",
+   "icon": "items/PC_A_EQ_GG02_Tail_13.png",
+   "file": "items/PC_A_EQ_GG02_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_Glouton_Tail_13",
+   "name": "[그루그루 그루톤] 꼬리",
+   "icon": "items/PC_A_EQ_Glouton_Tail_13.png",
+   "file": "items/PC_A_EQ_Glouton_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_Maidswimsuits_Tail_13",
+   "name": "[스위트 서머 메이드] 리본",
+   "icon": "items/PC_A_EQ_Maidswimsuits_Tail_13.png",
+   "file": "items/PC_A_EQ_Maidswimsuits_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_MilkCowOutfit_Tail_13",
+   "name": "[밀크 카우 아웃핏] 꼬리",
+   "icon": "items/PC_A_EQ_MilkCowOutfit_Tail_13.png",
+   "file": "items/PC_A_EQ_MilkCowOutfit_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_Miner_Tail_13",
+   "name": "[광부복] 힙색",
+   "icon": "items/PC_A_EQ_Miner_Tail_13.png",
+   "file": "items/PC_A_EQ_Miner_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_NCmercenary_Tail_13",
+   "name": "[네드 컴퍼니 용병복] 무전기가방",
+   "icon": "items/PC_A_EQ_NCmercenary_Tail_13.png",
+   "file": "items/PC_A_EQ_NCmercenary_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_Nightmare_Tail_13",
+   "name": "[서큐버스 인 나이트메어] 꼬리",
+   "icon": "items/PC_A_EQ_Nightmare_Tail_13.png",
+   "file": "items/PC_A_EQ_Nightmare_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalHip1_Tail_13",
+   "name": "갈색 가죽 힙색",
+   "icon": "items/PC_A_EQ_NormalHip1_Tail_13.png",
+   "file": "items/PC_A_EQ_NormalHip1_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalHip2_Tail_13",
+   "name": "원통형 힙색",
+   "icon": "items/PC_A_EQ_NormalHip2_Tail_13.png",
+   "file": "items/PC_A_EQ_NormalHip2_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalHip3_Tail_13",
+   "name": "음료수 캔",
+   "icon": "items/PC_A_EQ_NormalHip3_Tail_13.png",
+   "file": "items/PC_A_EQ_NormalHip3_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalHip4_Tail_13",
+   "name": "종이 뭉치",
+   "icon": "items/PC_A_EQ_NormalHip4_Tail_13.png",
+   "file": "items/PC_A_EQ_NormalHip4_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_NormalHip5_Tail_13",
+   "name": "니트 힙색",
+   "icon": "items/PC_A_EQ_NormalHip5_Tail_13.png",
+   "file": "items/PC_A_EQ_NormalHip5_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_SophinaLook_Tail_13",
+   "name": "[스타 리리컬] 꼬리",
+   "icon": "items/PC_A_EQ_SophinaLook_Tail_13.png",
+   "file": "items/PC_A_EQ_SophinaLook_Tail_13.glb"
+  },
+  {
+   "id": "PC_A_EQ_SquirrelTail_Tail_13",
+   "name": "동글동글 다람쥐 꼬리",
+   "icon": "items/PC_A_EQ_SquirrelTail_Tail_13.png",
+   "file": "items/PC_A_EQ_SquirrelTail_Tail_13.glb"
+  }
+ ]
+}

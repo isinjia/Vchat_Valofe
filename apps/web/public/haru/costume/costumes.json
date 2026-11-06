@@ -1,0 +1,700 @@
+{
+ "Pirate": {
+  "file": "Pirate.glb",
+  "name": "바다의 로망",
+  "icon": "Pirate.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "LovelyDate": {
+  "file": "LovelyDate.glb",
+  "name": "러블리 데이트 룩",
+  "icon": "LovelyDate.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "BlackSuit": {
+  "file": "BlackSuit.glb",
+  "name": "인텔리블랙 정장",
+  "icon": "BlackSuit.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "Assassin": {
+  "file": "Assassin.glb",
+  "name": "섀도우 위스퍼",
+  "icon": "Assassin.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "Basic1": {
+  "file": "Basic1.glb",
+  "name": "하루의 교복 A",
+  "icon": "Basic1.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "Basic2": {
+  "file": "Basic2.glb",
+  "name": "하루의 교복 B",
+  "icon": "Basic2.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "Basic3": {
+  "file": "Basic3.glb",
+  "name": "하루의 교복 C",
+  "icon": "Basic3.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "Basic4": {
+  "file": "Basic4.glb",
+  "name": "하루의 교복 D",
+  "icon": "Basic4.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "BigCat": {
+  "file": "BigCat.glb",
+  "name": "빅 캣",
+  "icon": "BigCat.png",
+  "slots": [
+   "suit",
+   "tail"
+  ]
+ },
+ "Bigbunny": {
+  "file": "Bigbunny.glb",
+  "name": "빅 바니",
+  "icon": "Bigbunny.png",
+  "slots": [
+   "suit"
+  ]
+ },
+ "BlissfulWinter": {
+  "file": "BlissfulWinter.glb",
+  "name": "조이풀 윈터 스키웨어",
+  "icon": "BlissfulWinter.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "BlissfulWinterB": {
+  "file": "BlissfulWinterB.glb",
+  "name": "조이풀 윈터 스키웨어 (다른 색)",
+  "icon": "BlissfulWinterB.png",
+  "slots": [
+   "top"
+  ]
+ },
+ "Bloomer": {
+  "file": "Bloomer.glb",
+  "name": "봄의 운동회",
+  "icon": "Bloomer.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "BlueJeanCasual": {
+  "file": "BlueJeanCasual.glb",
+  "name": "스프링 데일리 룩",
+  "icon": "BlueJeanCasual.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "Christmas2": {
+  "file": "Christmas2.glb",
+  "name": "러블리 크리스마스",
+  "icon": "Christmas2.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "DarkArbiter": {
+  "file": "DarkArbiter.glb",
+  "name": "다크 아비터",
+  "icon": "DarkArbiter.png",
+  "slots": [
+   "suit"
+  ]
+ },
+ "DealerUnion": {
+  "file": "DealerUnion.glb",
+  "name": "상인연합 유니폼",
+  "icon": "DealerUnion.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "Gatcha1": {
+  "file": "Gatcha1.glb",
+  "name": "뽑기 의상 1",
+  "icon": "Gatcha1.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "Gatcha2": {
+  "file": "Gatcha2.glb",
+  "name": "뽑기 의상 2",
+  "icon": "Gatcha2.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "GoldArbiter": {
+  "file": "GoldArbiter.glb",
+  "name": "골드 아비터",
+  "icon": "GoldArbiter.png",
+  "slots": [
+   "suit"
+  ]
+ },
+ "Hood": {
+  "file": "Hood.glb",
+  "name": "아이코닉 후드",
+  "icon": "Hood.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "Knight": {
+  "file": "Knight.glb",
+  "name": "은빛의 기사단",
+  "icon": null,
+  "slots": [
+   "gloves",
+   "suit"
+  ]
+ },
+ "LuxuryUniform": {
+  "file": "LuxuryUniform.glb",
+  "name": "엘리트 사립 교복",
+  "icon": "LuxuryUniform.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "Maidswimsuits": {
+  "file": "Maidswimsuits.glb",
+  "name": "메이드 수영복",
+  "icon": null,
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "tail",
+   "top"
+  ]
+ },
+ "Marine": {
+  "file": "Marine.glb",
+  "name": "마린 걸",
+  "icon": "Marine.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "MilkCowOutfit": {
+  "file": "MilkCowOutfit.glb",
+  "name": "밀크 카우 아웃핏",
+  "icon": "MilkCowOutfit.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "tail",
+   "top"
+  ]
+ },
+ "ModernCasual": {
+  "file": "ModernCasual.glb",
+  "name": "모던 캐쥬얼",
+  "icon": "ModernCasual.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "ModernCasual2": {
+  "file": "ModernCasual2.glb",
+  "name": "모던 캐쥬얼 2",
+  "icon": null,
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "NCImprove": {
+  "file": "NCImprove.glb",
+  "name": "네드 개량 군복",
+  "icon": "NCImprove.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "NormalTop1": {
+  "file": "NormalTop1.glb",
+  "name": "기본 상의 1",
+  "icon": "NormalTop1.png",
+  "slots": [
+   "top"
+  ]
+ },
+ "NormalTop2": {
+  "file": "NormalTop2.glb",
+  "name": "기본 상의 2",
+  "icon": "NormalTop2.png",
+  "slots": [
+   "top"
+  ]
+ },
+ "NormalTop3": {
+  "file": "NormalTop3.glb",
+  "name": "기본 상의 3",
+  "icon": "NormalTop3.png",
+  "slots": [
+   "top"
+  ]
+ },
+ "PlatinumArbiter": {
+  "file": "PlatinumArbiter.glb",
+  "name": "플래티넘 아비터",
+  "icon": "PlatinumArbiter.png",
+  "slots": [
+   "suit"
+  ]
+ },
+ "RapidFlame": {
+  "file": "RapidFlame.glb",
+  "name": "붉은 나비의 춤사위",
+  "icon": "RapidFlame.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "Redband": {
+  "file": "Redband.glb",
+  "name": "붉은 악단",
+  "icon": "Redband.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "Repair1": {
+  "file": "Repair1.glb",
+  "name": "수선된 하루의 교복 A",
+  "icon": "Repair1.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "Repair2": {
+  "file": "Repair2.glb",
+  "name": "수선된 하루의 교복 B",
+  "icon": "Repair2.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "Repair3": {
+  "file": "Repair3.glb",
+  "name": "수선된 하루의 교복 C",
+  "icon": "Repair3.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "Repair4": {
+  "file": "Repair4.glb",
+  "name": "수선된 하루의 교복 D",
+  "icon": "Repair4.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "RetroSchool": {
+  "file": "RetroSchool.glb",
+  "name": "레트로 스쿨룩",
+  "icon": "RetroSchool.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "Rider": {
+  "file": "Rider.glb",
+  "name": "라이더",
+  "icon": "Rider.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "Rider2": {
+  "file": "Rider2.glb",
+  "name": "라이더 2",
+  "icon": "Rider2.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "RuinReward": {
+  "file": "RuinReward.glb",
+  "name": "폐허 보상 의상",
+  "icon": "RuinReward.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "SFoldtype": {
+  "file": "SFoldtype.glb",
+  "name": "별숲리그 구식 군복",
+  "icon": "SFoldtype.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "SFregular": {
+  "file": "SFregular.glb",
+  "name": "별숲리그 정규군복",
+  "icon": "SFregular.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "Shirt": {
+  "file": "Shirt.glb",
+  "name": "셔츠",
+  "icon": null,
+  "slots": [
+   "top"
+  ]
+ },
+ "SparkleSporty": {
+  "file": "SparkleSporty.glb",
+  "name": "스트릿 러너즈",
+  "icon": "SparkleSporty.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "SportClub": {
+  "file": "SportClub.glb",
+  "name": "땀과 청춘",
+  "icon": "SportClub.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "Sportswear": {
+  "file": "Sportswear.glb",
+  "name": "스포티 앤 캐쥬얼",
+  "icon": "Sportswear.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "SportyLook": {
+  "file": "SportyLook.glb",
+  "name": "스포티 룩",
+  "icon": "SportyLook.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "SportyLook2": {
+  "file": "SportyLook2.glb",
+  "name": "어나더 스포티 룩",
+  "icon": "SportyLook2.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "Spring": {
+  "file": "Spring.glb",
+  "name": "캐쥬얼 화이트 교복",
+  "icon": "Spring.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "Spring2": {
+  "file": "Spring2.glb",
+  "name": "스프링 룩 2",
+  "icon": null,
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "SpringCasual1": {
+  "file": "SpringCasual1.glb",
+  "name": "뷰티풀 홀리데이",
+  "icon": "SpringCasual1.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "SpringCasual3": {
+  "file": "SpringCasual3.glb",
+  "name": "뷰티풀 홀리데이 어나더",
+  "icon": "SpringCasual3.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "SpringCody": {
+  "file": "SpringCody.glb",
+  "name": "미니멀 스프링 코디",
+  "icon": null,
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "SpringUniform": {
+  "file": "SpringUniform.glb",
+  "name": "별숲 춘추 교복",
+  "icon": "SpringUniform.png",
+  "slots": [
+   "bottom",
+   "shoes",
+   "top"
+  ]
+ },
+ "SummerCasual": {
+  "file": "SummerCasual.glb",
+  "name": "서머 데일리 룩",
+  "icon": "SummerCasual.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "SunnydaySwim": {
+  "file": "SunnydaySwim.glb",
+  "name": "써니데이 바캉스",
+  "icon": "SunnydaySwim.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "SunnydaySwimB": {
+  "file": "SunnydaySwimB.glb",
+  "name": "써니데이 바캉스 (다른 색)",
+  "icon": "SunnydaySwimB.png",
+  "slots": [
+   "top"
+  ]
+ },
+ "Sweater": {
+  "file": "Sweater.glb",
+  "name": "스웨터",
+  "icon": null,
+  "slots": [
+   "top"
+  ]
+ },
+ "Swimming3": {
+  "file": "Swimming3.glb",
+  "name": "바다내음 수영복",
+  "icon": "Swimming3.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "Swimming4": {
+  "file": "Swimming4.glb",
+  "name": "하얀 모래의 바닷가",
+  "icon": "Swimming4.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "TwinkleSnow": {
+  "file": "TwinkleSnow.glb",
+  "name": "겨울 바람",
+  "icon": "TwinkleSnow.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "UserT1": {
+  "file": "UserT1.glb",
+  "name": "티셔츠 1",
+  "icon": null,
+  "slots": [
+   "top"
+  ]
+ },
+ "UserT2": {
+  "file": "UserT2.glb",
+  "name": "티셔츠 2",
+  "icon": null,
+  "slots": [
+   "top"
+  ]
+ },
+ "VacuumFollower": {
+  "file": "VacuumFollower.glb",
+  "name": "공백의 추종자",
+  "icon": "VacuumFollower.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "WeddingSwimsuit": {
+  "file": "WeddingSwimsuit.glb",
+  "name": "코랄 베일",
+  "icon": "WeddingSwimsuit.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "ZippHood": {
+  "file": "ZippHood.glb",
+  "name": "지퍼 후드",
+  "icon": "ZippHood.png",
+  "slots": [
+   "bottom",
+   "gloves",
+   "shoes",
+   "top"
+  ]
+ },
+ "jacket": {
+  "file": "jacket.glb",
+  "name": "재킷",
+  "icon": null,
+  "slots": [
+   "top"
+  ]
+ }
+}

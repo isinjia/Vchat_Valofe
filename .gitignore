@@ -21,3 +21,7 @@ apps/*/tsconfig.tsbuildinfo
 services/.worker-token
 # 스테이지 백업 산출물
 deploy/backup/out/
+
+# 파이썬 캐시, 로컬 클로드 설정
+__pycache__/
+.claude/

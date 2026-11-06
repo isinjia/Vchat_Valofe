@@ -1,0 +1,93 @@
+{
+ "laugh": [
+  "laugh_1.mp3",
+  "laugh_2.mp3",
+  "laugh_3.mp3",
+  "laugh_4.mp3"
+ ],
+ "giggle": [
+  "giggle_1.mp3",
+  "giggle_2.mp3",
+  "giggle_3.mp3",
+  "giggle_4.mp3",
+  "giggle_5.mp3",
+  "giggle_6.mp3",
+  "giggle_7.mp3",
+  "giggle_8.mp3",
+  "giggle_9.mp3",
+  "giggle_10.mp3",
+  "giggle_11.mp3",
+  "giggle_12.mp3",
+  "giggle_13.mp3",
+  "giggle_14.mp3",
+  "giggle_15.mp3",
+  "giggle_16.mp3"
+ ],
+ "shyLaugh": [
+  "shyLaugh_1.mp3",
+  "shyLaugh_2.mp3",
+  "shyLaugh_3.mp3"
+ ],
+ "sigh": [
+  "sigh_1.mp3",
+  "sigh_2.mp3",
+  "sigh_3.mp3",
+  "sigh_4.mp3",
+  "sigh_5.mp3",
+  "sigh_6.mp3",
+  "sigh_7.mp3"
+ ],
+ "hmm": [
+  "hmm_1.mp3",
+  "hmm_2.mp3",
+  "hmm_3.mp3",
+  "hmm_4.mp3",
+  "hmm_5.mp3",
+  "hmm_6.mp3",
+  "hmm_7.mp3",
+  "hmm_8.mp3",
+  "hmm_9.mp3",
+  "hmm_10.mp3",
+  "hmm_11.mp3",
+  "hmm_12.mp3",
+  "hmm_13.mp3",
+  "hmm_14.mp3",
+  "hmm_15.mp3"
+ ],
+ "hum": [
+  "hum_1.mp3",
+  "hum_2.mp3",
+  "hum_3.mp3",
+  "hum_4.mp3"
+ ],
+ "surprise": [
+  "surprise_1.mp3",
+  "surprise_2.mp3",
+  "surprise_3.mp3",
+  "surprise_4.mp3",
+  "surprise_5.mp3",
+  "surprise_6.mp3"
+ ],
+ "huff": [
+  "huff_1.mp3",
+  "huff_2.mp3",
+  "huff_3.mp3"
+ ],
+ "sob": [
+  "sob_1.mp3",
+  "sob_2.mp3"
+ ],
+ "cheer": [
+  "cheer_1.mp3",
+  "cheer_2.mp3"
+ ],
+ "wow": [
+  "wow_1.mp3",
+  "wow_2.mp3",
+  "wow_3.mp3"
+ ],
+ "effort": [
+  "effort_1.mp3",
+  "effort_2.mp3"
+ ]
+}

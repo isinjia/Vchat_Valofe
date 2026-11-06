@@ -81,12 +81,62 @@ async function verify(value: string | undefined): Promise<SessionPayload | null>
   }
 }
 
+/**
+ * 개발 전용 자동 로그인 — .env 의 DEV_AUTO_LOGIN_UID 에 users.id 를 넣으면
+ * 세션 없는 요청에 그 계정의 system_admin 세션을 자동 발급한다 (vfun 로그인 생략).
+ * production 빌드(next start)에서는 값이 있어도 무시되므로 스테이지/라이브에는 영향이 없다.
+ */
+const DEV_AUTO_LOGIN_UID = (() => {
+  if (process.env.NODE_ENV === "production") return 0;
+  const n = Number(process.env.DEV_AUTO_LOGIN_UID || 0);
+  return Number.isInteger(n) && n > 0 ? n : 0;
+})();
+
+async function createDevSession(uid: number): Promise<string> {
+  const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 12;
+  const json = JSON.stringify({ uid, role: "system_admin", exp });
+  const bytes = new TextEncoder().encode(json);
+  const payload = bytesToB64url(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(process.env.SESSION_SECRET || "dev-secret-change-me"),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  return `${payload}.${bytesToB64url(mac)}`;
+}
+
 export async function middleware(req: NextRequest, event: NextFetchEvent) {
   const { pathname } = req.nextUrl;
+  if (DEV_AUTO_LOGIN_UID && pathname === "/login") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
   if (PUBLIC.some((re) => re.test(pathname))) return NextResponse.next();
 
-  const session = await verify(req.cookies.get(COOKIE)?.value);
+  let session = await verify(req.cookies.get(COOKIE)?.value);
   const isApi = pathname.startsWith("/api");
+
+  // 개발 자동 로그인: 세션을 발급해 응답 쿠키로 내려주고, 이번 요청의 서버 컴포넌트/API 도 바로 볼 수 있게 요청 헤더에도 넣는다
+  let autoCookie: string | null = null;
+  if (!session && DEV_AUTO_LOGIN_UID) {
+    autoCookie = await createDevSession(DEV_AUTO_LOGIN_UID);
+    session = { uid: DEV_AUTO_LOGIN_UID, role: "system_admin", exp: 0 };
+  }
+  const pass = () => {
+    if (!autoCookie) return NextResponse.next();
+    const headers = new Headers(req.headers);
+    const prev = headers.get("cookie");
+    headers.set("cookie", `${prev ? prev + "; " : ""}${COOKIE}=${autoCookie}`);
+    const res = NextResponse.next({ request: { headers } });
+    res.cookies.set(COOKIE, autoCookie, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 12 });
+    return res;
+  };
+
   if (!session) {
     if (isApi) return NextResponse.json({ error: "login_required" }, { status: 401 });
     const url = req.nextUrl.clone();
@@ -129,7 +179,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     );
   }
 
-  return NextResponse.next();
+  return pass();
 }
 
 export const config = {

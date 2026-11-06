@@ -1131,3 +1131,292 @@ a { color: inherit; text-decoration: none; }
 .story-card-meta { font-size: 12px; color: var(--muted); }
 .story-card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
 .story-card-state { font-size: 11px; color: var(--muted); }
+
+/* ---------- 하루 3D 동반자 (apps/web/app/haru) ---------- */
+/* 홈 상단: 하루 방송 입구 */
+.haru-live-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 18px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(229, 41, 79, 0.18), rgba(229, 41, 79, 0.05));
+  border: 1px solid rgba(229, 41, 79, 0.35);
+  color: var(--text, inherit);
+  text-decoration: none;
+}
+.haru-live-banner:hover { border-color: #e5294f; }
+.haru-live-banner-text { flex: 1; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.haru-live-banner-go { font-size: 13px; font-weight: 700; color: #e5294f; flex-shrink: 0; }
+/* ===== 하루 방송 페이지 (/haru): 왼쪽 방송 화면 + 오른쪽 채팅 ===== */
+.haru-live { display: flex; height: 100dvh; background: #0d0b12; }
+.haru-live-stage {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+.haru-live-chat { width: 440px; flex-shrink: 0; height: 100dvh; border-left: 1px solid var(--border); background: var(--bg); }
+.haru-live-chat .chat-page { max-width: none; height: 100%; }
+/* 방송 채팅에서는 "(졸린 눈을 비비며…)" 같은 행동 묘사 줄을 보이지 않는다 (하루 표정 판단에는 계속 쓰임) */
+.haru-live-chat .narration { display: none; }
+.haru-stream {
+  position: relative;
+  width: min(100%, calc((100dvh - 36px) * 16 / 9));
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #2a2230;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+.haru-stream-canvas { position: absolute; inset: 0; }
+.haru-stream-canvas canvas { width: 100% !important; height: 100% !important; display: block; }
+.haru-stream-overlay {
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.haru-live-badge {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: #e5294f;
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+.haru-stream-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 6px;
+  padding: 3px 9px;
+}
+.haru-stream-status {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 13px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 10px;
+  padding: 8px 14px;
+  max-width: 80%;
+  text-align: center;
+}
+/* 방송 화면 시점 조작 안내 (마우스를 올렸을 때만) */
+.haru-cam-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 8px;
+  padding: 4px 10px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.haru-stream:hover .haru-cam-hint { opacity: 0.9; }
+/* 하루 목소리 켜고 끄기 */
+.haru-voice-toggle {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  border: 0;
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.haru-voice-toggle[aria-pressed="false"] { opacity: 0.6; }
+/* 동작 확인 버튼 (개발 모드) */
+.haru-preview {
+  position: absolute;
+  left: 10px;
+  top: 44px;
+  bottom: 10px;
+  width: 118px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 10px;
+  background: rgba(20, 16, 24, 0.55);
+  z-index: 5;
+}
+.haru-preview button.haru-preview-head {
+  background: none;
+  padding: 2px;
+  text-align: left;
+}
+.haru-preview button.haru-preview-close {
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffe9a8;
+  text-align: center;
+}
+.haru-preview-tab {
+  position: absolute;
+  top: 44px;
+  z-index: 5;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(20, 16, 24, 0.55);
+  border: 0;
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.haru-preview-tab-left { left: 10px; }
+.haru-preview-tab-right { right: 10px; }
+.haru-preview-head {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffd54a;
+  margin: 4px 2px 1px;
+}
+.haru-preview button {
+  font-size: 12px;
+  color: #fff;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.haru-preview button:hover { background: rgba(255, 255, 255, 0.28); }
+/* 코스튬 고르기 (오른쪽 아래) */
+.haru-costume-btn {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 6;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(20, 16, 24, 0.6);
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.haru-costume-btn:hover { background: rgba(60, 44, 70, 0.75); }
+.haru-costume-panel {
+  position: absolute;
+  right: 10px;
+  bottom: 44px;
+  z-index: 6;
+  width: min(380px, 70%);
+  max-height: 72%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(20, 16, 24, 0.85);
+}
+.haru-look-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.haru-costume-panel .haru-look-tabs button {
+  flex-direction: row;
+  padding: 3px 7px;
+  border-radius: 6px;
+}
+.haru-look-grid {
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+.haru-look-colors {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.haru-look-colors > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.haru-look-colors-head {
+  width: 100%;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffd54a;
+}
+.haru-costume-panel .haru-look-colors button {
+  flex-direction: row;
+  padding: 4px 8px;
+  color: #111;
+  background: #ddd;
+  text-shadow: 0 0 2px #fff;
+}
+.haru-costume-panel button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  line-height: 1.2;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 5px 3px;
+  cursor: pointer;
+}
+.haru-costume-panel button:hover { background: rgba(255, 255, 255, 0.18); }
+.haru-costume-panel button.on { border-color: #ffd54a; }
+.haru-costume-panel img,
+.haru-costume-noicon {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+.haru-preview-note {
+  font-size: 10px;
+  color: #ffe9a8;
+  word-break: break-all;
+  margin: 2px;
+}
+.haru-preview-right {
+  left: auto;
+  right: 10px;
+  top: 44px;
+  bottom: auto;
+  max-height: calc(100% - 96px); /* 아래 코스튬 버튼과 겹치지 않게 */
+}
+@media (max-width: 1000px) {
+  /* 좁은 화면: 위 방송 화면, 아래 채팅 */
+  .haru-live { flex-direction: column; }
+  .haru-live-stage { flex: none; padding: 0; }
+  .haru-stream { width: 100%; border-radius: 0; box-shadow: none; }
+  .haru-live-chat { width: 100%; flex: 1; min-height: 0; height: auto; border-left: none; }
+}

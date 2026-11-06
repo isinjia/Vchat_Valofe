@@ -44,6 +44,12 @@ interface LikeProps {
   onToggle: () => void;
 }
 
+/** 3D 방송 화면이 따로 있는 캐릭터 → 카드도 그 화면으로 보낸다 (소울워커 하루 에스티아 → /haru) */
+function chatHref(c: CharItem): string {
+  if (c.name === "하루 에스티아" && c.world_name === "소울워커") return "/haru";
+  return `/chat/${c.id}`;
+}
+
 function CharCard({ c, like }: { c: CharItem; like: LikeProps }) {
   const img = c.title_image_url || c.thumb;
   // 세계관 타이틀 컬러를 CSS 변수로 — 호버 링/테두리가 같은 색을 쓰되 호버 반응은 유지
@@ -52,7 +58,7 @@ function CharCard({ c, like }: { c: CharItem; like: LikeProps }) {
       ? ({ "--world-color": c.title_color } as React.CSSProperties)
       : undefined;
   return (
-    <Link href={`/chat/${c.id}`} className="char-card" style={colorVar} title={`${c.name} — ${c.world_name}`}>
+    <Link href={chatHref(c)} className="char-card" style={colorVar} title={`${c.name} — ${c.world_name}`}>
       {img ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={img} alt={c.name} className="title-img" />
@@ -321,6 +327,13 @@ export default function HomeClient() {
     )}
 
     <div className="container">
+      <Link href="/haru" className="haru-live-banner" aria-label="하루 에스티아 방송 보러 가기">
+        <span className="haru-live-badge">LIVE</span>
+        <span className="haru-live-banner-text">
+          <strong>하루 에스티아</strong> · 하루의 쉬는 시간 · 수다 방송
+        </span>
+        <span className="haru-live-banner-go">보러 가기 →</span>
+      </Link>
       <h2 className="section-title">세계</h2>
       <div className="h-scroll">
         <button

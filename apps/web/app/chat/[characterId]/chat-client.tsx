@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { browserLlmAvailability, streamBrowserLlm, type BrowserLlmAvailability } from "@/lib/browser-llm";
 import { tintBackground } from "@/lib/tint";
+import { emitChatEvent } from "@/lib/chat-events";
 import GiftModal, { type GiftUseResult } from "./GiftModal";
 import CoinIcon from "../../components/CoinIcon";
 
@@ -614,6 +615,7 @@ export default function ChatClient({
         if (!line.startsWith("data: ")) continue;
         const event = JSON.parse(line.slice(6));
         if (event.type === "text") {
+          emitChatEvent({ type: "text", delta: String(event.delta ?? "") });
           setMessages((prev) => {
             const next = [...prev];
             const last = next[next.length - 1];
@@ -640,6 +642,7 @@ export default function ChatClient({
           if (deltaTimer.current) clearTimeout(deltaTimer.current);
           deltaTimer.current = setTimeout(() => setAffinityDelta(0), 3000);
         } else if (event.type === "emotion") {
+          emitChatEvent({ type: "emotion", emotion: String(event.emotion ?? "neutral") });
           // 감정별 프로필 교체: 마지막 assistant(비게스트) 말풍선에 감정 기록
           setMessages((prev) => {
             const next = [...prev];
@@ -758,6 +761,7 @@ export default function ChatClient({
     openingStarted.current = true;
     setError(null);
     setStreaming(true);
+    emitChatEvent({ type: "opening" });
     try {
       const res = await fetch("/api/chat/start", {
         method: "POST",
@@ -790,6 +794,7 @@ export default function ChatClient({
       );
     } finally {
       setStreaming(false);
+      emitChatEvent({ type: "end" });
     }
   };
 
@@ -826,6 +831,7 @@ export default function ChatClient({
       { role: "assistant", content: "", createdAt: new Date() },
     ]);
     setStreaming(true);
+    emitChatEvent({ type: "send" });
 
     try {
       if (browserMode) {
@@ -860,6 +866,7 @@ export default function ChatClient({
       });
     } finally {
       setStreaming(false);
+      emitChatEvent({ type: "end" });
     }
   };
 
